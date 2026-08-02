@@ -1,0 +1,17 @@
+ services:
+  frontend:
+    build:
+      context: ./front
+      dockerfile: Dockerfile
+
+    container_name: ari-docs
+
+    ports:
+      - "5173:5173"
+
+    volumes:
+      - ./front:/app:Z
+      - /app/node_modules
+
+    stdin_open: true
+    tty: true
