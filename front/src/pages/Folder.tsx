@@ -1,3 +1,5 @@
+import FolderTable from "../components/FolderTable";
+
 function Folder() {
   return (
     <div className="p-6">
@@ -5,19 +7,7 @@ function Folder() {
         Folder
       </h1>
 
-      <div className="space-y-2">
-        <div className="rounded border p-3">
-          📁 Project A
-        </div>
-
-        <div className="rounded border p-3">
-          📁 Project B
-        </div>
-
-        <div className="rounded border p-3">
-          📁 Personal
-        </div>
-      </div>
+      <FolderTable />
     </div>
   );
 }

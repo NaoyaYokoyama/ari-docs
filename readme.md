@@ -12,11 +12,12 @@
     - TypeScript + React Compiler
     - Oxlint
     - with npm Yes
+- npm ライブラリの追加
     - docker compose exec frontend npm install -D @types/node
     - docker compose exec npm install tailwindcss @tailwindcss/vite
-    - docker compose exec frontend npx shadcn@latest init
-    - 起動を確認したらCtrl + cで停止
-- npm ライブラリ追加
+    - docker compose exec frontend npm shadcn@latest init
+    - docker compose exec frontend npm install @tanstack/react-table
+    - docker compose exec frontend npm install react-router-dom
 
 ## 開発参加者へ
 
@@ -43,6 +44,7 @@
 ari-docs/
 ├── front/
 ├── back/
+├── folder/
 ├── docker-compose.yml
 └── README.md
 
