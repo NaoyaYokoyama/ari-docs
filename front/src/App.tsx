@@ -1,12 +1,28 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
+import { Routes, Route } from "react-router-dom";
 
-import MainLayout from "@/layouts/MainLayout";
+import Header from "./components/Header";
+import Sidebar from "./components/Sidebar";
+
+import Home from "./pages/Home";
+import Folder from "./pages/Folder";
 
 function App() {
-  return <MainLayout />;
+  return (
+    <div className="h-screen">
+      <Header />
+
+      <div className="flex h-[calc(100vh-60px)]">
+        <Sidebar />
+
+        <main className="flex-1 p-6">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/folder" element={<Folder />} />
+          </Routes>
+        </main>
+      </div>
+    </div>
+  );
 }
 
 export default App;

@@ -1,0 +1,15 @@
+[
+  {
+    "id": "1",
+    "name": "ari-docs",
+    "description": "Markdown設計書",
+    "path": "/folder/ari-docs",
+    "fileCount": 128,
+    "size": 35214521,
+    "favorite": true,
+    "tags": ["OSS", "React"],
+    "status": "working",
+    "lastUpdatedBy": "Naoya",
+    "updatedAt": "2026-08-03T10:00:00"
+  }
+]
