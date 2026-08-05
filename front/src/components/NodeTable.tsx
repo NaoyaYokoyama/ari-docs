@@ -1,3 +1,9 @@
+import type { Node } from "../types/node";
+
+type Props = {
+  nodes: Node[];
+};
+
 import {
   Folder as FolderIcon,
   FileText,
@@ -10,13 +16,12 @@ import {
 } from "@tanstack/react-table";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import type { Folder } from "../types/folder";
 
 import { FolderStatus, FolderStatusInfo } from "../types/folderStatus";
 import { NodeType } from "../types/nodeType";
-import { folders } from "../mock/folder";
 
-const columns: ColumnDef<Folder>[] = [
+
+const columns: ColumnDef<Node>[] = [
   {
     id: "icon",
     header: "",
@@ -69,13 +74,9 @@ const columns: ColumnDef<Folder>[] = [
   },
 ];
 
-type Props = {
-  nodes: Node[];
-}
-
-function FolderTable({ nodes }: Props) {
+function NodeTable({ nodes }: Props) {
   const table = useReactTable({
-    data: folders,
+    data: nodes,
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
@@ -121,4 +122,4 @@ function FolderTable({ nodes }: Props) {
   );
 }
 
-export default FolderTable;
+export default NodeTable;

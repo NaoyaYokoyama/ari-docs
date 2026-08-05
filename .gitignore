@@ -16,6 +16,9 @@ dist-ssr
 00_ari_docs/*
 00_ari-docs/*
 
+# ari-docsのフォルダ
+folder/*
+
 # back
 back/data/ari.db
 back/target/*

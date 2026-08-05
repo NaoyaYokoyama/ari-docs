@@ -1,15 +1,20 @@
+import { useState } from "react";
+
+import FolderTable from "../components/FolderTable";
 import { useNodes } from "../hooks/useNodes";
-import NodeTable from "../components/NodeTable";
 
 function Folder() {
-  const nodes = useNodes("/home/naoya/Work/project/ari-docs/folder");
+  const [currentPath] = useState("/");
+
+  const nodes = useNodes(currentPath);
+
   return (
     <div className="p-6">
       <h1 className="mb-6 text-2xl font-bold">
         Folder
       </h1>
 
-      <NodeTable nodes={nodes} />
+      <FolderTable nodes={nodes} />
     </div>
   );
 }

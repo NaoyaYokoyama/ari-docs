@@ -3,7 +3,7 @@ use std::fs;
 use crate::model::folder::Folder;
 use crate::model::node_type::NodeType;
 
-const ROOT_PATH: &str = "../../folder";
+const ROOT_PATH: &str = "../folder";
 
 pub fn get_folders() -> Vec<Folder> {
     let entries = fs::read_dir(ROOT_PATH).unwrap();
