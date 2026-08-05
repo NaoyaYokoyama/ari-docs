@@ -12,6 +12,20 @@ dist
 dist-ssr
 *.local
 
+# 設計書
+00_ari_docs/*
+00_ari-docs/*
+
+# back
+back/data/ari.db
+back/target/*
+back/Cargo.lock
+
+## SQLite関連
+back/data/*.db
+back/data/*.db-shm
+back/data/*.db-wal
+
 # Editor directories and files
 .vscode/*
 .folder/*
