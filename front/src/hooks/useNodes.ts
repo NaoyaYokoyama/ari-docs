@@ -4,13 +4,20 @@ import { getNodes } from "../api/node";
 import type { Node } from "../types/node";
 
 export function useNodes(path: string) {
+  const [currentPath, setCurrentPath] = useState(path);
   const [nodes, setNodes] = useState<Node[]>([]);
 
   useEffect(() => {
     getNodes(path)
-      .then(setNodes)
+      .then((response) => {
+        setCurrentPath(response.currentPath);
+        setNodes(response.nodes);
+      })
       .catch(console.error);
   }, [path]);
 
-  return nodes;
+  return {
+    currentPath,
+    nodes,
+  };
 }

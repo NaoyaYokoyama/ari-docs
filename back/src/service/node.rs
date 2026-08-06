@@ -1,16 +1,22 @@
 use std::fs;
 use std::path::PathBuf;
 
+use crate::api::node::Node;
 use crate::api::node::NodeResponse;
 use crate::model::node_type::NodeType;
 
 const ROOT_PATH: &str = "../folder";
+pub fn get_nodes(path: &str) -> NodeResponse {
+    let path = if path == "/" {
+        ""
+    } else {
+        path.trim_start_matches('/')
+    };
 
-pub fn get_nodes(path: &str) -> Vec<NodeResponse> {
     let full_path = PathBuf::from(ROOT_PATH).join(path);
-    let entries = fs::read_dir(full_path).unwrap();
+    let entries = fs::read_dir(&full_path).unwrap();
     let mut nodes = Vec::new();
-
+    let current_path = path.trim_start_matches('/').to_string();
     for entry in entries {
         let entry = entry.unwrap();
 
@@ -20,9 +26,14 @@ pub fn get_nodes(path: &str) -> Vec<NodeResponse> {
             NodeType::File
         };
         let updated_at = entry.metadata().unwrap().modified().unwrap();
-
-        nodes.push(NodeResponse {
-            path: entry.path().to_string_lossy().to_string(),
+        let relative_path = full_path
+            .join(entry.file_name())
+            .strip_prefix(ROOT_PATH)
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
+        nodes.push(Node {
+            path: relative_path,
             name: entry.file_name().to_string_lossy().to_string(),
             node_type: node_type,
             status: "working".to_string(),
@@ -33,5 +44,9 @@ pub fn get_nodes(path: &str) -> Vec<NodeResponse> {
                 .to_string(),
         });
     }
-    nodes
+
+    NodeResponse {
+        current_path: current_path.to_string(),
+        nodes: nodes,
+    }
 }

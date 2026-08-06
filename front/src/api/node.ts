@@ -1,6 +1,6 @@
 import { get } from "./client";
-import type { Node } from "../types/node";
+import type { NodeResponse } from "../types/nodeResponse";
 
 export function getNodes(path: string) {
-  return get<Node[]>(`/api/nodes?path=${encodeURIComponent(path)}`);
+  return get<NodeResponse>(`/api/nodes?path=${encodeURIComponent(path)}`);
 }

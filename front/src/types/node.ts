@@ -1,7 +1,7 @@
 export interface Node {
   path: string;
   name: string;
-  type: string;
+  nodeType: string;
   status: number;
   description: string;
   updatedBy: string;

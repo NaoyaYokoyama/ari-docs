@@ -2,6 +2,7 @@ import type { Node } from "../types/node";
 
 type Props = {
   nodes: Node[];
+  onOpenFolder: (path: string) => void;
 };
 
 import {
@@ -26,7 +27,7 @@ const columns: ColumnDef<Node>[] = [
     id: "icon",
     header: "",
     cell: ({ row }) => {
-      switch (row.original.type) {
+      switch (row.original.nodeType) {
         case NodeType.Folder:
           return <FolderIcon size={18} />;
         case NodeType.File:
@@ -55,26 +56,19 @@ const columns: ColumnDef<Node>[] = [
     },
   },
   {
-    accessorKey: "lastUpdatedBy",
+    accessorKey: "updatedBy",
     header: "更新者",
   },
   {
     accessorKey: "updatedAt",
     header: "更新日時",
     cell: ({ getValue }) => {
-      const date = new Date(getValue<string>());
-      return date.toLocaleString("ja-JP", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    },
+      return getValue<String>()
+    }
   },
 ];
 
-function NodeTable({ nodes }: Props) {
+function NodeTable({ nodes, onOpenFolder, }: Props) {
   const table = useReactTable({
     data: nodes,
     columns,
@@ -103,7 +97,15 @@ function NodeTable({ nodes }: Props) {
 
     <tbody>
     {table.getRowModel().rows.map((row) => (
-      <tr key={row.id} className="hover:bg-slate-100">
+      <tr
+      key={row.id}
+      className="hover:bg-slate-100 cursor-pointer"
+      onClick={() => {
+        if (row.original.nodeType === NodeType.Folder) {
+          onOpenFolder(row.original.path);
+        }
+      }}
+      >
       {row.getVisibleCells().map((cell) => (
         <td
         key={cell.id}
