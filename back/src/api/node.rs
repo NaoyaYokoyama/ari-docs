@@ -1,4 +1,4 @@
-use axum::{Json, extract::Query};
+use axum::{Json, extract::Query, http::StatusCode};
 
 use serde::{Deserialize, Serialize};
 
@@ -29,6 +29,27 @@ pub struct Node {
     pub updated_at: String,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateNodeRequest {
+    pub parent_path: String,
+    pub node_type: String,
+    pub name: String,
+}
+
+// ノード一覧を取得
 pub async fn get_nodes(Query(query): Query<NodeQuery>) -> Json<NodeResponse> {
     Json(node::get_nodes(&query.path))
+}
+
+// ノードの作成
+pub async fn create_node(Json(request): Json<CreateNodeRequest>) -> StatusCode {
+
+    node::create_node(
+        &request.parent_path,
+        &request.node_type,
+        &request.name,
+    );
+
+    StatusCode::CREATED
 }

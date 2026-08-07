@@ -7,17 +7,22 @@ export function useNodes(path: string) {
   const [currentPath, setCurrentPath] = useState(path);
   const [nodes, setNodes] = useState<Node[]>([]);
 
-  useEffect(() => {
-    getNodes(path)
+  const load = () => {
+    return getNodes(path)
       .then((response) => {
         setCurrentPath(response.currentPath);
         setNodes(response.nodes);
       })
       .catch(console.error);
+  };
+
+  useEffect(() => {
+    load();
   }, [path]);
 
   return {
     currentPath,
     nodes,
+    reload: load,
   };
 }

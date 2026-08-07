@@ -50,3 +50,15 @@ pub fn get_nodes(path: &str) -> NodeResponse {
         nodes: nodes,
     }
 }
+
+pub fn create_node(parent_path: &str, node_type: &str, name: &str) {
+    let full_path = PathBuf::from(ROOT_PATH)
+        .join(parent_path.trim_start_matches('/'))
+        .join(name);
+
+    if node_type == "folder" {
+        fs::create_dir(full_path).unwrap();
+    } else {
+        fs::File::create(full_path).unwrap();
+    }
+}
