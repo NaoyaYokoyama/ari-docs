@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useNodes } from "@/hooks/useNodes";
 import Breadcrumb from "@/components/common/Breadcrumb";
-import NodeTable from "@/components/NodeTable";
 import CreateNodeDialog from "@/components/node/CreateNodeDialog";
 import NodeDialog from "@/components/node/NodeDialog";
+import NodeTable from "@/components/node/NodeTable";
 import { NodeType } from "@/types/nodeType";
 import {
   FolderPlus,

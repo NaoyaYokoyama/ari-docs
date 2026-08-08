@@ -21,9 +21,6 @@ const menuClass =
 function Sidebar() {
   return (
     <aside className="w-64 bg-slate-100 p-4">
-    <h2 className="mb-6 text-lg font-bold">
-    ari-docs
-    </h2>
 
     <nav className="space-y-2">
     {menus.map((menu) => {

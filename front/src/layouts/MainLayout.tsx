@@ -1,14 +1,23 @@
+import type { ReactNode } from "react";
+
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
-import Home from "@/pages/Home";
 
-function MainLayout() {
+type Props = {
+  children: ReactNode;
+};
+
+function MainLayout({ children }: Props) {
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen">
       <Header />
-      <div className="flex flex-1">
+
+      <div className="flex h-[calc(100vh-60px)]">
         <Sidebar />
-        <Home />
+
+        <main className="flex-1 p-6">
+          {children}
+        </main>
       </div>
     </div>
   );

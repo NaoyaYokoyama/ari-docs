@@ -1,4 +1,6 @@
-import type { Node } from "../types/node";
+import type { Node } from "@/types/node";
+import { FolderStatus, FolderStatusInfo } from "@/types/folderStatus";
+import { NodeType } from "@/types/nodeType";
 
 type Props = {
   nodes: Node[];
@@ -19,9 +21,6 @@ import {
 } from "@tanstack/react-table";
 
 import type { ColumnDef } from "@tanstack/react-table";
-
-import { FolderStatus, FolderStatusInfo } from "../types/folderStatus";
-import { NodeType } from "../types/nodeType";
 
 
 function NodeTable({ nodes, onOpenFolder, onOpenNode }: Props) {
