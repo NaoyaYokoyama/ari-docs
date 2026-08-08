@@ -1,5 +1,5 @@
-import Header from "@/components/Header";
-import Sidebar from "@/components/Sidebar";
+import Header from "@/components/layout/Header";
+import Sidebar from "@/components/layout/Sidebar";
 import Home from "@/pages/Home";
 
 function MainLayout() {

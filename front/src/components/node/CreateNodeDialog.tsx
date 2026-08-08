@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { createNode } from "../api/node";
+import { createNode } from "@/api/node";
 
-import { NodeType } from "../types/nodeType";
+import { NodeType } from "@/types/nodeType";
 
 type Props = {
   open: boolean;
