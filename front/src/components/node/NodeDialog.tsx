@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { NodeType } from "@/types/nodeType";
 import type { Node } from "@/types/node";
 
+import { deleteNode } from "@/api/node";
+
 type Props = {
   nodeOpen: boolean;
   node: Node | null;
@@ -18,10 +20,12 @@ function NodeDialog({
   }
 
   const [newName, setNewName] = useState("");
+  const [deleteChecked, setDeleteChecked] = useState(false);
 
   useEffect(() => {
     if (nodeOpen && node) {
       setNewName(node.name);
+      setDeleteChecked(false);
     }
     const handleKeyDown = (e: keyboardEvent) => {
       if (e.key === "Escape") {
@@ -46,6 +50,41 @@ function NodeDialog({
         </h2>
 
         <div className="flex justify-end gap-2">
+        <label className="mb-6 flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={deleteChecked}
+            onChange={(e) => setDeleteChecked(e.target.checked)}
+          />
+
+          <span>
+            削除確認
+          </span>
+          <button
+            type="button"
+            disabled={!deleteChecked}
+            onClick={async () => {
+              await deleteNode(
+                node.path,
+                node.nodeType,
+                node.name,
+              );
+              onClose();
+            }}
+            className="
+              rounded
+              px-4
+              py-2
+              text-white
+              disabled:bg-slate-300
+              disabled:cursor-not-allowed
+              bg-red-600
+              hover:bg-red-700
+            "
+          >
+            削除
+          </button>
+        </label>
           <button
             onClick={onClose}
             className="rounded border px-4 py-2"

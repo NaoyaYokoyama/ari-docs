@@ -8,6 +8,7 @@ pub fn create_router() -> Router {
     Router::new()
         .route("/api/folders", get(folder::get_folders))
         .route("/api/nodes", get(api::node::get_nodes))
-        .route("/api/nodes", post(api::node::create_node))
+        .route("/api/nodes/create", post(api::node::create_node))
+        .route("/api/nodes/delete", post(api::node::delete_node))
         .layer(CorsLayer::permissive())
 }

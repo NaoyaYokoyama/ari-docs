@@ -44,12 +44,20 @@ pub async fn get_nodes(Query(query): Query<NodeQuery>) -> Json<NodeResponse> {
 
 // ノードの作成
 pub async fn create_node(Json(request): Json<CreateNodeRequest>) -> StatusCode {
-
     node::create_node(
         &request.parent_path,
         &request.node_type,
         &request.name,
     );
+    StatusCode::CREATED
+}
 
+// ノードの削除
+pub async fn delete_node(Json(request): Json<CreateNodeRequest>) -> StatusCode {
+    node::delete_node(
+        &request.parent_path,
+        &request.node_type,
+        &request.name,
+    );
     StatusCode::CREATED
 }

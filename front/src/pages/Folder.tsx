@@ -13,25 +13,23 @@ import {
 import type { Node } from "../types/node";
 
 function Folder() {
-  const handleCreated = async () => {
-    setCreateOpen(false);
-    await reload();
-  };
-
   const [createOpen, setCreateOpen] = useState(false);
   const [nodeOpen, setNodeOpen] = useState(false);
-
-  const [defaultType, setDefaultType] =
-    useState<NodeType>(NodeType.Folder);
-  const [selectedNode, setSelectedNode] =
-    useState<Node | null>(null);
   const [path, setPath] = useState("");
+  const [defaultType, setDefaultType] = useState<NodeType>(NodeType.Folder);
+  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+
+  const handleClose = async () => {
+    setCreateOpen(false);
+    setNodeOpen(false);
+    await reload();
+  }
+
   const {
     currentPath,
     nodes,
     reload,
   } = useNodes(path);
-  console.log(nodes);
 
   return (
 
@@ -87,14 +85,13 @@ function Folder() {
     open={createOpen}
     defaultType={defaultType}
     currentPath={currentPath}
-    onClose={() => setCreateOpen(false)}
-    onCreated={handleCreated}
+    onClose={handleClose}
     />
 
     <NodeDialog
     nodeOpen={nodeOpen}
     node={selectedNode}
-    onClose={() => setNodeOpen(false)}
+    onClose={handleClose}
     />
 
     </div>

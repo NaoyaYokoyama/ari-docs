@@ -39,7 +39,7 @@ function NodeTable({ nodes, onOpenFolder, onOpenNode }: Props) {
           e.stopPropagation();
           onOpenNode(row.original);
         }}
-        className="flex h-full w-full items-center justify-center"
+        className="hover:bg-slate-300 flex h-full w-full items-center justify-center"
         >
         <EllipsisVertical size={18} />
         </button>

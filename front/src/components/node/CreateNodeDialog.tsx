@@ -8,7 +8,6 @@ type Props = {
   defaultType: NodeType;
   currentPath: string;
   onClose: () => void;
-  onCreated: () => void;
 };
 
 function CreateNodeDialog({
@@ -16,7 +15,6 @@ function CreateNodeDialog({
   defaultType,
   currentPath,
   onClose,
-  onCreated,
 }: Props) {
   const [nodeType, setNodeType] = useState(defaultType);
   const [name, setName] = useState("");
@@ -95,7 +93,6 @@ function CreateNodeDialog({
             );
 
             onClose();
-            onCreated();
           }}
           className="rounded bg-slate-800 px-4 py-2 text-white"
           >

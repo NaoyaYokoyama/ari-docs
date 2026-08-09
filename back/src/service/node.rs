@@ -62,3 +62,13 @@ pub fn create_node(parent_path: &str, node_type: &str, name: &str) {
         fs::File::create(full_path).unwrap();
     }
 }
+
+pub fn delete_node(parent_path: &str, node_type: &str, name: &str) {
+    let full_path = PathBuf::from(ROOT_PATH).join(parent_path.trim_start_matches('/'));
+
+    if node_type == "folder" {
+        fs::remove_dir_all(full_path).unwrap();
+    } else {
+        fs::remove_file(full_path).unwrap();
+    }
+}
