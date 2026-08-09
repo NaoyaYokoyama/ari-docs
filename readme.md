@@ -19,10 +19,10 @@
     - docker compose exec frontend npm install @tanstack/react-table
     - docker compose exec frontend npm install react-router-dom
     - docker compose exec frontend npm install @tauri-apps/api
-    - docker compose exec frontend npm install -D prettier prettier-plugin-tailwindcss
+    - docker compose exec frontend npm install prettier prettier-plugin-tailwindcss
+    - docker compose exec frontend npm install -D eslint @eslint/js typescript-eslint eslint-plugin-simple-import-sort
 
 ## 開発参加者へ
-
 ### 0. 概要
 
 - バックエンド: Rust
@@ -40,6 +40,12 @@
 - docker compose up
 - docker compose up -d
 - docker compose down
+
+### 3. フォーマッター
+
+- ReactはPrettier,ESlint
+    docker compose exec frontend npm run format
+    docker compose exec frontend npm run lint:fix
 
 ## ディレクトリ構成
 

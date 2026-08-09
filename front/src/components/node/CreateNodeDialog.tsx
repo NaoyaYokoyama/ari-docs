@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
+
 import { createNode } from "@/api/node";
-
 import Dialog from "@/components/common/Dialog";
-
 import { NodeType } from "@/types/nodeType";
 
 type Props = {

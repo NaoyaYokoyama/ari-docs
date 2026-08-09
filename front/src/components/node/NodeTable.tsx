@@ -1,5 +1,5 @@
-import type { Node } from "@/types/node";
 import { FolderStatus, FolderStatusInfo } from "@/types/folderStatus";
+import type { Node } from "@/types/node";
 import { NodeType } from "@/types/nodeType";
 
 type Props = {
@@ -8,15 +8,13 @@ type Props = {
   onOpenNode: (node: Node) => void;
 };
 
-import { Folder as FolderIcon, FileText, EllipsisVertical } from "lucide-react";
-
+import type { ColumnDef } from "@tanstack/react-table";
 import {
   flexRender,
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-
-import type { ColumnDef } from "@tanstack/react-table";
+import { EllipsisVertical,FileText, Folder as FolderIcon } from "lucide-react";
 
 function NodeTable({ nodes, onOpenFolder, onOpenNode }: Props) {
   const columns: ColumnDef<Node>[] = [
@@ -35,7 +33,7 @@ function NodeTable({ nodes, onOpenFolder, onOpenNode }: Props) {
               e.stopPropagation();
               onOpenNode(row.original);
             }}
-            className="hover:bg-slate-300 flex h-full w-full items-center justify-center"
+            className="flex h-full w-full items-center justify-center hover:bg-slate-300"
           >
             <EllipsisVertical size={18} />
           </button>
@@ -83,7 +81,7 @@ function NodeTable({ nodes, onOpenFolder, onOpenNode }: Props) {
       accessorKey: "updatedAt",
       header: "更新日時",
       cell: ({ getValue }) => {
-        return getValue<String>();
+        return getValue<string>();
       },
     },
   ];
@@ -119,7 +117,7 @@ function NodeTable({ nodes, onOpenFolder, onOpenNode }: Props) {
         {table.getRowModel().rows.map((row) => (
           <tr
             key={row.id}
-            className="hover:bg-slate-100 cursor-pointer"
+            className="cursor-pointer hover:bg-slate-100"
             onClick={() => {
               if (row.original.nodeType === NodeType.Folder) {
                 onOpenFolder(row.original.path);

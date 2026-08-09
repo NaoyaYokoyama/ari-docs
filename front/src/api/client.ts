@@ -10,10 +10,7 @@ export async function get<T>(url: string): Promise<T> {
   return response.json();
 }
 
-export async function post<T>(
-  url: string,
-  body: unknown,
-): Promise<T> {
+export async function post<T>(url: string, body: unknown): Promise<T> {
   const response = await fetch(BASE_URL + url, {
     method: "POST",
     headers: {
@@ -26,7 +23,10 @@ export async function post<T>(
     throw new Error(response.statusText);
   }
 
-  if (response.status === 204 || response.headers.get("content-length") === "0") {
+  if (
+    response.status === 204 ||
+    response.headers.get("content-length") === "0"
+  ) {
     return undefined as T;
   }
 

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { NodeType } from "@/types/nodeType";
-import type { Node } from "@/types/node";
-import Dialog from "@/components/common/Dialog";
+
 import { deleteNode } from "@/api/node";
+import Dialog from "@/components/common/Dialog";
+import type { Node } from "@/types/node";
 
 type Props = {
   nodeOpen: boolean;
@@ -11,7 +11,6 @@ type Props = {
 };
 
 function NodeDialog({ nodeOpen, node, onClose }: Props) {
-  const [newName, setNewName] = useState("");
   const [deleteChecked, setDeleteChecked] = useState(false);
 
   useEffect(() => {
@@ -46,8 +45,7 @@ function NodeDialog({ nodeOpen, node, onClose }: Props) {
             await deleteNode(node.path, node.nodeType, node.name);
             onClose();
           }}
-          className="rounded px-4 py-2 text-white disabled:bg-slate-300
-            disabled:cursor-not-allowed bg-red-600 hover:bg-red-700"
+          className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
           削除
         </button>
