@@ -18,6 +18,8 @@
     - docker compose exec frontend npm shadcn@latest init
     - docker compose exec frontend npm install @tanstack/react-table
     - docker compose exec frontend npm install react-router-dom
+    - docker compose exec frontend npm install @tauri-apps/api
+    - docker compose exec frontend npm install -D prettier prettier-plugin-tailwindcss
 
 ## 開発参加者へ
 

@@ -8,11 +8,7 @@ type Props = {
   onOpenNode: (node: Node) => void;
 };
 
-import {
-  Folder as FolderIcon,
-  FileText,
-  EllipsisVertical,
-} from "lucide-react";
+import { Folder as FolderIcon, FileText, EllipsisVertical } from "lucide-react";
 
 import {
   flexRender,
@@ -22,7 +18,6 @@ import {
 
 import type { ColumnDef } from "@tanstack/react-table";
 
-
 function NodeTable({ nodes, onOpenFolder, onOpenNode }: Props) {
   const columns: ColumnDef<Node>[] = [
     {
@@ -31,18 +26,20 @@ function NodeTable({ nodes, onOpenFolder, onOpenNode }: Props) {
       size: 5,
       enableSorting: false,
       meta: {
-        className: "px-1"
+        className: "px-1",
       },
       cell: ({ row }) => {
-        return <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onOpenNode(row.original);
-        }}
-        className="hover:bg-slate-300 flex h-full w-full items-center justify-center"
-        >
-        <EllipsisVertical size={18} />
-        </button>
+        return (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenNode(row.original);
+            }}
+            className="hover:bg-slate-300 flex h-full w-full items-center justify-center"
+          >
+            <EllipsisVertical size={18} />
+          </button>
+        );
       },
     },
     {
@@ -72,8 +69,8 @@ function NodeTable({ nodes, onOpenFolder, onOpenNode }: Props) {
 
         return (
           <span className="flex items-center gap-2">
-          <span className={info.color}>●</span>
-          <span>{info.label}</span>
+            <span className={info.color}>●</span>
+            <span>{info.label}</span>
           </span>
         );
       },
@@ -86,11 +83,10 @@ function NodeTable({ nodes, onOpenFolder, onOpenNode }: Props) {
       accessorKey: "updatedAt",
       header: "更新日時",
       cell: ({ getValue }) => {
-        return getValue<String>()
-      }
+        return getValue<String>();
+      },
     },
   ];
-
 
   const table = useReactTable({
     data: nodes,
@@ -100,51 +96,48 @@ function NodeTable({ nodes, onOpenFolder, onOpenNode }: Props) {
 
   return (
     <table className="w-full border-collapse">
-    <thead>
-    {table.getHeaderGroups().map((headerGroup) => (
-      <tr key={headerGroup.id}>
-      {headerGroup.headers.map((header) => (
-        <th
-        key={header.id}
-        style={{ width: header.column.getSize() }}
-        className="border-b px-4 py-2 text-left"
-        >
-        {flexRender(
-          header.column.columnDef.header,
-          header.getContext()
-        )}
-        </th>
-      ))}
-      </tr>
-    ))}
-    </thead>
+      <thead>
+        {table.getHeaderGroups().map((headerGroup) => (
+          <tr key={headerGroup.id}>
+            {headerGroup.headers.map((header) => (
+              <th
+                key={header.id}
+                style={{ width: header.column.getSize() }}
+                className="border-b px-4 py-2 text-left"
+              >
+                {flexRender(
+                  header.column.columnDef.header,
+                  header.getContext(),
+                )}
+              </th>
+            ))}
+          </tr>
+        ))}
+      </thead>
 
-    <tbody>
-    {table.getRowModel().rows.map((row) => (
-      <tr
-      key={row.id}
-      className="hover:bg-slate-100 cursor-pointer"
-      onClick={() => {
-        if (row.original.nodeType === NodeType.Folder) {
-          onOpenFolder(row.original.path);
-        }
-      }}
-      >
-      {row.getVisibleCells().map((cell) => (
-        <td
-        key={cell.id}
-        style={{ width: cell.column.getSize() }}
-        className="border-b px-1 py-1"
-        >
-        {flexRender(
-          cell.column.columnDef.cell,
-          cell.getContext()
-        )}
-        </td>
-      ))}
-      </tr>
-    ))}
-    </tbody>
+      <tbody>
+        {table.getRowModel().rows.map((row) => (
+          <tr
+            key={row.id}
+            className="hover:bg-slate-100 cursor-pointer"
+            onClick={() => {
+              if (row.original.nodeType === NodeType.Folder) {
+                onOpenFolder(row.original.path);
+              }
+            }}
+          >
+            {row.getVisibleCells().map((cell) => (
+              <td
+                key={cell.id}
+                style={{ width: cell.column.getSize() }}
+                className="border-b px-1 py-1"
+              >
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
     </table>
   );
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { NodeType } from "@/types/nodeType";
 import type { Node } from "@/types/node";
-
+import Dialog from "@/components/common/Dialog";
 import { deleteNode } from "@/api/node";
 
 type Props = {
@@ -10,46 +10,25 @@ type Props = {
   onClose: () => void;
 };
 
-function NodeDialog({
-  nodeOpen,
-  node,
-  onClose,
-}: Props) {
-  if (!nodeOpen || !node) {
-    return null;
-  }
-
+function NodeDialog({ nodeOpen, node, onClose }: Props) {
   const [newName, setNewName] = useState("");
   const [deleteChecked, setDeleteChecked] = useState(false);
 
   useEffect(() => {
-    if (nodeOpen && node) {
-      setNewName(node.name);
-      setDeleteChecked(false);
+    if (!nodeOpen || !node) {
+      return;
     }
-    const handleKeyDown = (e: keyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
+    setNewName(node.name);
+    setDeleteChecked(false);
   }, [nodeOpen, node?.name]);
 
-
-
+  if (!nodeOpen || !node) {
+    return null;
+  }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/40">
-      <div className="w-[420px] rounded-lg bg-white p-6 shadow-xl">
-
-        <h2 className="mb-6 text-xl font-semibold">
-          {node.name}
-        </h2>
-
-        <div className="flex justify-end gap-2">
+    <Dialog open={nodeOpen} title={node.name} onClose={onClose}>
+      <div className="flex justify-end gap-2">
         <label className="mb-6 flex items-center gap-2">
           <input
             type="checkbox"
@@ -57,54 +36,26 @@ function NodeDialog({
             onChange={(e) => setDeleteChecked(e.target.checked)}
           />
 
-          <span>
-            削除確認
-          </span>
-          <button
-            type="button"
-            disabled={!deleteChecked}
-            onClick={async () => {
-              await deleteNode(
-                node.path,
-                node.nodeType,
-                node.name,
-              );
-              onClose();
-            }}
-            className="
-              rounded
-              px-4
-              py-2
-              text-white
-              disabled:bg-slate-300
-              disabled:cursor-not-allowed
-              bg-red-600
-              hover:bg-red-700
-            "
-          >
-            削除
-          </button>
+          <span>削除確認</span>
         </label>
-          <button
-            onClick={onClose}
-            className="rounded border px-4 py-2"
-          >
-            キャンセル
-          </button>
 
-          <button
+        <button
           type="button"
-          onClick={() => {
+          disabled={!deleteChecked}
+          onClick={async () => {
+            await deleteNode(node.path, node.nodeType, node.name);
             onClose();
           }}
-          className="rounded bg-slate-800 px-4 py-2 text-white"
-          >
-          その他
-          </button>
-          </div>
-
-          </div>
-          </div>
+          className="rounded px-4 py-2 text-white disabled:bg-slate-300
+            disabled:cursor-not-allowed bg-red-600 hover:bg-red-700"
+        >
+          削除
+        </button>
+        <button onClick={onClose} className="rounded border px-2 py-2">
+          閉じる
+        </button>
+      </div>
+    </Dialog>
   );
 }
 
