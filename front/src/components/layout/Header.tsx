@@ -5,9 +5,9 @@ import { Link } from "react-router-dom";
 const menus = [
   { id: "home", icon: Home, label: "ホーム", path: "" },
   { id: "folder", icon: Folder, label: "フォルダ", path: "/folder" },
-  { id: "memo", icon: FileText, label: "個人メモ", path: "" },
-  { id: "wiki", icon: BookOpen, label: "Wiki", path: "" },
-  { id: "settings", icon: Settings, label: "設定", path: "" },
+  { id: "memo", icon: FileText, label: "個人メモ", path: "/note" },
+  { id: "wiki", icon: BookOpen, label: "Wiki", path: "/wiki" },
+  { id: "settings", icon: Settings, label: "設定", path: "/setting" },
 ];
 
 type Props = {
@@ -30,10 +30,12 @@ export default function Header({
 
           return (
             <Link to={menu.path} key={menu.id}>
-              <span className="flex items-center gap-2">
-                <Icon size={18} />
-                <span className="hidden lg:inline">{menu.label}</span>
-              </span>
+              <Button>
+                <span className="flex items-center gap-2">
+                  <Icon size={18} />
+                  <span className="hidden lg:inline">{menu.label}</span>
+                </span>
+              </Button>
             </Link>
           );
         })}

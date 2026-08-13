@@ -1,5 +1,5 @@
 function Home() {
-  return <main className="flex-1 p-6">Home</main>;
+  return <main className="flex-1 p-6">ホーム</main>;
 }
 
 export default Home;
