@@ -123,6 +123,10 @@ function NodeTable({ nodes, onOpenFolder, onOpenNode }: Props) {
                 onOpenFolder(row.original.path);
               }
             }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              onOpenNode(row.original);
+          }}
           >
             {row.getVisibleCells().map((cell) => (
               <td

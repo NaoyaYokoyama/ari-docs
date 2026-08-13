@@ -5,12 +5,21 @@ import Sidebar from "@/components/layout/Sidebar";
 
 type Props = {
   children: ReactNode;
+  displayName: string;
+  onLogout: () => void;
 };
 
-function MainLayout({ children }: Props) {
+function MainLayout({
+  children,
+  displayName,
+  onLogout,
+}: Props) {
   return (
     <div className="h-screen">
-      <Header />
+      <Header
+        displayName={displayName}
+        onLogout={onLogout}
+      />
 
       <div className="flex h-[calc(100vh-60px)]">
         <Sidebar />

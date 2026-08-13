@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { deleteNode } from "@/api/node";
+import Button from "@/components/common/Button";
 import Dialog from "@/components/common/Dialog";
 import type { Node } from "@/types/node";
 
@@ -11,6 +12,7 @@ type Props = {
 };
 
 function NodeDialog({ nodeOpen, node, onClose }: Props) {
+  const [newName, setNewName] = useState();
   const [deleteChecked, setDeleteChecked] = useState(false);
 
   useEffect(() => {
@@ -27,31 +29,54 @@ function NodeDialog({ nodeOpen, node, onClose }: Props) {
 
   return (
     <Dialog open={nodeOpen} title={node.name} onClose={onClose}>
-      <div className="flex justify-end gap-2">
+
+      <div>
+        {node.name}
+      </div>
+      <div>
+        {node.status}
+      </div>
+      <div>
+        {node.description}
+      </div>
+
+      <div>
+        {node.updatedBy}
+      </div>
+      <div>
+        {node.updatedAt}
+      </div>
+
+      <div>
         <label className="mb-6 flex items-center gap-2">
           <input
             type="checkbox"
             checked={deleteChecked}
             onChange={(e) => setDeleteChecked(e.target.checked)}
           />
-
           <span>削除確認</span>
         </label>
+      </div>
 
-        <button
+      <div className="flex justify-end gap-2">
+        <Button variant="primary"
+        >
+          更 新
+        </Button>
+        <Button
           type="button"
           disabled={!deleteChecked}
           onClick={async () => {
             await deleteNode(node.path, node.nodeType, node.name);
             onClose();
           }}
-          className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          variant="danger"
         >
-          削除
-        </button>
-        <button onClick={onClose} className="rounded border px-2 py-2">
+          削 除
+        </Button>
+        <Button onClick={onClose} variant="secondary">
           閉じる
-        </button>
+        </Button>
       </div>
     </Dialog>
   );

@@ -1,14 +1,32 @@
-use axum::routing::{Router, get, post};
+use axum::{
+    Router,
+    http::{HeaderValue, Method, header::CONTENT_TYPE},
+    routing::{get, post},
+};
+
 use tower_http::cors::CorsLayer;
 
+use crate::model::app_state::AppState;
+
 use crate::api;
+use crate::api::auth;
 use crate::api::folder;
 
-pub fn create_router() -> Router {
+pub fn create_router() -> Router<AppState> {
+    let cors = CorsLayer::new()
+        .allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap())
+        .allow_methods([Method::GET, Method::POST])
+        .allow_headers([CONTENT_TYPE])
+        .allow_credentials(true);
+
     Router::new()
+        .route("/api/login", post(auth::login))
+        .route("/api/logout", post(auth::logout))
+        .route("/api/me", get(auth::get_me))
         .route("/api/folders", get(folder::get_folders))
         .route("/api/nodes", get(api::node::get_nodes))
         .route("/api/nodes/create", post(api::node::create_node))
         .route("/api/nodes/delete", post(api::node::delete_node))
-        .layer(CorsLayer::permissive())
+        .route("/api/notes", get(api::note::get_notes))
+        .layer(cors)
 }

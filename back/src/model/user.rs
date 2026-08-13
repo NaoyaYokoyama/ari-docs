@@ -1,7 +1,7 @@
 pub struct User {
-    pub user_id: i64,
-    pub login_id: String,
+    pub user_id: String,
+    pub passwd: String,
     pub display_name: String,
-    pub role_id: i64,
+    pub role_id: String,
     pub updated_at: String,
 }

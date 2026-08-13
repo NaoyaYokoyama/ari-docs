@@ -4,15 +4,14 @@
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS user (
-    user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT PRIMARY KEY,
 
-    login_id TEXT NOT NULL UNIQUE,
+    passwd TEXT NOT NULL,
 
     display_name TEXT NOT NULL,
 
-    role_id INTEGER NOT NULL,
+    role_id TEXT NOT NULL,
 
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 
-    FOREIGN KEY (role_id) REFERENCES role(id)
 );
