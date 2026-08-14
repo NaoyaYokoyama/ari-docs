@@ -13,8 +13,9 @@ use crate::{
 };
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NoteQuery {
-    pub noteId: String,
+    pub note_id: String,
 }
 
 #[derive(Serialize)]
@@ -26,9 +27,8 @@ pub struct NoteResponse {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Note {
-    pub user_id: String,
+    pub note_id: i64,
     pub title: String,
-    pub contact: String,
     pub updated_at: String,
 }
 
@@ -41,5 +41,10 @@ pub async fn get_notes(
     let user =
         auth::get_login_user(&conn, &state.sessions, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
-    Ok(Json(note::get_notes(&user.user_id)))
+    let response = note::get_notes(&conn, &user.user_id).map_err(|e| {
+        eprintln!("get_notes error: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    Ok(Json(response))
 }

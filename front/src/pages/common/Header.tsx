@@ -19,7 +19,7 @@ export default function Header({
   onLogout,
 }: Props) {
   return (
-    <header className="flex items-center bg-slate-800 p-4 text-white">
+    <header className="flex items-center bg-slate-800 px-3 py-1 text-white">
       <div className="font-semibold">
         ari-docs
       </div>

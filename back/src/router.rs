@@ -27,6 +27,8 @@ pub fn create_router() -> Router<AppState> {
         .route("/api/nodes", get(api::node::get_nodes))
         .route("/api/nodes/create", post(api::node::create_node))
         .route("/api/nodes/delete", post(api::node::delete_node))
-        .route("/api/notes", get(api::note::get_notes))
+        .route("/api/note", get(api::note::get_notes))
+        .route("/api/note/create", get(api::note::get_notes))
+        .route("/api/note/delete", get(api::note::get_notes))
         .layer(cors)
 }

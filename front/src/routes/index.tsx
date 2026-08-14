@@ -1,10 +1,10 @@
 import { Route,Routes } from "react-router-dom";
 
-import Folder from "@/pages/Folder";
-import Note from "@/pages/Note";
-import Wiki from "@/pages/Wiki";
-import Setting from "@/pages/Setting";
-import Home from "@/pages/Home";
+import Folder from "@/pages/node/Node";
+import Note from "@/pages/note/Note";
+import Wiki from "@/pages/wiki/Wiki";
+import Setting from "@/pages/setting/Setting";
+import Home from "@/pages/home/Home";
 
 function AppRoutes() {
   return (

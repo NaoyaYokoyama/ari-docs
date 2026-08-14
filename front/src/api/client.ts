@@ -1,7 +1,9 @@
 const BASE_URL = "http://localhost:8080";
 
 export async function get<T>(url: string): Promise<T> {
-  const response = await fetch(BASE_URL + url);
+  const response = await fetch(BASE_URL + url, {
+    credentials: "include",
+  });
 
   if (!response.ok) {
     throw new Error(response.statusText);
@@ -13,6 +15,7 @@ export async function get<T>(url: string): Promise<T> {
 export async function post<T>(url: string, body: unknown): Promise<T> {
   const response = await fetch(BASE_URL + url, {
     method: "POST",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
     },

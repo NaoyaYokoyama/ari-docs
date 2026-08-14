@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import Login from "@/pages/Login";
-import MainLayout from "@/layouts/MainLayout";
+import Login from "@/pages/common/Login";
 import AppRoutes from "@/routes";
+import MainLayout from "@/pages/common/MainLayout";
 
 type LoginUser = {
   userId: string;
@@ -22,6 +22,7 @@ export default function App() {
       setUser(null);
     }
   };
+
   useEffect(() => {
     const checkLogin = async () => {
       try {
@@ -33,9 +34,9 @@ export default function App() {
           setUser(null);
           return;
         }
+
         const loginUser: LoginUser = await response.json();
         setUser(loginUser);
-
       } catch (error) {
         console.error("ログイン確認に失敗しました", error);
         setUser(null);
@@ -58,9 +59,12 @@ export default function App() {
   return (
     <MainLayout
       displayName={user.displayName}
-      onLogout={handleLogout}>
-      <AppRoutes />
+      onLogout={handleLogout}
+    >
+      <AppRoutes
+        displayName={user.displayName}
+        onLogout={handleLogout}
+      />
     </MainLayout>
   );
-
 }

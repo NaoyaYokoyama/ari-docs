@@ -2,7 +2,7 @@ import { cva } from "class-variance-authority";
 import type { ButtonHTMLAttributes } from "react";
 
 const buttonVariants = cva(
-  "rounded-md font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+  "inline-flex items-center justify-center rounded-md whitespace-nowrap font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 gap-2",
   {
     variants: {
       variant: {

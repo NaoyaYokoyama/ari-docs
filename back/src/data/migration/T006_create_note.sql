@@ -6,7 +6,7 @@
 CREATE TABLE IF NOT EXISTS note (
     note_id     INTEGER PRIMARY KEY AUTOINCREMENT,
 
-    user_id     INTEGER NOT NULL,
+    user_id     TEXT NOT NULL,
 
     title       TEXT NOT NULL,
 
