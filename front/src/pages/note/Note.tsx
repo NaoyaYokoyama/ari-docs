@@ -5,7 +5,7 @@ import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
 import Sidebar from "@/pages/note/Sidebar";
 
-import { getNotes } from "@/api/note";
+import { getNotes, createNote, deleteNote } from "@/api/note";
 import type { Note as NoteType } from "@/types/note";
 
 export default function Note() {

@@ -8,9 +8,9 @@ use tower_http::cors::CorsLayer;
 
 use crate::model::app_state::AppState;
 
-use crate::api;
 use crate::api::auth;
 use crate::api::folder;
+use crate::api::{node::handler as node, note::handler as note};
 
 pub fn create_router() -> Router<AppState> {
     let cors = CorsLayer::new()
@@ -24,11 +24,12 @@ pub fn create_router() -> Router<AppState> {
         .route("/api/logout", post(auth::logout))
         .route("/api/me", get(auth::get_me))
         .route("/api/folders", get(folder::get_folders))
-        .route("/api/nodes", get(api::node::get_nodes))
-        .route("/api/nodes/create", post(api::node::create_node))
-        .route("/api/nodes/delete", post(api::node::delete_node))
-        .route("/api/note", get(api::note::get_notes))
-        .route("/api/note/create", get(api::note::get_notes))
-        .route("/api/note/delete", get(api::note::get_notes))
+        .route("/api/nodes", get(node::get_nodes))
+        .route("/api/nodes/create", post(node::create_node))
+        .route("/api/nodes/delete", post(node::delete_node))
+        .route("/api/notes", get(note::get_notes))
+        .route("/api/note/{node_id}", get(note::get_notes))
+        .route("/api/note/create", get(note::get_notes))
+        .route("/api/note/delete", get(note::get_notes))
         .layer(cors)
 }

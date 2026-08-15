@@ -1,9 +1,7 @@
+use crate::api::node::{handler as node, response::Node, response::NodeResponse};
+use crate::model::node_type::NodeType;
 use std::fs;
 use std::path::PathBuf;
-
-use crate::api::node::Node;
-use crate::api::node::NodeResponse;
-use crate::model::node_type::NodeType;
 
 const ROOT_PATH: &str = "../folder";
 pub fn get_nodes(path: &str) -> NodeResponse {

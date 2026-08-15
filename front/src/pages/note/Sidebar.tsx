@@ -1,5 +1,7 @@
 import type { Note } from "@/types/note";
 
+import { getNote } from "@/api/note";
+
 type Props = {
   notes: Note[];
   onSelect: (noteId: string) => void;
@@ -16,7 +18,9 @@ export default function NoteSidebar({
         {notes.map((note) => (
           <button
             key={note.noteId}
-            onClick={() => onSelect(note.noteId)}
+            onClick={async () => {
+              await getNote(note.noteId);
+            }}
             className="w-full rounded-md px-3 py-2 text-left hover:bg-slate-200"
           >
             <div className="truncate">
