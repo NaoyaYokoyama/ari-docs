@@ -1,5 +1,5 @@
 use crate::model::note::Note;
-use rusqlite::{Connection, Result};
+use rusqlite::{Connection, Result, params};
 
 pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Note>> {
     let mut stmt = conn.prepare(
@@ -30,7 +30,7 @@ pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Note>> {
     Ok(notes)
 }
 
-pub fn find_by_note_id(conn: &Connection, note_id: &str, user_id: &str) -> Result<Note> {
+pub fn find_by_note_id(conn: &Connection, user_id: &str, note_id: &i64) -> Result<Note> {
     let mut stmt = conn.prepare(
         "
         SELECT
@@ -40,12 +40,12 @@ pub fn find_by_note_id(conn: &Connection, note_id: &str, user_id: &str) -> Resul
           updated_at
         FROM
           note
-        WHERE note_id = ?1
-              AND user_id = ?2
+        WHERE user_id = ?1
+              AND note_id = ?2
         ",
     )?;
 
-    let note = stmt.query_row([note_id, user_id], |row| {
+    let note = stmt.query_row(params![user_id, note_id], |row| {
         Ok(Note {
             note_id: row.get(0)?,
             user_id: String::new(),

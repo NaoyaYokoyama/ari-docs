@@ -28,7 +28,7 @@ pub async fn get_notes(
 }
 
 pub async fn get_note(
-    Path(note_id): Path<String>,
+    Path(note_id): Path<i64>,
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Json<Note>, StatusCode> {
@@ -37,7 +37,7 @@ pub async fn get_note(
     let user =
         auth::get_login_user(&conn, &state.sessions, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
-    let response = note::get_note(&conn, &note_id, &user.user_id).map_err(|e| {
+    let response = note::get_note(&conn, &user.user_id, &note_id).map_err(|e| {
         eprintln!("get_notes error: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;

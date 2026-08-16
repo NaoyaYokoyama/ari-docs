@@ -5,13 +5,23 @@ import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
 import Sidebar from "@/pages/note/Sidebar";
 
-import { getNotes, createNote, deleteNote } from "@/api/note";
+import { getNotes, getNote, createNote, deleteNote } from "@/api/note";
 import type { Note as NoteType } from "@/types/note";
 
 export default function Note() {
   const [notes, setNotes] = useState<NoteType[]>([]);
   const [noteName, setNoteName] = useState("");
   const [deleteChecked, setDeleteChecked] = useState(false);
+  const [selectedNote, setSelectedNote] = useState<NoteDetail | null>(null);
+
+  const handleSelect = async (noteId: string) => {
+    try {
+      const note = await getNote(noteId);
+      setSelectedNote(note);
+    } catch (error) {
+      console.error("メモの取得に失敗しました", error);
+    }
+  };
 
   useEffect(() => {
     const loadNotes = async () => {
@@ -57,7 +67,10 @@ export default function Note() {
 
   return (
     <div className="flex h-full">
-      <Sidebar notes={notes} />
+      <Sidebar 
+        notes={notes}
+        onSelect={handleSelect} 
+      />
 
       <main className="flex-1 p-6">
         <div className="flex items-center justify-between">
@@ -101,6 +114,29 @@ export default function Note() {
               <span>追加</span>
             </Button>
           </div>
+        </div>
+        <div>
+          <main className="flex flex-1 flex-col p-6">
+            {selectedNote ? (
+              <>
+                <input
+                  className="mb-4 border-b p-2 text-xl font-bold outline-none"
+                  value={selectedNote.title}
+                  readOnly
+                />
+
+                <textarea
+                  className="flex-1 resize-none rounded-md border p-4 outline-none"
+                  value={selectedNote.content}
+                  readOnly
+                />
+              </>
+            ) : (
+              <div className="flex flex-1 items-center justify-center text-slate-400">
+                メモを選択してください
+              </div>
+            )}
+          </main>
         </div>
       </main>
     </div>

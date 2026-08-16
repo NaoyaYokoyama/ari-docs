@@ -20,8 +20,8 @@ pub fn get_notes(conn: &Connection, user_id: &str) -> rusqlite::Result<NoteRespo
     Ok(NoteResponse { notes })
 }
 
-pub fn get_note(conn: &Connection, user_id: &str, note_id: &str) -> rusqlite::Result<Note> {
-    let noteResult = note_repository::find_by_note_id(conn, note_id, user_id)?;
+pub fn get_note(conn: &Connection, user_id: &str, note_id: &i64) -> rusqlite::Result<Note> {
+    let noteResult = note_repository::find_by_note_id(conn, user_id, note_id)?;
 
     let note = (Note {
         note_id: noteResult.note_id,
