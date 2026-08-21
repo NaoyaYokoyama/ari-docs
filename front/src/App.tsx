@@ -37,6 +37,7 @@ export default function App() {
 
         const loginUser: LoginUser = await response.json();
         setUser(loginUser);
+
       } catch (error) {
         console.error("ログイン確認に失敗しました", error);
         setUser(null);
@@ -47,6 +48,20 @@ export default function App() {
 
     checkLogin();
   }, []);
+
+useEffect(() => {
+  if (loading || !user) {
+    return;
+  }
+
+  const message = sessionStorage.getItem("message");
+
+  if (message) {
+    sessionStorage.removeItem("message");
+    alert(message);
+  }
+}, [loading, user]);
+
 
   if (loading) {
     return <div>Loading...</div>;

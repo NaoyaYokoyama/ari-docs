@@ -13,7 +13,6 @@ use std::net::SocketAddr;
 async fn main() {
     // TODO
     // println!("{}", service::auth::hash_password("password"));
-
     // データベースの接続
     let conn = database::connection::connect();
     database::migration::migrate(&conn);

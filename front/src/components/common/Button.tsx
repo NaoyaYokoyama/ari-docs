@@ -1,5 +1,25 @@
+/**
+ * 共通ボタンコンポーネント。
+ *
+ * @example
+ * ```tsx
+ * <Button>保存</Button>
+ *
+ * <Button variant="secondary" size="sm">
+ *   キャンセル
+ * </Button>
+ *
+ * <Button
+ *   variant="danger"
+ *   onClick={handleDelete}
+ * >
+ *   削除
+ * </Button>
+ * ```
+ */
 import { cva } from "class-variance-authority";
 import type { ButtonHTMLAttributes } from "react";
+
 
 const buttonVariants = cva(
   "inline-flex items-center justify-center rounded-md whitespace-nowrap font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 gap-2",

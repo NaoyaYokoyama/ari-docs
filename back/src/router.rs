@@ -1,6 +1,9 @@
 use axum::{
     Router,
+    extract::Request,
     http::{HeaderValue, Method, header::CONTENT_TYPE},
+    middleware::{self, Next},
+    response::Response,
     routing::{get, post},
 };
 
@@ -10,7 +13,7 @@ use crate::model::app_state::AppState;
 
 use crate::api::auth;
 use crate::api::folder;
-use crate::api::{node::handler as node, note::handler as note};
+use crate::api::{node::handler as node, note::handler as note, setting::handler as setting};
 
 pub fn create_router() -> Router<AppState> {
     let cors = CorsLayer::new()
@@ -31,5 +34,20 @@ pub fn create_router() -> Router<AppState> {
         .route("/api/note/{node_id}", get(note::get_note))
         .route("/api/note/create", get(note::get_notes))
         .route("/api/note/delete", get(note::get_notes))
+        .route(
+            "/api/setting/update/display-name",
+            post(setting::update_display_name),
+        )
+        .route(
+            "/api/setting/update/password",
+            post(setting::update_password),
+        )
         .layer(cors)
+        .layer(middleware::from_fn(
+            |request: Request, next: Next| async move {
+                println!("{} {}", request.method(), request.uri().path(),);
+
+                next.run(request).await
+            },
+        ))
 }
