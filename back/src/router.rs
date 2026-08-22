@@ -32,7 +32,7 @@ pub fn create_router() -> Router<AppState> {
         .route("/api/nodes/delete", post(node::delete_node))
         .route("/api/notes", get(note::get_notes))
         .route("/api/note/{node_id}", get(note::get_note))
-        .route("/api/note/create", get(note::get_notes))
+        .route("/api/note/create", post(note::create_note))
         .route("/api/note/delete", get(note::get_notes))
         .route(
             "/api/setting/update/display-name",

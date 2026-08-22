@@ -9,14 +9,14 @@ export function updateDisplayName(
 }
 
 export function updatePassword(
-  oldPassword: string,
+  currentPassword: string,
   newPassword: string,
-  newPasswordRe: string,
+  newPasswordConfirm: string,
 ) {
   return post("/api/setting/update/password", {
-    oldPassword,
+    currentPassword,
     newPassword,
-    newPasswordRe,
+    newPasswordConfirm,
   });
 }
 

@@ -15,6 +15,16 @@ export function createNote(
   content: string,
 ) {
   return post("/api/note/create", {
+    title,
+  });
+}
+
+export function updateNote(
+  noteId: string,
+  title: string,
+  content: string,
+) {
+  return post("/api/note/update", {
     title, content,
   });
 }

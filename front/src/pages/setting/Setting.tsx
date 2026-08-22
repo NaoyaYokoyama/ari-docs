@@ -24,20 +24,17 @@ export default function Setting() {
 
 export function UsernameSetting() {
   const [displayName, setDisplayName] = useState("");
-  const [password, setPassword] = useState("");
-  const [passwordRe, setPasswordRe] = useState("");
-  const [oldPassword, setOldPassword] = useState("");
   return (
     <div className="p-3">
-      <h2>ユーザー名変更</h2>
+      <h2>ユーザ名変更</h2>
       <div>
+        新しいユーザ名
         <Input
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           placeholder="新しいユーザ名" />
       </div>
       <div className="mt-4 flex justify-end">
-
         <Button
           onClick={async () => {
             const response = await updateDisplayName(displayName);
@@ -56,27 +53,49 @@ export function UsernameSetting() {
 }
 
 export function PasswordSetting() {
-  const [displayName, setDisplayName] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
   return (
     <div className="p-3">
       <h2>パスワード変更</h2>
-      <div>
+      <div className="pb-3">
+        <span>現在のパスワード</span>
         <Input
-          value={displayName}
+          value={currentPassword}
+          onChange={(e) => setCurrentPassword(e.target.value)}
           type="password"
           placeholder="現在のパスワード" />
       </div>
-      <div>
+      <div className="pb-3">
+        <span>新しいパスワード</span>
         <Input
-          value={displayName}
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
           type="password"
           placeholder="新しいパスワード" />
       </div>
       <div>
+        <span>現在のパスワード(確認用)</span>
         <Input
           type="password"
-          value={displayName}
+          onChange={(e) => setNewPasswordConfirm(e.target.value)}
+          value={newPasswordConfirm}
           placeholder="新しいパスワード(確認用)" />
+      </div>
+      <div className="mt-4 flex justify-end">
+        <Button
+          onClick={async () => {
+            const response = await updatePassword(currentPassword, newPassword, newPasswordConfirm);
+            sessionStorage.setItem(
+              "message",
+              response.message,
+            );
+            window.location.reload();
+          }}
+        >
+          送信
+        </Button>
       </div>
     </div>
   );

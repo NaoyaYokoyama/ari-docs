@@ -133,4 +133,8 @@
   h2 {
     @apply text-lg py-3;
   }
+  main {
+     @apply p-5;
+     @apply w-full;
+  }
 }

@@ -49,7 +49,7 @@ pub async fn update_password(
         &user.user_id,
         &request.current_password,
         &request.new_password,
-        &request.confirm_password,
+        &request.new_password_confirm,
     )
     .map_err(|e| {
         eprintln!("update_password error: {:?}", e);

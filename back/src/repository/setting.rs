@@ -21,7 +21,7 @@ pub fn update_password(conn: &Connection, user_id: &str, password: &str) -> Resu
         UPDATE
           user
         SET
-          password = ?2
+          passwd = ?2
         WHERE user_id = ?1
         ",
         [user_id, password],

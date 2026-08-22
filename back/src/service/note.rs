@@ -32,3 +32,20 @@ pub fn get_note(conn: &Connection, user_id: &str, note_id: &i64) -> rusqlite::Re
 
     Ok(note)
 }
+
+pub fn create_note(conn: &Connection, user_id: &str, title: &str) -> rusqlite::Result<Note> {
+    let note_id = note_repository::create_note(conn, user_id, title)?;
+    println!("created note_id: {}", note_id);
+
+    let note_result = note_repository::find_by_note_id(conn, user_id, &note_id)?;
+
+    let note = Note {
+        note_id: note_result.note_id,
+        title: note_result.title,
+        content: note_result.content,
+        updated_at: note_result.updated_at,
+    };
+    println!("find note success");
+
+    Ok(note)
+}

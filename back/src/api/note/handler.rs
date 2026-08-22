@@ -44,3 +44,22 @@ pub async fn get_note(
 
     Ok(Json(response))
 }
+
+pub async fn create_note(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<CreateNoteRequest>,
+) -> Result<Json<Note>, StatusCode> {
+    println!("created start");
+    let conn = connection::connect();
+
+    let user =
+        auth::get_login_user(&conn, &state.sessions, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+
+    let response = note::create_note(&conn, &user.user_id, &request.title).map_err(|e| {
+        eprintln!("create_notes error: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    Ok(Json(response))
+}

@@ -30,7 +30,7 @@ function Node() {
   return (
     <div className="flex h-full">
       <Sidebar />
-      <div className="p-6">
+      <main>
         <div className="mb-4 flex items-center justify-between">
           <Breadcrumb path={currentPath} onNavigate={setPath} />
 
@@ -82,7 +82,7 @@ function Node() {
           node={selectedNode}
           onClose={handleClose}
         />
-      </div>
+      </main>
     </div>
   );
 }

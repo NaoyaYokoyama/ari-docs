@@ -56,3 +56,23 @@ pub fn find_by_note_id(conn: &Connection, user_id: &str, note_id: &i64) -> Resul
     })?;
     Ok(note)
 }
+
+pub fn create_note(conn: &Connection, user_id: &str, title: &str) -> Result<i64> {
+    conn.execute(
+        "
+        INSERT INTO note (
+          user_id,
+          title,
+          content
+        )
+        VALUES (
+          ?1,
+          ?2,
+          ''
+        )
+        ",
+        [user_id, title],
+    )?;
+
+    Ok(conn.last_insert_rowid())
+}

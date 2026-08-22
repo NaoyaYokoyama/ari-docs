@@ -1,4 +1,7 @@
-use crate::{api::setting::response::SettingResponse, repository::setting as setting_repository};
+use crate::{
+    api::setting::response::SettingResponse, repository::setting as setting_repository,
+    service::auth::hash_password,
+};
 use rusqlite::Connection;
 
 pub fn update_display_name(
@@ -18,9 +21,10 @@ pub fn update_password(
     user_id: &str,
     current_password: &str,
     new_password: &str,
-    confirm_password: &str,
+    new_password_confirm: &str,
 ) -> rusqlite::Result<SettingResponse> {
-    let result = setting_repository::update_password(conn, user_id, new_password)?;
+    let password = hash_password(&new_password);
+    let result = setting_repository::update_password(conn, user_id, &password)?;
     if result == 0 {
         return Err(rusqlite::Error::QueryReturnedNoRows);
     }

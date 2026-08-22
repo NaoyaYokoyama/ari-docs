@@ -5,7 +5,7 @@ import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
 import Sidebar from "@/pages/note/Sidebar";
 
-import { getNotes, getNote, createNote, deleteNote } from "@/api/note";
+import { getNotes, getNote, createNote, updateNote, deleteNote } from "@/api/note";
 import type { Note as NoteType } from "@/types/note";
 
 export default function Note() {
@@ -23,33 +23,30 @@ export default function Note() {
     }
   };
 
-  useEffect(() => {
-    const loadNotes = async () => {
-      try {
-        const response = await getNotes();
-        setNotes(response.notes);
-      } catch (error) {
-        console.error("メモ一覧の取得に失敗しました", error);
-      }
-    };
+  const loadNotes = async () => {
+    try {
+      const response = await getNotes();
+      setNotes(response.notes);
+    } catch (error) {
+      console.error("メモ一覧の取得に失敗しました", error);
+    }
+  };
 
+  useEffect(() => {
     loadNotes();
   }, []);
 
-  const createNote = () => {
+  const apiCreateNote = async () => {
     const trimmedName = noteName.trim();
-
     if (!trimmedName) {
       return;
     }
-
-    // TODO: メモ作成API
-    console.log("create:", trimmedName);
-
+    const response = await createNote(trimmedName);
     setNoteName("");
+    await loadNotes();
   };
 
-  const saveNote = () => {
+  const apiSaveNote = () => {
     // TODO: メモ保存API
     console.log("save");
   };
@@ -72,12 +69,13 @@ export default function Note() {
         onSelect={handleSelect} 
       />
 
-      <main className="flex-1 p-6">
+      <main className="flex-1">
         <div className="flex items-center justify-between">
           <h1>個人メモ</h1>
 
           <div className="flex items-center gap-2">
-            <Button onClick={saveNote}>
+            <Button
+              onClick={apiSaveNote}>
               <Save size={18} />
               <span>保存</span>
             </Button>
@@ -109,26 +107,36 @@ export default function Note() {
               maxLength={20}
             />
 
-            <Button onClick={createNote}>
+            <Button onClick={apiCreateNote}>
               <FilePlus size={18} />
               <span>追加</span>
             </Button>
           </div>
         </div>
-        <div>
-          <main className="flex flex-1 flex-col p-6">
+        <div className="h-[90%]">
+          <main className="flex h-full flex-col p-6">
             {selectedNote ? (
               <>
                 <input
                   className="mb-4 border-b p-2 text-xl font-bold outline-none"
                   value={selectedNote.title}
-                  readOnly
+                  onChange={(e) =>
+                    setSelectedNote({
+                      ...selectedNote,
+                      title: e.target.value,
+                    })
+                  }
                 />
 
                 <textarea
                   className="flex-1 resize-none rounded-md border p-4 outline-none"
                   value={selectedNote.content}
-                  readOnly
+                  onChange={(e) =>
+                    setSelectedNote({
+                      ...selectedNote,
+                      content: e.target.value,
+                    })
+                  }
                 />
               </>
             ) : (

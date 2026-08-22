@@ -11,5 +11,5 @@ pub struct UpdateDisplayNameRequest {
 pub struct UpdatePasswordRequest {
     pub current_password: String,
     pub new_password: String,
-    pub confirm_password: String,
+    pub new_password_confirm: String,
 }

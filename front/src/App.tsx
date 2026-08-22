@@ -50,7 +50,7 @@ export default function App() {
   }, []);
 
 useEffect(() => {
-  if (loading || !user) {
+  if (loading) {
     return;
   }
 
@@ -58,7 +58,9 @@ useEffect(() => {
 
   if (message) {
     sessionStorage.removeItem("message");
-    alert(message);
+    setTimeout(() => {
+      alert(message);
+    }, 100);
   }
 }, [loading, user]);
 
