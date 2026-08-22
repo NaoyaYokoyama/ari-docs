@@ -11,3 +11,11 @@ pub struct NoteQuery {
 pub struct CreateNoteRequest {
     pub title: String,
 }
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateNoteRequest {
+    pub note_id: String,
+    pub title: String,
+    pub content: String,
+}

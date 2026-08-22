@@ -89,3 +89,25 @@ pub fn delete_note(conn: &Connection, user_id: &str, note_id: &str) -> Result<us
         params![user_id, note_id],
     )
 }
+
+pub fn update_note(
+    conn: &Connection,
+    user_id: &str,
+    note_id: &str,
+    title: &str,
+    content: &str,
+) -> Result<usize> {
+    conn.execute(
+        "
+        UPDATE
+          note
+        SET
+          title = ?3,
+          content = ?4
+        WHERE
+          user_id = ?1
+          AND note_id = ?2
+        ",
+        params![user_id, note_id, title, content],
+    )
+}

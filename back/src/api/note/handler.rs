@@ -86,3 +86,32 @@ pub async fn delete_note(
 
     Ok(Json(response))
 }
+
+pub async fn update_note(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<UpdateNoteRequest>,
+) -> Result<Json<ApiResponse<()>>, StatusCode> {
+    let conn = connection::connect();
+    let user =
+        auth::get_login_user(&conn, &state.sessions, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+
+    let result = note::update_note(
+        &conn,
+        &user.user_id,
+        &request.note_id,
+        &request.title,
+        &request.content,
+    )
+    .map_err(|e| {
+        eprintln!("update_password error: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    let response = ApiResponse {
+        message: Some("メモを更新しました。".to_string()),
+        data: None,
+    };
+
+    Ok(Json(response))
+}

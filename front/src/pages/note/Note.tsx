@@ -46,9 +46,15 @@ export default function Note() {
     await loadNotes();
   };
 
-  const apiSaveNote = () => {
-    // TODO: メモ保存API
-    console.log("save");
+  const apiUpdateNote = async () => {
+    if (!selectedNote) {
+      return;
+    }
+    let noteId = String(selectedNote.noteId);
+    let title = selectedNote.title;
+    let content = selectedNote.content;
+    await updateNote(noteId, title, content);
+    await loadNotes();
   };
 
   const apiDeleteNote = async () => {
@@ -76,7 +82,7 @@ export default function Note() {
 
           <div className="flex items-center gap-2">
             <Button
-              onClick={apiSaveNote}>
+              onClick={apiUpdateNote}>
               <Save size={18} />
               <span>保存</span>
             </Button>
