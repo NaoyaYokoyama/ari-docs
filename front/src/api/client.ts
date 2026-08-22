@@ -28,7 +28,10 @@ export async function post<T>(url: string, body: unknown): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new Error(response.statusText);
+    const text = await response.text();
+    console.error(response.status, text);
+    throw new Error(text);
+    // throw new Error(response.statusText);
   }
 
   if (

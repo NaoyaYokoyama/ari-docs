@@ -76,3 +76,16 @@ pub fn create_note(conn: &Connection, user_id: &str, title: &str) -> Result<i64>
 
     Ok(conn.last_insert_rowid())
 }
+
+pub fn delete_note(conn: &Connection, user_id: &str, note_id: &str) -> Result<usize> {
+    conn.execute(
+        "
+        DELETE FROM 
+          note
+        WHERE
+          user_id = ?1
+          AND note_id = ?2
+        ",
+        params![user_id, note_id],
+    )
+}

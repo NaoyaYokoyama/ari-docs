@@ -1,5 +1,6 @@
 use super::{request::*, response::*};
 use crate::{
+    api::response::ApiResponse,
     database::connection,
     model::app_state::AppState,
     service::{auth, note},
@@ -60,6 +61,28 @@ pub async fn create_note(
         eprintln!("create_notes error: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
+
+    Ok(Json(response))
+}
+
+pub async fn delete_note(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<NoteQuery>,
+) -> Result<Json<ApiResponse<()>>, StatusCode> {
+    let conn = connection::connect();
+    let user =
+        auth::get_login_user(&conn, &state.sessions, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+
+    let result = note::delete_note(&conn, &user.user_id, &request.note_id).map_err(|e| {
+        eprintln!("update_password error: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    let response = ApiResponse {
+        message: Some("メモを削除しました。".to_string()),
+        data: None,
+    };
 
     Ok(Json(response))
 }

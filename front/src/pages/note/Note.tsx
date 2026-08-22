@@ -51,15 +51,16 @@ export default function Note() {
     console.log("save");
   };
 
-  const deleteNote = () => {
-    if (!deleteChecked) {
+  const apiDeleteNote = async () => {
+    if (!deleteChecked || !selectedNote) {
+      setDeleteChecked(false);
       return;
     }
-
-    // TODO: メモ削除API
-    console.log("delete");
-
+    let noteId = String(selectedNote.noteId);
+    await deleteNote(noteId);
+    setSelectedNote(null);
     setDeleteChecked(false);
+    await loadNotes();
   };
 
   return (
@@ -92,7 +93,7 @@ export default function Note() {
             <Button
               type="button"
               disabled={!deleteChecked}
-              onClick={deleteNote}
+              onClick={apiDeleteNote}
               variant="danger"
             >
               削除

@@ -46,6 +46,10 @@ pub fn create_note(conn: &Connection, user_id: &str, title: &str) -> rusqlite::R
         updated_at: note_result.updated_at,
     };
     println!("find note success");
-
     Ok(note)
+}
+
+pub fn delete_note(conn: &Connection, user_id: &str, note_id: &str) -> rusqlite::Result<usize> {
+    let result = note_repository::delete_note(conn, user_id, note_id)?;
+    Ok(result)
 }

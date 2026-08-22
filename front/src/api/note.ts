@@ -12,7 +12,6 @@ export function getNote(noteId: string) {
 
 export function createNote(
   title: string,
-  content: string,
 ) {
   return post("/api/note/create", {
     title,
@@ -25,7 +24,7 @@ export function updateNote(
   content: string,
 ) {
   return post("/api/note/update", {
-    title, content,
+    noteId, title, content,
   });
 }
 
@@ -33,6 +32,6 @@ export function deleteNote(
   noteId: string,
 ) {
   return post("/api/note/delete", {
-    nodeId,
+    noteId,
   });
 }
