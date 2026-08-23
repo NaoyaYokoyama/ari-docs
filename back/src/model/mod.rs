@@ -8,3 +8,4 @@ pub mod role;
 pub mod schema_migration;
 pub mod session;
 pub mod user;
+pub mod wiki;
