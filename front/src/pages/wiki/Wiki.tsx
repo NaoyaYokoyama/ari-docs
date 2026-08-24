@@ -10,10 +10,19 @@ import type { Wiki as WikiType } from "@/types/wiki";
 
 export default function Wiki() {
   const [errorMessage, setErrorMessage] = useState("");
+  const [message, setMessage] = useState("");
   const [wikis, setWikis] = useState<WikiType[]>([]);
   const [wikiName, setWikiName] = useState("");
   const [deleteChecked, setDeleteChecked] = useState(false);
   const [selectedWiki, setSelectedWiki] = useState<WikiDetail | null>(null);
+
+  const showMessage = (message: string) => {
+    setMessage(message);
+
+    setTimeout(() => {
+      setMessage("");
+    }, 3000);
+  };
 
   const handleSelect = async (wikiId: string) => {
     try {
@@ -37,6 +46,21 @@ export default function Wiki() {
     loadWikis();
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === "s") {
+        e.preventDefault();
+        apiUpdateWiki();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [selectedWiki]);
+
   const apiCreateWiki = async () => {
     try {
       const trimmedName = wikiName.trim();
@@ -46,6 +70,7 @@ export default function Wiki() {
       const response = await createWiki(trimmedName);
       setWikiName("");
       await loadWikis();
+      showMessage("Wikiを作成しました");
     } catch (error) {
       if (error instanceof Error) {
         setErrorMessage(error.message);
@@ -62,6 +87,7 @@ export default function Wiki() {
     let content = selectedWiki.content;
     await updateWiki(wikiId, title, content);
     await loadWikis();
+    showMessage("Wikiを更新しました");
   };
 
   const apiDeleteWiki = async () => {
@@ -73,6 +99,7 @@ export default function Wiki() {
     await deleteWiki(wikiId);
     setSelectedWiki(null);
     setDeleteChecked(false);
+    showMessage("Wikiを削除しました");
     await loadWikis();
   };
 
@@ -85,8 +112,13 @@ export default function Wiki() {
 
       <main className="flex-1">
         {errorMessage && (
-          <p className="text-sm text-red-500">
+          <p className="text-red-500">
             {errorMessage}
+          </p>
+        )}
+        {message && (
+          <p className="text-black-500">
+            {message}
           </p>
         )}
         <div className="flex items-center justify-between">
