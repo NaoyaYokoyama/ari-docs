@@ -1,6 +1,7 @@
 import Button from "@/components/common/Button";
 import { BookOpen, FileText, Folder, Home, Settings, LogOut } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useApp } from "@/AppContext";
 
 const menus = [
   { id: "home", icon: Home, label: "ホーム", path: "" },
@@ -18,6 +19,7 @@ export default function Header({
   displayName,
   onLogout,
 }: Props) {
+  const { user } = useApp();
   return (
     <header className="flex items-center bg-slate-800 px-3 py-1 text-white">
       <div className="font-semibold">
@@ -41,18 +43,20 @@ export default function Header({
         })}
       </nav>
 
-      <div className="ml-auto flex items-center gap-4">
-        <span className="text-sm">
-          {displayName}
-        </span>
-
-        <Button onClick={onLogout}>
-          <span className="flex items-center gap-2">
-            <LogOut size={16} />
-            <span className="hidden lg:inline">ログアウト</span>
+      {user && user.mode !== "local" && (
+        <div className="ml-auto flex items-center gap-4">
+          <span className="text-sm">
+            {displayName}
           </span>
-        </Button>
-      </div>
+
+          <Button onClick={onLogout}>
+            <span className="flex items-center gap-2">
+              <LogOut size={16} />
+              <span className="hidden lg:inline">ログアウト</span>
+            </span>
+          </Button>
+        </div>
+      )}
     </header>
   );
 }

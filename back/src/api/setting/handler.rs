@@ -1,8 +1,8 @@
 use super::{request::*, response::*};
 use crate::{
     api::response::ApiResponse,
+    config::app_state::AppState,
     database::connection,
-    model::app_state::AppState,
     service::{auth, setting},
 };
 use axum::{
@@ -18,8 +18,7 @@ pub async fn update_display_name(
 ) -> Result<Json<ApiResponse<SettingResponse>>, StatusCode> {
     let conn = connection::connect();
 
-    let user =
-        auth::get_login_user(&conn, &state.sessions, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     let data =
         setting::update_display_name(&conn, &user.user_id, &request.display_name).map_err(|e| {
@@ -41,8 +40,7 @@ pub async fn update_password(
     Json(request): Json<UpdatePasswordRequest>,
 ) -> Result<Json<ApiResponse<SettingResponse>>, StatusCode> {
     let conn = connection::connect();
-    let user =
-        auth::get_login_user(&conn, &state.sessions, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     let result = setting::update_password(
         &conn,

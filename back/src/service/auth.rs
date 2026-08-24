@@ -7,8 +7,7 @@ use axum::http::HeaderMap;
 use rusqlite::Connection;
 
 use crate::{
-    api::auth::LoginResponse,
-    model::{session::Sessions, user::User},
+    api::auth::LoginResponse, config::app::AppMode, config::app_state::AppState, model::user::User,
     repository::user,
 };
 
@@ -32,7 +31,12 @@ pub fn verify_password(password: &str, password_hash: &str) -> bool {
         .is_ok()
 }
 
-pub fn login(conn: &Connection, user_id: &str, password: &str) -> Option<LoginResponse> {
+pub fn login(
+    conn: &Connection,
+    state: &AppState,
+    user_id: &str,
+    password: &str,
+) -> Option<LoginResponse> {
     let user = user::find_by_user_id(conn, user_id).ok()?;
 
     if !verify_password(password, &user.passwd) {
@@ -42,18 +46,22 @@ pub fn login(conn: &Connection, user_id: &str, password: &str) -> Option<LoginRe
     Some(LoginResponse {
         user_id: user.user_id,
         display_name: user.display_name,
+        mode: state.config.mode.as_str().to_string(),
     })
 }
 
-pub fn get_login_user(conn: &Connection, sessions: &Sessions, headers: &HeaderMap) -> Option<User> {
-    let session_id = get_session_id(headers)?;
-
-    let user_id = {
-        let sessions = sessions.read().ok()?;
-        sessions.get(&session_id)?.clone()
-    };
-
-    user::find_by_user_id(conn, &user_id).ok()
+pub fn get_login_user(conn: &Connection, state: &AppState, headers: &HeaderMap) -> Option<User> {
+    match state.config.mode {
+        AppMode::Local => user::find_by_user_id(conn, "local").ok(),
+        AppMode::Shared => {
+            let session_id = get_session_id(headers)?;
+            let user_id = {
+                let sessions = state.sessions.read().ok()?;
+                sessions.get(&session_id)?.clone()
+            };
+            user::find_by_user_id(conn, &user_id).ok()
+        }
+    }
 }
 
 pub fn get_session_id(headers: &HeaderMap) -> Option<String> {

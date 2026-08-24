@@ -1,4 +1,3 @@
-pub mod app_state;
 pub mod favorite;
 pub mod folder;
 pub mod node;

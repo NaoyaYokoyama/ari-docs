@@ -8,7 +8,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{database::connection, model::app_state::AppState, service::auth};
+use crate::{config::app_state::AppState, database::connection, service::auth};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -22,6 +22,7 @@ pub struct LoginRequest {
 pub struct LoginResponse {
     pub user_id: String,
     pub display_name: String,
+    pub mode: String,
 }
 
 pub async fn login(
@@ -30,8 +31,8 @@ pub async fn login(
 ) -> Result<impl IntoResponse, StatusCode> {
     let conn = connection::connect();
 
-    let user =
-        auth::login(&conn, &request.user_id, &request.password).ok_or(StatusCode::UNAUTHORIZED)?;
+    let user = auth::login(&conn, &state, &request.user_id, &request.password)
+        .ok_or(StatusCode::UNAUTHORIZED)?;
 
     // ランダムなセッションIDを生成
     let session_id = Uuid::new_v4().to_string();
@@ -60,12 +61,12 @@ pub async fn get_me(
     headers: HeaderMap,
 ) -> Result<Json<LoginResponse>, StatusCode> {
     let conn = connection::connect();
-    let user =
-        auth::get_login_user(&conn, &state.sessions, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     Ok(Json(LoginResponse {
         user_id: user.user_id,
         display_name: user.display_name,
+        mode: state.config.mode.as_str().to_string(),
     }))
 }
 

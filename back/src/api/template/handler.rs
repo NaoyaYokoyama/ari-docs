@@ -1,7 +1,7 @@
 use super::{request::*, response::*};
 use crate::{
+    config::app_state::AppState,
     database::connection,
-    model::app_state::AppState,
     service::{auth, note},
 };
 use axum::{
@@ -16,8 +16,7 @@ pub async fn get_notes(
 ) -> Result<Json<Response>, StatusCode> {
     let conn = connection::connect();
 
-    let user =
-        auth::get_login_user(&conn, &state.sessions, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     let response = note::get_notes(&conn, &user.user_id).map_err(|e| {
         eprintln!("get_notes error: {:?}", e);
@@ -34,8 +33,7 @@ pub async fn get_note(
 ) -> Result<Json<Template>, StatusCode> {
     let conn = connection::connect();
 
-    let user =
-        auth::get_login_user(&conn, &state.sessions, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     let response = note::get_note(&conn, &note_id, &user.user_id).map_err(|e| {
         eprintln!("get_notes error: {:?}", e);

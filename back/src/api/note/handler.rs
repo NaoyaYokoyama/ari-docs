@@ -1,8 +1,8 @@
 use super::{request::*, response::*};
 use crate::{
     api::response::ApiResponse,
+    config::app_state::AppState,
     database::connection,
-    model::app_state::AppState,
     service::{auth, note},
 };
 use axum::{
@@ -17,8 +17,7 @@ pub async fn get_notes(
 ) -> Result<Json<NoteResponse>, StatusCode> {
     let conn = connection::connect();
 
-    let user =
-        auth::get_login_user(&conn, &state.sessions, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     let response = note::get_notes(&conn, &user.user_id).map_err(|e| {
         eprintln!("get_notes error: {:?}", e);
@@ -35,8 +34,7 @@ pub async fn get_note(
 ) -> Result<Json<Note>, StatusCode> {
     let conn = connection::connect();
 
-    let user =
-        auth::get_login_user(&conn, &state.sessions, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     let response = note::get_note(&conn, &user.user_id, &note_id).map_err(|e| {
         eprintln!("get_notes error: {:?}", e);
@@ -54,8 +52,7 @@ pub async fn create_note(
     println!("created start");
     let conn = connection::connect();
 
-    let user =
-        auth::get_login_user(&conn, &state.sessions, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     let response = note::create_note(&conn, &user.user_id, &request.title).map_err(|e| {
         eprintln!("create_notes error: {:?}", e);
@@ -71,8 +68,7 @@ pub async fn delete_note(
     Json(request): Json<NoteQuery>,
 ) -> Result<Json<ApiResponse<()>>, StatusCode> {
     let conn = connection::connect();
-    let user =
-        auth::get_login_user(&conn, &state.sessions, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     let result = note::delete_note(&conn, &user.user_id, &request.note_id).map_err(|e| {
         eprintln!("update_password error: {:?}", e);
@@ -93,8 +89,7 @@ pub async fn update_note(
     Json(request): Json<UpdateNoteRequest>,
 ) -> Result<Json<ApiResponse<()>>, StatusCode> {
     let conn = connection::connect();
-    let user =
-        auth::get_login_user(&conn, &state.sessions, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     let result = note::update_note(
         &conn,

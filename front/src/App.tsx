@@ -3,10 +3,11 @@ import Login from "@/pages/common/Login";
 import AppRoutes from "@/routes";
 import MainLayout from "@/pages/common/MainLayout";
 
-type LoginUser = {
-  userId: string;
-  displayName: string;
-};
+import {
+  AppContext,
+  type LoginUser,
+} from "@/AppContext";
+
 
 export default function App() {
   const [user, setUser] = useState<LoginUser | null>(null);
@@ -74,14 +75,14 @@ useEffect(() => {
   }
 
   return (
-    <MainLayout
-      displayName={user.displayName}
-      onLogout={handleLogout}
-    >
-      <AppRoutes
-        displayName={user.displayName}
+    <AppContext.Provider value={{ user, setUser }}>
+      <MainLayout
         onLogout={handleLogout}
-      />
-    </MainLayout>
+      >
+        <AppRoutes
+          onLogout={handleLogout}
+        />
+      </MainLayout>
+    </AppContext.Provider>
   );
 }

@@ -6,7 +6,6 @@ use rusqlite::Connection;
 
 pub fn get_wikis(conn: &Connection, user_id: &str) -> rusqlite::Result<WikiResponse> {
     let wikis = wiki_repository::find_by_user_id(conn, user_id)?;
-
     let wikis = wikis
         .into_iter()
         .map(|wiki| Wiki {
@@ -16,19 +15,18 @@ pub fn get_wikis(conn: &Connection, user_id: &str) -> rusqlite::Result<WikiRespo
             updated_at: wiki.updated_at,
         })
         .collect();
-
     Ok(WikiResponse { wikis })
 }
 
 pub fn get_wiki(conn: &Connection, user_id: &str, wiki_id: &i64) -> rusqlite::Result<Wiki> {
     let wikiResult = wiki_repository::find_by_wiki_id(conn, user_id, wiki_id)?;
 
-    let wiki = (Wiki {
+    let wiki = Wiki {
         wiki_id: wikiResult.wiki_id,
         title: wikiResult.title,
         content: wikiResult.content,
         updated_at: wikiResult.updated_at,
-    });
+    };
 
     Ok(wiki)
 }

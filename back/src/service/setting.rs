@@ -23,6 +23,8 @@ pub fn update_password(
     new_password: &str,
     new_password_confirm: &str,
 ) -> rusqlite::Result<SettingResponse> {
+    println!("{}", current_password);
+    println!("{}", new_password_confirm);
     let password = hash_password(&new_password);
     let result = setting_repository::update_password(conn, user_id, &password)?;
     if result == 0 {

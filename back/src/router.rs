@@ -3,13 +3,12 @@ use axum::{
     extract::Request,
     http::{HeaderValue, Method, header::CONTENT_TYPE},
     middleware::{self, Next},
-    response::Response,
     routing::{get, post},
 };
 
 use tower_http::cors::CorsLayer;
 
-use crate::model::app_state::AppState;
+use crate::config::app_state::AppState;
 
 use crate::api::auth;
 use crate::api::folder;

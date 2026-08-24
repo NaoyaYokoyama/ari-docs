@@ -2,8 +2,8 @@ use super::{request::*, response::*};
 use crate::{
     api::error::ApiError,
     api::response::ApiResponse,
+    config::app_state::AppState,
     database::connection,
-    model::app_state::AppState,
     service::{auth, wiki},
 };
 use axum::{
@@ -19,8 +19,7 @@ pub async fn get_wikis(
 ) -> Result<Json<WikiResponse>, StatusCode> {
     let conn = connection::connect();
 
-    let user =
-        auth::get_login_user(&conn, &state.sessions, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     let response = wiki::get_wikis(&conn, &user.user_id).map_err(|e| {
         eprintln!("get_wikis error: {:?}", e);
@@ -37,8 +36,7 @@ pub async fn get_wiki(
 ) -> Result<Json<Wiki>, StatusCode> {
     let conn = connection::connect();
 
-    let user =
-        auth::get_login_user(&conn, &state.sessions, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     let response = wiki::get_wiki(&conn, &user.user_id, &wiki_id).map_err(|e| {
         eprintln!("get_wikis error: {:?}", e);
@@ -57,8 +55,7 @@ pub async fn create_wiki(
 
     request.validate()?;
     let conn = connection::connect();
-    let user =
-        auth::get_login_user(&conn, &state.sessions, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     let response = wiki::create_wiki(&conn, &user.user_id, &request.title).map_err(|e| {
         eprintln!("create_wikis error: {:?}", e);
@@ -74,8 +71,7 @@ pub async fn delete_wiki(
     Json(request): Json<WikiQuery>,
 ) -> Result<Json<ApiResponse<()>>, StatusCode> {
     let conn = connection::connect();
-    let user =
-        auth::get_login_user(&conn, &state.sessions, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     let result = wiki::delete_wiki(&conn, &user.user_id, &request.wiki_id).map_err(|e| {
         eprintln!("update_password error: {:?}", e);
@@ -96,8 +92,7 @@ pub async fn update_wiki(
     Json(request): Json<UpdateWikiRequest>,
 ) -> Result<Json<ApiResponse<()>>, StatusCode> {
     let conn = connection::connect();
-    let user =
-        auth::get_login_user(&conn, &state.sessions, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     let result = wiki::update_wiki(
         &conn,

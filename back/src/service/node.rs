@@ -1,4 +1,4 @@
-use crate::api::node::{handler as node, response::Node, response::NodeResponse};
+use crate::api::node::{response::Node, response::NodeResponse};
 use crate::model::node_type::NodeType;
 use std::fs;
 use std::path::PathBuf;
@@ -64,6 +64,7 @@ pub fn create_node(parent_path: &str, node_type: &str, name: &str) {
 pub fn delete_node(parent_path: &str, node_type: &str, name: &str) {
     let full_path = PathBuf::from(ROOT_PATH).join(parent_path.trim_start_matches('/'));
 
+    println!("{}", name);
     if node_type == "folder" {
         fs::remove_dir_all(full_path).unwrap();
     } else {

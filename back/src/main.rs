@@ -1,26 +1,29 @@
 mod api;
+mod config;
 mod database;
 mod model;
 mod repository;
 mod router;
 mod service;
 
-use crate::model::{app_state::AppState, session::new_sessions};
+use config::{app_state::AppState, loader};
 
 use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
+    let config = loader::load();
+    // 設定ファイルは起動時に1回だけ読み込む
+    let sessions = Default::default();
+    let state = AppState { sessions, config };
+    println!("config");
+
     // TODO
     // println!("{}", service::auth::hash_password("password"));
     // データベースの接続
     let conn = database::connection::connect();
     database::migration::migrate(&conn);
     println!("Database connected");
-
-    let state = AppState {
-        sessions: new_sessions(),
-    };
 
     let app = router::create_router().with_state(state);
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
