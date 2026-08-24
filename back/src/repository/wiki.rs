@@ -103,7 +103,8 @@ pub fn update_wiki(
           wiki
         SET
           title = ?3,
-          content = ?4
+          content = ?4,
+          updated_at= CURRENT_TIMESTAMP
         WHERE
           user_id = ?1
           AND wiki_id = ?2

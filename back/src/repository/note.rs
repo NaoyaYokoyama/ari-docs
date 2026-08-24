@@ -103,7 +103,8 @@ pub fn update_note(
           note
         SET
           title = ?3,
-          content = ?4
+          content = ?4,
+          updated_ut = CURRENT_TIMESTAMP
         WHERE
           user_id = ?1
           AND note_id = ?2

@@ -63,6 +63,7 @@ pub async fn create_wiki(
     let response = wiki::create_wiki(&conn, &user.user_id, &request.title).map_err(|e| {
         eprintln!("create_wikis error: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     Ok(Json(response))
 }
