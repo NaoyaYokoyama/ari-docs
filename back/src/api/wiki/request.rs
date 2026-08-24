@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use validator::Validate;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -6,9 +7,14 @@ pub struct WikiQuery {
     pub wiki_id: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateWikiRequest {
+    #[validate(length(
+        min = 1,
+        max = 20,
+        message = "Wiki名は1文字以上20文字以内で入力してください。"
+    ))]
     pub title: String,
 }
 

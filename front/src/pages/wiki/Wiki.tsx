@@ -9,6 +9,7 @@ import { getWikis, getWiki, createWiki, updateWiki, deleteWiki } from "@/api/wik
 import type { Wiki as WikiType } from "@/types/wiki";
 
 export default function Wiki() {
+  const [errorMessage, setErrorMessage] = useState("");
   const [wikis, setWikis] = useState<WikiType[]>([]);
   const [wikiName, setWikiName] = useState("");
   const [deleteChecked, setDeleteChecked] = useState(false);
@@ -37,13 +38,19 @@ export default function Wiki() {
   }, []);
 
   const apiCreateWiki = async () => {
-    const trimmedName = wikiName.trim();
-    if (!trimmedName) {
-      return;
+    try {
+      const trimmedName = wikiName.trim();
+      if (!trimmedName) {
+        return;
+      }
+      const response = await createWiki(trimmedName);
+      setWikiName("");
+      await loadWikis();
+    } catch (error) {
+      if (error instanceof Error) {
+        setErrorMessage(error.message);
+      }
     }
-    const response = await createWiki(trimmedName);
-    setWikiName("");
-    await loadWikis();
   };
 
   const apiUpdateWiki = async () => {
@@ -77,6 +84,11 @@ export default function Wiki() {
       />
 
       <main className="flex-1">
+        {errorMessage && (
+          <p className="text-sm text-red-500">
+            {errorMessage}
+          </p>
+        )}
         <div className="flex items-center justify-between">
           <h1>Wiki</h1>
 

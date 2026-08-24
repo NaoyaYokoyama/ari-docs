@@ -1,5 +1,6 @@
 use super::{request::*, response::*};
 use crate::{
+    api::error::ApiError,
     api::response::ApiResponse,
     database::connection,
     model::app_state::AppState,
@@ -10,6 +11,7 @@ use axum::{
     extract::{Path, State},
     http::{HeaderMap, StatusCode},
 };
+use validator::Validate;
 
 pub async fn get_wikis(
     State(state): State<AppState>,
@@ -50,8 +52,11 @@ pub async fn create_wiki(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(request): Json<CreateWikiRequest>,
-) -> Result<Json<Wiki>, StatusCode> {
+) -> Result<Json<Wiki>, ApiError> {
     println!("created start");
+
+    request.validate()?;
+
     let conn = connection::connect();
 
     let user =

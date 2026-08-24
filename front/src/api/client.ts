@@ -11,7 +11,10 @@ export async function get<T>(url: string): Promise<T> {
   }
 
   if (!response.ok) {
-    throw new Error(response.statusText);
+    const text = await response.text();
+    console.error(response.status, text);
+    const error = await response.json();
+    throw new Error(error.message);
   }
 
   return response.json();
@@ -28,10 +31,9 @@ export async function post<T>(url: string, body: unknown): Promise<T> {
   });
 
   if (!response.ok) {
-    const text = await response.text();
-    console.error(response.status, text);
-    throw new Error(text);
-    // throw new Error(response.statusText);
+    const error = await response.json();
+    alert(error);
+    throw new Error(error.message);
   }
 
   if (
