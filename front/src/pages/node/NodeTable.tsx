@@ -1,11 +1,14 @@
 import { FolderStatus, FolderStatusInfo } from "@/types/folderStatus";
 import type { Node } from "@/types/node";
 import { NodeType } from "@/types/nodeType";
+import { uploadNode } from "@/api/node";
 
 type Props = {
   nodes: Node[];
+  currentPath: string;
   onOpenFolder: (path: string) => void;
   onOpenNode: (node: Node) => void;
+  reload: () => void;
 };
 
 import type { ColumnDef } from "@tanstack/react-table";
@@ -16,7 +19,90 @@ import {
 } from "@tanstack/react-table";
 import { EllipsisVertical,FileText, Folder as FolderIcon } from "lucide-react";
 
-function NodeTable({ nodes, onOpenFolder, onOpenNode }: Props) {
+function NodeTable({ nodes, currentPath, onOpenFolder, onOpenNode, reload }: Props) {
+  const handleOpen = async (node: Node) => {
+    alert(node.path)
+  };
+
+  async function readEntry(
+    entry: FileSystemEntry,
+    path = "",
+  ): Promise<UploadFile[]> {
+    if (entry.isFile) {
+      const fileEntry = entry as FileSystemFileEntry;
+
+      const file = await new Promise<File>((resolve, reject) => {
+        fileEntry.file(resolve, reject);
+      });
+
+      return [
+        {
+          file,
+          relativePath: path + file.name,
+        },
+      ];
+    }
+
+    if (entry.isDirectory) {
+      const directoryEntry = entry as FileSystemDirectoryEntry;
+      const reader = directoryEntry.createReader();
+
+      const entries = await new Promise<FileSystemEntry[]>(
+        (resolve, reject) => {
+          reader.readEntries(resolve, reject);
+        },
+      );
+
+      const files: UploadFile[] = [];
+
+      for (const child of entries) {
+        const childFiles = await readEntry(
+          child,
+          path + entry.name + "/",
+        );
+
+        files.push(...childFiles);
+      }
+
+      return files;
+    }
+
+    return [];
+  }
+
+  const handleDrop = async (
+    event: React.DragEvent<HTMLDivElement>,
+  ) => {
+    event.preventDefault();
+
+    const uploadFiles: UploadFile[] = [];
+
+    for (const item of Array.from(event.dataTransfer.items)) {
+      const entry = item.webkitGetAsEntry();
+
+      if (!entry) {
+        continue;
+      }
+
+      const files = await readEntry(entry);
+
+      uploadFiles.push(...files);
+    }
+
+    if (uploadFiles.length === 0) {
+      return;
+    }
+
+    console.log(uploadFiles);
+
+    await uploadNode(
+      uploadFiles,
+      currentPath,
+    );
+
+    await reload();
+  };
+
   const columns: ColumnDef<Node>[] = [
     {
       accessorKey: "details",
@@ -93,54 +179,67 @@ function NodeTable({ nodes, onOpenFolder, onOpenNode }: Props) {
   });
 
   return (
-    <table className="w-full border-collapse">
-      <thead>
-        {table.getHeaderGroups().map((headerGroup) => (
-          <tr key={headerGroup.id}>
-            {headerGroup.headers.map((header) => (
-              <th
-                key={header.id}
-                style={{ width: header.column.getSize() }}
-                className="border-b px-4 py-2 text-left"
-              >
-                {flexRender(
-                  header.column.columnDef.header,
-                  header.getContext(),
-                )}
-              </th>
-            ))}
-          </tr>
-        ))}
-      </thead>
+    <div 
+      onDragOver={(event) => {
+        event.preventDefault();
+      }}
+      onDrop={handleDrop}>
+      <table className="w-full border-collapse">
+        <thead>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <tr key={headerGroup.id}>
+              {headerGroup.headers.map((header) => (
+                <th
+                  key={header.id}
+                  style={{ width: header.column.getSize() }}
+                  className="border-b px-4 py-2 text-left"
+                >
+                  {flexRender(
+                    header.column.columnDef.header,
+                    header.getContext(),
+                  )}
+                </th>
+              ))}
+            </tr>
+          ))}
+        </thead>
 
-      <tbody>
-        {table.getRowModel().rows.map((row) => (
-          <tr
-            key={row.id}
-            className="cursor-pointer hover:bg-slate-100"
-            onClick={() => {
-              if (row.original.nodeType === NodeType.Folder) {
-                onOpenFolder(row.original.path);
-              }
-            }}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              onOpenNode(row.original);
-          }}
-          >
-            {row.getVisibleCells().map((cell) => (
-              <td
-                key={cell.id}
-                style={{ width: cell.column.getSize() }}
-                className="border-b px-1 py-1"
-              >
-                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-              </td>
-            ))}
-          </tr>
-        ))}
-      </tbody>
-    </table>
+        <tbody>
+          {table.getRowModel().rows.map((row) => (
+            <tr
+              key={row.id}
+              className="cursor-pointer hover:bg-slate-100"
+
+              onDoubleClick={() => {
+                if (row.original.nodeType === NodeType.Folder) {
+                  onOpenFolder(row.original.path);
+                  return;
+                }
+
+                if (row.original.nodeType === NodeType.File) {
+                  handleOpen(row.original);
+                }
+              }}
+
+              onContextMenu={(e) => {
+                e.preventDefault();
+                onOpenNode(row.original);
+              }}
+            >
+              {row.getVisibleCells().map((cell) => (
+                <td
+                  key={cell.id}
+                  style={{ width: cell.column.getSize() }}
+                  className="border-b px-1 py-1"
+                >
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

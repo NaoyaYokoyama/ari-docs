@@ -1,4 +1,4 @@
-import { get, post } from "@/api/client";
+import { get, post, postForm } from "@/api/client";
 import type { NodeResponse } from "@/types/nodeResponse";
 import type { NodeType } from "@/types/nodeType";
 
@@ -16,6 +16,27 @@ export function createNode(
     nodeType,
     name,
   });
+}
+
+export function uploadNode(
+  files: UploadFile[],
+  parentPath: string,
+) {
+  console.log(files);
+  console.log(parentPath);
+  const formData = new FormData();
+  formData.append("parentPath", parentPath);
+  for (const item of files) {
+    formData.append("files", item.file);
+    formData.append(
+      "paths",
+      item.relativePath,
+    );
+  }
+  return postForm(
+    "/api/nodes/upload",
+    formData,
+  );
 }
 
 export function deleteNode(

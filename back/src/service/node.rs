@@ -10,7 +10,6 @@ pub fn get_nodes(path: &str) -> NodeResponse {
     } else {
         path.trim_start_matches('/')
     };
-
     let full_path = PathBuf::from(ROOT_PATH).join(path);
     let entries = fs::read_dir(&full_path).unwrap();
     let mut nodes = Vec::new();

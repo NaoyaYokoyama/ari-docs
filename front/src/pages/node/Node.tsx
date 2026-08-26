@@ -2,8 +2,9 @@ import { FilePlus,FolderPlus } from "lucide-react";
 import { useState } from "react";
 
 import Sidebar from "@/pages/node/Sidebar";
+import Breadcrumb from "@/pages/node/Breadcrumb";
+import { useNodeShortcuts } from "@/pages/node/useNodeShortcuts";
 
-import Breadcrumb from "@/components/common/Breadcrumb";
 import CreateNodeDialog from "@/pages/node/CreateNodeDialog";
 import NodeDialog from "@/pages/node/NodeDialog";
 import NodeTable from "@/pages/node/NodeTable";
@@ -27,9 +28,17 @@ function Node() {
 
   const { currentPath, nodes, reload } = useNodes(path);
 
+  useNodeShortcuts({
+    currentPath,
+    onNavigate: setPath,
+  });
+
   return (
     <div className="flex h-full">
-      <Sidebar />
+      <Sidebar
+        onNavigate={setPath}
+      />
+
       <main>
         <div className="mb-4 flex items-center justify-between">
           <Breadcrumb path={currentPath} onNavigate={setPath} />
@@ -63,11 +72,13 @@ function Node() {
 
         <NodeTable
           nodes={nodes}
+          currentPath={currentPath}
           onOpenFolder={setPath}
           onOpenNode={(node) => {
             setSelectedNode(node);
             setNodeOpen(true);
           }}
+          reload={reload}
         />
 
         <CreateNodeDialog

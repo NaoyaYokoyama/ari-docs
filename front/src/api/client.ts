@@ -45,3 +45,21 @@ export async function post<T>(url: string, body: unknown): Promise<T> {
 
   return response.json();
 }
+
+export async function postForm<T>(
+  url: string,
+  body: FormData,
+): Promise<T> {
+  const response = await fetch(BASE_URL + url, {
+    method: "POST",
+    credentials: "include",
+    body,
+  });
+
+  if (!response.ok) {
+    throw new Error("Request failed");
+  }
+  return;
+
+  // return response.json();
+}
