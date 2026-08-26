@@ -73,7 +73,7 @@ pub async fn delete_wiki(
     let conn = connection::connect();
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
-    let result = wiki::delete_wiki(&conn, &user.user_id, &request.wiki_id).map_err(|e| {
+    wiki::delete_wiki(&conn, &user.user_id, &request.wiki_id).map_err(|e| {
         eprintln!("update_password error: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
@@ -94,7 +94,7 @@ pub async fn update_wiki(
     let conn = connection::connect();
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
-    let result = wiki::update_wiki(
+    wiki::update_wiki(
         &conn,
         &user.user_id,
         &request.wiki_id,

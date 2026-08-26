@@ -70,7 +70,7 @@ pub async fn delete_note(
     let conn = connection::connect();
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
-    let result = note::delete_note(&conn, &user.user_id, &request.note_id).map_err(|e| {
+    note::delete_note(&conn, &user.user_id, &request.note_id).map_err(|e| {
         eprintln!("update_password error: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
@@ -91,7 +91,7 @@ pub async fn update_note(
     let conn = connection::connect();
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
-    let result = note::update_note(
+    note::update_note(
         &conn,
         &user.user_id,
         &request.note_id,

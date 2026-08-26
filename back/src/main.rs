@@ -1,4 +1,5 @@
 mod api;
+mod batch;
 mod config;
 mod database;
 mod model;
@@ -6,12 +7,17 @@ mod repository;
 mod router;
 mod service;
 
+use batch::scheduler::start;
 use config::{app_state::AppState, loader};
 
 use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
+    tokio::spawn(async {
+        start().await;
+    });
+
     let config = loader::load();
     // 設定ファイルは起動時に1回だけ読み込む
     let sessions = Default::default();

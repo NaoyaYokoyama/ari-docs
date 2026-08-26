@@ -19,13 +19,13 @@ pub fn get_wikis(conn: &Connection, user_id: &str) -> rusqlite::Result<WikiRespo
 }
 
 pub fn get_wiki(conn: &Connection, user_id: &str, wiki_id: &i64) -> rusqlite::Result<Wiki> {
-    let wikiResult = wiki_repository::find_by_wiki_id(conn, user_id, wiki_id)?;
+    let wiki_result = wiki_repository::find_by_wiki_id(conn, user_id, wiki_id)?;
 
     let wiki = Wiki {
-        wiki_id: wikiResult.wiki_id,
-        title: wikiResult.title,
-        content: wikiResult.content,
-        updated_at: wikiResult.updated_at,
+        wiki_id: wiki_result.wiki_id,
+        title: wiki_result.title,
+        content: wiki_result.content,
+        updated_at: wiki_result.updated_at,
     };
 
     Ok(wiki)
