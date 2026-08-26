@@ -57,6 +57,36 @@ pub fn find_by_wiki_id(conn: &Connection, user_id: &str, wiki_id: &i64) -> Resul
     Ok(wiki)
 }
 
+pub fn find_by_search(conn: &Connection, keyword: &str) -> Result<Vec<Wiki>> {
+    let mut stmt = conn.prepare(
+        "
+        SELECT
+          wiki_id,
+          title,
+          content,
+          updated_at
+        FROM
+          wiki
+        WHERE 
+          title Like '%' || ?1 || '%'
+          OR content Like '%' || ?1 || '%'
+        ",
+    )?;
+
+    let wiki = stmt
+        .query_map(params![keyword], |row| {
+            Ok(Wiki {
+                wiki_id: row.get(0)?,
+                user_id: String::new(),
+                title: row.get(1)?,
+                content: row.get(2)?,
+                updated_at: row.get(3)?,
+            })
+        })?
+        .collect::<Result<Vec<_>>>()?;
+    Ok(wiki)
+}
+
 pub fn create_wiki(conn: &Connection, user_id: &str, title: &str) -> Result<i64> {
     conn.execute(
         "

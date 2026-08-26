@@ -13,8 +13,8 @@ use crate::config::app_state::AppState;
 use crate::api::auth;
 use crate::api::folder;
 use crate::api::{
-    node::handler as node, note::handler as note, setting::handler as setting,
-    wiki::handler as wiki,
+    home::handler as home, node::handler as node, note::handler as note,
+    setting::handler as setting, wiki::handler as wiki,
 };
 
 pub fn create_router() -> Router<AppState> {
@@ -25,6 +25,8 @@ pub fn create_router() -> Router<AppState> {
         .allow_credentials(true);
 
     Router::new()
+        // Home
+        .route("/api/home/search", post(home::search))
         // Common
         .route("/api/login", post(auth::login))
         .route("/api/logout", post(auth::logout))
@@ -35,6 +37,7 @@ pub fn create_router() -> Router<AppState> {
         .route("/api/nodes/create", post(node::create_node))
         .route("/api/nodes/delete", post(node::delete_node))
         .route("/api/nodes/upload", post(node::upload_node))
+        .route("/api/nodes/open", post(node::open_node))
         // Note
         .route("/api/notes", get(note::get_notes))
         .route("/api/note/{node_id}", get(note::get_note))

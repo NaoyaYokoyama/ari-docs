@@ -2,9 +2,11 @@ use super::{request::*, response::*};
 use crate::service::node;
 use axum::{
     Json,
-    extract::{Multipart, Query},
+    extract::{Multipart, Query, State},
     http::StatusCode,
 };
+
+use crate::config::app_state::AppState;
 
 use std::path::Path;
 
@@ -23,6 +25,24 @@ pub async fn create_node(Json(request): Json<CreateNodeRequest>) -> StatusCode {
 pub async fn delete_node(Json(request): Json<CreateNodeRequest>) -> StatusCode {
     node::delete_node(&request.parent_path, &request.node_type, &request.name);
     StatusCode::CREATED
+}
+
+// ファイルを開く
+pub async fn open_node(
+    State(state): State<AppState>,
+    Json(request): Json<OpenNodeRequest>,
+) -> Result<StatusCode, StatusCode> {
+    const ROOT_PATH: &str = "../folder";
+
+    if state.config.mode.is_local() {
+        let file_path = Path::new(ROOT_PATH).join(&request.path);
+
+        open::that(file_path).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    } else {
+        // TODO 共有モード
+        println!("共有予定");
+    }
+    Ok(StatusCode::OK)
 }
 
 pub async fn upload_node(mut multipart: Multipart) -> Result<StatusCode, StatusCode> {

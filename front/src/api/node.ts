@@ -50,3 +50,11 @@ export function deleteNode(
     name,
   });
 }
+
+export function openNode(
+  path: string,
+) {
+  return post("/api/nodes/open", {
+    path,
+  });
+}

@@ -1,7 +1,7 @@
 import { FolderStatus, FolderStatusInfo } from "@/types/folderStatus";
 import type { Node } from "@/types/node";
 import { NodeType } from "@/types/nodeType";
-import { uploadNode } from "@/api/node";
+import { uploadNode, openNode } from "@/api/node";
 
 type Props = {
   nodes: Node[];
@@ -20,8 +20,8 @@ import {
 import { EllipsisVertical,FileText, Folder as FolderIcon } from "lucide-react";
 
 function NodeTable({ nodes, currentPath, onOpenFolder, onOpenNode, reload }: Props) {
-  const handleOpen = async (node: Node) => {
-    alert(node.path)
+  const apiOpenNode = async (node: Node) => {
+    await openNode(node.path);
   };
 
   async function readEntry(
@@ -217,7 +217,7 @@ function NodeTable({ nodes, currentPath, onOpenFolder, onOpenNode, reload }: Pro
                 }
 
                 if (row.original.nodeType === NodeType.File) {
-                  handleOpen(row.original);
+                  apiOpenNode(row.original);
                 }
               }}
 

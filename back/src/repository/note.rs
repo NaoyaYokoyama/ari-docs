@@ -30,6 +30,35 @@ pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Note>> {
     Ok(notes)
 }
 
+pub fn find_by_search(conn: &Connection, keyword: &str) -> Result<Vec<Note>> {
+    let mut stmt = conn.prepare(
+        "
+        SELECT
+          note_id,
+          title,
+          updated_at
+        FROM
+          note
+        WHERE
+          title Like '%' || ?1 || '%'
+          OR content Like '%' || ?1 || '%'
+        ORDER BY updated_at ASC 
+        ",
+    )?;
+    let notes = stmt
+        .query_map(params![keyword], |row| {
+            Ok(Note {
+                note_id: row.get(0)?,
+                user_id: String::new(),
+                title: row.get(1)?,
+                content: String::new(),
+                updated_at: row.get(2)?,
+            })
+        })?
+        .collect::<Result<Vec<_>>>()?;
+    Ok(notes)
+}
+
 pub fn find_by_note_id(conn: &Connection, user_id: &str, note_id: &i64) -> Result<Note> {
     let mut stmt = conn.prepare(
         "

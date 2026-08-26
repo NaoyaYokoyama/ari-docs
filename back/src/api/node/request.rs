@@ -1,6 +1,11 @@
 use serde::Deserialize;
 
 #[derive(Deserialize)]
+pub struct OpenNodeRequest {
+    pub path: String,
+}
+
+#[derive(Deserialize)]
 pub struct NodeQuery {
     pub path: String,
 }
