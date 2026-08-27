@@ -37,11 +37,14 @@ function Node() {
     <div className="flex h-full">
       <Sidebar
         onNavigate={setPath}
+        currentPath={currentPath}
       />
 
       <main>
         <div className="mb-4 flex items-center justify-between">
-          <Breadcrumb path={currentPath} onNavigate={setPath} />
+          <div className="mb-6">
+            <Breadcrumb path={currentPath} onNavigate={setPath} />
+          </div>
 
           <div className="flex gap-2">
             <button
