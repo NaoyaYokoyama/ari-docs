@@ -1,6 +1,7 @@
 import { Search } from "lucide-react";
 import { search } from "@/api/home";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 
 import type { SearchItem } from "@/types/searchItem";
 
@@ -11,7 +12,16 @@ type Props = {
 function SearchBar({
   onSearch,
 }: Props) {
+
+  const location = useLocation();
+  const searchRef = useRef<HTMLInputElement>(null);
   const [keyword, setKeyword] = useState("");
+
+  useEffect(() => {
+    if (location.state?.focus === "search") {
+      searchRef.current?.focus();
+    }
+  }, []);
 
   const handleSearch = async (
     event: React.KeyboardEvent<HTMLInputElement>,
@@ -33,6 +43,7 @@ function SearchBar({
       />
 
       <input
+        ref={searchRef }
         type="text"
         value={keyword}
         onChange={(event) => setKeyword(event.target.value)}

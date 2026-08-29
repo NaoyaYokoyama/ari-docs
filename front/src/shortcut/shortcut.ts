@@ -26,6 +26,7 @@ export const SHORTCUT = {
       "setting",
     ],
     description: "ホームへ移動",
+    focus: "search",
   },
 
   TO_FOLDER: {

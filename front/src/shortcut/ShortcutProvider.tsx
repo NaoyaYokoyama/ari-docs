@@ -24,7 +24,11 @@ export default function ShortcutProvider({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isShortcut(e, SHORTCUT.TO_HOME)) {
         e.preventDefault();
-        navigate("/");
+        navigate("/", {
+          state: {
+            focus: "search",
+          },
+        });
         return;
       }
       if (isShortcut(e, SHORTCUT.TO_FOLDER)) {
