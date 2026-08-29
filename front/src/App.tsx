@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Login from "@/pages/common/Login";
 import AppRoutes from "@/routes";
 import MainLayout from "@/pages/common/MainLayout";
+import ShortcutProvider from "@/shortcut/ShortcutProvider";
 
 import {
   AppContext,
@@ -75,14 +76,16 @@ useEffect(() => {
   }
 
   return (
-    <AppContext.Provider value={{ user, setUser }}>
-      <MainLayout
-        onLogout={handleLogout}
-      >
-        <AppRoutes
+    <ShortcutProvider>
+      <AppContext.Provider value={{ user, setUser }}>
+        <MainLayout
           onLogout={handleLogout}
-        />
-      </MainLayout>
-    </AppContext.Provider>
+        >
+          <AppRoutes
+            onLogout={handleLogout}
+          />
+        </MainLayout>
+      </AppContext.Provider>
+    </ShortcutProvider>
   );
 }
