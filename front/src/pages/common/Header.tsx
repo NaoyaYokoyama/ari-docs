@@ -1,10 +1,10 @@
 import Button from "@/components/common/Button";
 import { BookOpen, FileText, Folder, Home, Settings, LogOut } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useApp } from "@/AppContext";
 
 const menus = [
-  { id: "home", icon: Home, label: "ホーム", path: "" },
+  { id: "home", icon: Home, label: "ホーム", path: "/" },
   { id: "folder", icon: Folder, label: "フォルダ", path: "/folder" },
   { id: "memo", icon: FileText, label: "個人メモ", path: "/note" },
   { id: "wiki", icon: BookOpen, label: "Wiki", path: "/wiki" },
@@ -20,25 +20,36 @@ export default function Header({
   onLogout,
 }: Props) {
   const { user } = useApp();
+  const location = useLocation();
   return (
     <header className="flex items-center bg-slate-800 px-3 py-1 text-white">
+      {/* TODO icon*/}
       <div className="font-semibold">
-        ari-docs
+        <div className="text-xl"></div>
       </div>
 
       <nav className="ml-16 flex items-center gap-8">
         {menus.map((menu) => {
           const Icon = menu.icon;
-
-          return (
-            <Link to={menu.path} key={menu.id}>
-              <Button>
-                <span className="flex items-center gap-2">
-                  <Icon size={18} />
-                  <span className="hidden lg:inline">{menu.label}</span>
+        return (
+          <Link
+            to={menu.path}
+            key={menu.id}
+            className={
+              location.pathname === menu.path
+                ? "border-b-3 border-white"
+                : "border-b-3 border-transparent"
+            }
+          >
+            <Button>
+              <span className="flex items-center gap-2">
+                <Icon size={18} />
+                <span className="hidden lg:inline">
+                  {menu.label}
                 </span>
-              </Button>
-            </Link>
+              </span>
+            </Button>
+          </Link>
           );
         })}
       </nav>
