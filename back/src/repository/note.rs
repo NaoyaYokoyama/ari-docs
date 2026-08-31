@@ -86,6 +86,35 @@ pub fn find_by_note_id(conn: &Connection, user_id: &str, note_id: &i64) -> Resul
     Ok(note)
 }
 
+pub fn find_by_note_ids(conn: &Connection, user_id: &str, note_ids: &str) -> Result<Vec<Note>> {
+    let mut stmt = conn.prepare(
+        "
+        SELECT
+          note_id,
+          title,
+          content,
+          updated_at
+        FROM
+          note
+        WHERE user_id = ?1
+              AND note_id in (?2)
+        ",
+    )?;
+
+    let notes = stmt
+        .query_map(params![user_id, note_ids], |row| {
+            Ok(Note {
+                note_id: row.get(0)?,
+                user_id: String::new(),
+                title: row.get(1)?,
+                content: row.get(2)?,
+                updated_at: row.get(3)?,
+            })
+        })?
+        .collect::<Result<Vec<_>>>()?;
+    Ok(notes)
+}
+
 pub fn create_note(conn: &Connection, user_id: &str, title: &str) -> Result<i64> {
     conn.execute(
         "

@@ -57,6 +57,35 @@ pub fn find_by_wiki_id(conn: &Connection, user_id: &str, wiki_id: &i64) -> Resul
     Ok(wiki)
 }
 
+pub fn find_by_wiki_ids(conn: &Connection, user_id: &str, wiki_ids: &str) -> Result<Vec<Wiki>> {
+    let mut stmt = conn.prepare(
+        "
+        SELECT
+          note_id,
+          title,
+          content,
+          updated_at
+        FROM
+          wiki
+        WHERE user_id = ?1
+              AND wiki_id in (?2)
+        ",
+    )?;
+
+    let wikis = stmt
+        .query_map(params![user_id, wiki_ids], |row| {
+            Ok(Wiki {
+                wiki_id: row.get(0)?,
+                user_id: String::new(),
+                title: row.get(1)?,
+                content: row.get(2)?,
+                updated_at: row.get(3)?,
+            })
+        })?
+        .collect::<Result<Vec<_>>>()?;
+    Ok(wikis)
+}
+
 pub fn find_by_search(conn: &Connection, keyword: &str) -> Result<Vec<Wiki>> {
     let mut stmt = conn.prepare(
         "

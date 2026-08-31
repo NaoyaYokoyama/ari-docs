@@ -3,14 +3,14 @@
 -- Description : ユーザーごとのお気に入りを管理する
 -- ============================================
 
+DROP TABLE favorite;
 CREATE TABLE IF NOT EXISTS favorite (
-    user_id INTEGER NOT NULL,
+    user_id TEXT NOT NULL,
 
-    node_path TEXT NOT NULL,
+    node_path INTEGER NULL,
 
-    PRIMARY KEY (user_id, node_path),
+    note_id INTEGER NULL,
 
-    FOREIGN KEY (user_id) REFERENCES user(id),
+    wiki_id TEXT INTEGER NULL
 
-    FOREIGN KEY (node_path) REFERENCES node(path)
 );

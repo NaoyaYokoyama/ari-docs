@@ -1,5 +1,6 @@
 use crate::{
-    api::home::response::{SearchItem, SearchResponse},
+    api::home::response::{FavoriteItem, FavoriteListResponse, SearchItem, SearchResponse},
+    repository::favorite as favorite_repository,
     repository::note as note_repository,
     repository::wiki as wiki_repository,
 };
@@ -27,4 +28,29 @@ pub fn search(conn: &Connection, keyword: &str) -> rusqlite::Result<SearchRespon
     }));
 
     Ok(SearchResponse { search_items })
+}
+
+pub fn get_favorite_list(
+    conn: &Connection,
+    user_id: &str,
+) -> rusqlite::Result<FavoriteListResponse> {
+    let favorites = favorite_repository::find_by_user_id(conn, user_id)?;
+
+    let mut note_ids = Vec::new();
+    let mut node_ids = Vec::new();
+    let mut wiki_ids = Vec::new();
+    for favorite in favorites {
+        note_ids.push(favorite.note_id.to_string());
+        node_ids.push(favorite.node_path);
+        wiki_ids.push(favorite.wiki_id.to_string());
+    }
+
+    let note_ids_str = note_ids.join(",");
+    let wiki_ids_str = wiki_ids.join(",");
+
+    let notes = note_repository::find_by_note_ids(conn, &user_id, &note_ids_str)?;
+    let wikis = wiki_repository::find_by_wiki_ids(conn, &user_id, &wiki_ids_str)?;
+    let favorite_list = Vec::new();
+
+    Ok(FavoriteListResponse { favorite_list })
 }
