@@ -28,10 +28,11 @@ pub async fn search(
 }
 
 // お気に入り一覧を取得
-pub async fn getFavoriteList(
+pub async fn get_favorites(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Json<FavoriteListResponse>, StatusCode> {
+    print!("{}", "getFavoriteList");
     let conn = connection::connect();
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 

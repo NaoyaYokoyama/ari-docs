@@ -26,7 +26,7 @@ pub struct FavoriteListResponse {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FavoriteItem {
-    pub view_type: String,
+    pub favorite_id: i64,
     pub name: String,
     pub node_id: String,
     pub note_id: String,

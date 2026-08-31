@@ -36,6 +36,8 @@ pub fn get_favorite_list(
 ) -> rusqlite::Result<FavoriteListResponse> {
     let favorites = favorite_repository::find_by_user_id(conn, user_id)?;
 
+    println!("{}", "test01");
+
     let mut note_ids = Vec::new();
     let mut node_ids = Vec::new();
     let mut wiki_ids = Vec::new();
@@ -48,8 +50,8 @@ pub fn get_favorite_list(
     let note_ids_str = note_ids.join(",");
     let wiki_ids_str = wiki_ids.join(",");
 
-    let notes = note_repository::find_by_note_ids(conn, &user_id, &note_ids_str)?;
-    let wikis = wiki_repository::find_by_wiki_ids(conn, &user_id, &wiki_ids_str)?;
+    //let notes = note_repository::find_by_note_ids(conn, &user_id, &note_ids_str)?;
+    //let wikis = wiki_repository::find_by_wiki_ids(conn, &user_id, &wiki_ids_str)?;
     let favorite_list = Vec::new();
 
     Ok(FavoriteListResponse { favorite_list })

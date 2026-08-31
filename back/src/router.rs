@@ -27,6 +27,7 @@ pub fn create_router() -> Router<AppState> {
     Router::new()
         // Home
         .route("/api/home/search", post(home::search))
+        .route("/api/home/favorites", post(home::get_favorites))
         // Common
         .route("/api/login", post(auth::login))
         .route("/api/logout", post(auth::logout))

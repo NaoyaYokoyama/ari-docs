@@ -5,12 +5,14 @@
 
 DROP TABLE favorite;
 CREATE TABLE IF NOT EXISTS favorite (
+    favorite_id INTEGER PRIMARY KEY AUTOINCREMENT,
+
     user_id TEXT NOT NULL,
 
-    node_path INTEGER NULL,
+    node_path TEXT NOT NULL,
 
-    note_id INTEGER NULL,
+    note_id TEXT NOT NULL,
 
-    wiki_id TEXT INTEGER NULL
+    wiki_id TEXT NOT NULL
 
 );
