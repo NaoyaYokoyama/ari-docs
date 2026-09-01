@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct Note {
     pub note_id: String,
     pub user_id: String,

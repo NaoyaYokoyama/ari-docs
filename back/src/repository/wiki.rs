@@ -64,7 +64,7 @@ pub fn find_by_wiki_ids(conn: &Connection, user_id: &str, wiki_ids: &str) -> Res
     let mut stmt = conn.prepare(
         "
         SELECT
-          note_id,
+          wiki_id,
           title,
           content,
           updated_at
@@ -75,7 +75,6 @@ pub fn find_by_wiki_ids(conn: &Connection, user_id: &str, wiki_ids: &str) -> Res
           AND wiki_id in (?2)
         ",
     )?;
-
     let wikis = stmt
         .query_map(params![user_id, wiki_ids], |row| {
             Ok(Wiki {

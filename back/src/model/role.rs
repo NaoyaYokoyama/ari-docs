@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct Role {
     pub user_id: String,
     pub role: String,

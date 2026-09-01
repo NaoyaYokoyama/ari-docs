@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct Wiki {
     pub wiki_id: String,
     pub user_id: String,

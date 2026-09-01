@@ -1,5 +1,5 @@
 use crate::{
-    api::home::response::{FavoriteListResponse, SearchItem, SearchResponse},
+    api::home::response::{FavoriteItem, FavoriteListResponse, SearchItem, SearchResponse},
     repository::favorite as favorite_repository,
     repository::note as note_repository,
     repository::wiki as wiki_repository,
@@ -35,9 +35,6 @@ pub fn get_favorite_list(
     user_id: &str,
 ) -> rusqlite::Result<FavoriteListResponse> {
     let favorites = favorite_repository::find_by_user_id(conn, user_id)?;
-
-    println!("{}", "test01");
-
     let mut note_ids = Vec::new();
     let mut node_ids = Vec::new();
     let mut wiki_ids = Vec::new();
@@ -50,10 +47,18 @@ pub fn get_favorite_list(
     let note_ids_str = note_ids.join(",");
     let wiki_ids_str = wiki_ids.join(",");
 
-    // let notes = note_repository::find_by_note_ids(conn, &user_id, &note_ids_str)?;
+    //let notes = note_repository::find_by_note_ids(conn, &user_id, &note_ids_str)?;
+    let wikis = wiki_repository::find_by_wiki_ids(conn, &user_id, &wiki_ids_str)?;
 
-    //let wikis = wiki_repository::find_by_wiki_ids(conn, &user_id, &wiki_ids_str)?;
-    let favorite_list = Vec::new();
+    let mut favorite_list: Vec<FavoriteItem> = Vec::new();
+
+    favorite_list.extend(wikis.into_iter().map(|wiki| FavoriteItem {
+        favorite_id: "".to_string(),
+        name: wiki.title,
+        node_id: "".to_string(),
+        note_id: "".to_string(),
+        wiki_id: wiki.wiki_id,
+    }));
 
     Ok(FavoriteListResponse { favorite_list })
 }

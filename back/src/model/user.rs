@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct User {
     pub user_id: String,
     pub passwd: String,

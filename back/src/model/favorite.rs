@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct Favorite {
     pub favorite_id: String,
     pub user_id: String,
