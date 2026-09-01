@@ -9,15 +9,14 @@ function FavoriteSidebar() {
   const loadFavorites = async () => {
     try {
       const response = await getFavorites();
-      setFavorites(response.favorites);
+      setFavorites(response.favoriteList);
     } catch (error) {
       console.error("お気に入りの取得に失敗しました", error);
     }
   };
 
   useEffect(() => {
-    // TODO
-    // loadFavorites();
+    loadFavorites();
   }, []);
 
   return (
@@ -28,28 +27,18 @@ function FavoriteSidebar() {
       </div>
 
       <div className="space-y-1">
+
         {favorites.map((favorite) => (
-          <div>
-            <div>{favorite.name}</div>
-            <div>{favorite.noteId}</div>
-            <div>{favorite.wikiId}</div>
-            <div>{favorite.nodePath}</div>
+          <div className="flex gap-3 items-center px-3">
+            {favorite.wikiId && <BookOpen size={18} />}
+            {favorite.noteId && <FileText size={18} />}
+            {favorite.nodeId && <Folder size={18} />}
+            <div>
+              <div>{favorite.name}</div>
+            </div>
           </div>
         ))}
-        <button className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-slate-200">
-          <Folder size={18} />
-          <span>プロジェクト資料</span>
-        </button>
 
-        <button className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-slate-200">
-          <FileText size={18} />
-          <span>基本設計書.xlsx</span>
-        </button>
-
-        <button className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-slate-200">
-          <BookOpen size={18} />
-          <span>開発Wiki</span>
-        </button>
       </div>
     </aside>
   );

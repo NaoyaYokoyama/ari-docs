@@ -39,18 +39,36 @@ pub fn get_favorite_list(
     let mut node_ids = Vec::new();
     let mut wiki_ids = Vec::new();
     for favorite in favorites {
-        note_ids.push(favorite.note_id.to_string());
-        node_ids.push(favorite.node_path);
-        wiki_ids.push(favorite.wiki_id.to_string());
+        if !favorite.note_id.is_empty() {
+            note_ids.push(favorite.note_id);
+        }
+        if !favorite.node_path.is_empty() {
+            node_ids.push(favorite.node_path);
+        }
+        if !favorite.wiki_id.is_empty() {
+            wiki_ids.push(favorite.wiki_id);
+        }
     }
 
     let note_ids_str = note_ids.join(",");
     let wiki_ids_str = wiki_ids.join(",");
 
-    //let notes = note_repository::find_by_note_ids(conn, &user_id, &note_ids_str)?;
+    let notes = note_repository::find_by_note_ids(conn, &user_id, &note_ids_str)?;
     let wikis = wiki_repository::find_by_wiki_ids(conn, &user_id, &wiki_ids_str)?;
 
     let mut favorite_list: Vec<FavoriteItem> = Vec::new();
+    dbg!(&note_ids_str);
+    dbg!(&wiki_ids_str);
+    dbg!(&notes);
+    dbg!(&wikis);
+
+    favorite_list.extend(notes.into_iter().map(|note| FavoriteItem {
+        favorite_id: "".to_string(),
+        name: note.title,
+        node_id: "".to_string(),
+        note_id: note.note_id,
+        wiki_id: "".to_string(),
+    }));
 
     favorite_list.extend(wikis.into_iter().map(|wiki| FavoriteItem {
         favorite_id: "".to_string(),
