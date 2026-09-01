@@ -17,7 +17,7 @@ pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Favorite>
     )?;
 
     let favorites = stmt
-        .query_map([user_id], |row| {
+        .query_map(params![user_id], |row| {
             Ok(Favorite {
                 favorite_id: row.get(0)?,
                 user_id: String::new(),

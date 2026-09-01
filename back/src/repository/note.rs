@@ -59,7 +59,7 @@ pub fn find_by_search(conn: &Connection, keyword: &str) -> Result<Vec<Note>> {
     Ok(notes)
 }
 
-pub fn find_by_note_id(conn: &Connection, user_id: &str, note_id: &i64) -> Result<Note> {
+pub fn find_by_note_id(conn: &Connection, user_id: &str, note_id: &str) -> Result<Note> {
     let mut stmt = conn.prepare(
         "
         SELECT
@@ -115,10 +115,11 @@ pub fn find_by_note_ids(conn: &Connection, user_id: &str, note_ids: &str) -> Res
     Ok(notes)
 }
 
-pub fn create_note(conn: &Connection, user_id: &str, title: &str) -> Result<i64> {
+pub fn create_note(conn: &Connection, user_id: &str, note_id: &str, title: &str) -> Result<i64> {
     conn.execute(
         "
         INSERT INTO note (
+          note_id,
           user_id,
           title,
           content
@@ -126,10 +127,11 @@ pub fn create_note(conn: &Connection, user_id: &str, title: &str) -> Result<i64>
         VALUES (
           ?1,
           ?2,
+          ?3,
           ''
         )
         ",
-        [user_id, title],
+        [note_id, user_id, title],
     )?;
 
     Ok(conn.last_insert_rowid())

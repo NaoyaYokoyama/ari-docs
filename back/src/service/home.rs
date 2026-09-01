@@ -1,5 +1,5 @@
 use crate::{
-    api::home::response::{FavoriteItem, FavoriteListResponse, SearchItem, SearchResponse},
+    api::home::response::{FavoriteListResponse, SearchItem, SearchResponse},
     repository::favorite as favorite_repository,
     repository::note as note_repository,
     repository::wiki as wiki_repository,
@@ -50,7 +50,8 @@ pub fn get_favorite_list(
     let note_ids_str = note_ids.join(",");
     let wiki_ids_str = wiki_ids.join(",");
 
-    //let notes = note_repository::find_by_note_ids(conn, &user_id, &note_ids_str)?;
+    // let notes = note_repository::find_by_note_ids(conn, &user_id, &note_ids_str)?;
+
     //let wikis = wiki_repository::find_by_wiki_ids(conn, &user_id, &wiki_ids_str)?;
     let favorite_list = Vec::new();
 

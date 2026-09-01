@@ -1,5 +1,6 @@
 mod api;
 mod batch;
+mod common;
 mod config;
 mod database;
 mod model;

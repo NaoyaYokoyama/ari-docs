@@ -3,6 +3,7 @@
 -- Description : 実行済みMigrationを管理する
 -- ============================================
 
+DROP TABLE schema_migration;
 CREATE TABLE IF NOT EXISTS schema_migration (
     -- Migrationファイル名（拡張子なし）
     migration_name TEXT NOT NULL PRIMARY KEY,

@@ -1,5 +1,5 @@
 pub struct Note {
-    pub note_id: i64,
+    pub note_id: String,
     pub user_id: String,
     pub title: String,
     pub content: String,

@@ -2,16 +2,11 @@ use super::{request::*, response::*};
 use crate::service::home;
 use axum::{
     Json,
-    extract::{Multipart, Query, State},
+    extract::State,
     http::{HeaderMap, StatusCode},
 };
 
-use crate::{
-    api::response::ApiResponse,
-    config::app_state::AppState,
-    database::connection,
-    service::{auth, note},
-};
+use crate::{config::app_state::AppState, database::connection, service::auth};
 
 // 検索結果を取得
 pub async fn search(
@@ -20,10 +15,8 @@ pub async fn search(
     Json(request): Json<HomeSearchRequest>,
 ) -> Result<Json<SearchResponse>, StatusCode> {
     let conn = connection::connect();
-
     let response =
         home::search(&conn, &request.keyword).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
     Ok(Json(response))
 }
 

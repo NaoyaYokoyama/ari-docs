@@ -28,7 +28,7 @@ pub async fn get_notes(
 }
 
 pub async fn get_note(
-    Path(note_id): Path<i64>,
+    Path(note_id): Path<String>,
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Json<Note>, StatusCode> {

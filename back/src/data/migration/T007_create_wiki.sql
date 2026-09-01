@@ -4,13 +4,13 @@
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS wiki (
-    wiki_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+    wiki_id TEXT PRIMARY KEY,
 
-    user_id     TEXT NOT NULL,
+    user_id TEXT NOT NULL,
 
-    title       TEXT NOT NULL,
+    title TEXT NOT NULL,
 
-    content     TEXT NOT NULL DEFAULT '',
+    content TEXT NOT NULL DEFAULT '',
 
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

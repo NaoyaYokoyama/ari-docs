@@ -1,5 +1,5 @@
 pub struct Role {
-    pub user_id: i64,
+    pub user_id: String,
     pub role: String,
     pub folder_permission: String,
     pub wiki_permission: String,

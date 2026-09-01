@@ -5,7 +5,7 @@
 
 DROP TABLE favorite;
 CREATE TABLE IF NOT EXISTS favorite (
-    favorite_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    favorite_id TEXT PRIMARY KEY,
 
     user_id TEXT NOT NULL,
 

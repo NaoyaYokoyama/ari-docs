@@ -5,18 +5,19 @@ import { getFavorites } from "@/api/home";
 
 function FavoriteSidebar() {
 
-  const [favorites, setFavarites] = useState<FavoriteList[]>([]);
+  const [favorites, setFavorites] = useState<FavoriteList[]>([]);
   const loadFavorites = async () => {
     try {
       const response = await getFavorites();
-      setFavorite(response.favorites);
+      setFavorites(response.favorites);
     } catch (error) {
       console.error("お気に入りの取得に失敗しました", error);
     }
   };
 
   useEffect(() => {
-    loadFavorites();
+    // TODO
+    // loadFavorites();
   }, []);
 
   return (

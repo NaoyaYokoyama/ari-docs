@@ -1,4 +1,3 @@
-use crate::model::favorite::Favorite;
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -26,7 +25,7 @@ pub struct FavoriteListResponse {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FavoriteItem {
-    pub favorite_id: i64,
+    pub favorite_id: String,
     pub name: String,
     pub node_id: String,
     pub note_id: String,

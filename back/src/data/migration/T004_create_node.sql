@@ -3,8 +3,11 @@
 -- Description : フォルダ・ファイルの管理情報
 -- ============================================
 
+DROP TABLE node;
 CREATE TABLE IF NOT EXISTS node (
-    path TEXT NOT NULL PRIMARY KEY,
+    node_id TEXT PRIMARY KEY,
+
+    path TEXT NOT NULL,
 
     description TEXT NOT NULL DEFAULT '',
 

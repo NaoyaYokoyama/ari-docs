@@ -11,6 +11,7 @@ pub struct NodeResponse {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Node {
+    pub node_id: String,
     pub path: String,
     pub name: String,
     pub node_type: NodeType,

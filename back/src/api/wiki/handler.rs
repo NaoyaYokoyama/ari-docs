@@ -30,7 +30,7 @@ pub async fn get_wikis(
 }
 
 pub async fn get_wiki(
-    Path(wiki_id): Path<i64>,
+    Path(wiki_id): Path<String>,
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Json<Wiki>, StatusCode> {

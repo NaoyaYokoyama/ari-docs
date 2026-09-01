@@ -9,7 +9,7 @@ pub struct NoteResponse {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Note {
-    pub note_id: i64,
+    pub note_id: String,
     pub title: String,
     pub content: String,
     pub updated_at: String,

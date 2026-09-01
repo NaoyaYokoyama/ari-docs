@@ -30,6 +30,7 @@ pub fn get_nodes(path: &str) -> NodeResponse {
             .to_string_lossy()
             .to_string();
         nodes.push(Node {
+            node_id: String::new(),
             path: relative_path,
             name: entry.file_name().to_string_lossy().to_string(),
             node_type: node_type,

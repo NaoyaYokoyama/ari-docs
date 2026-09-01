@@ -10,8 +10,10 @@ pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Wiki>> {
           updated_at
         FROM
           wiki
-        WHERE user_id = ?1
-        ORDER BY title ASC 
+        WHERE
+          user_id = ?1
+        ORDER BY
+          title ASC 
         LIMIT 30
         ",
     )?;
@@ -30,7 +32,7 @@ pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Wiki>> {
     Ok(wikis)
 }
 
-pub fn find_by_wiki_id(conn: &Connection, user_id: &str, wiki_id: &i64) -> Result<Wiki> {
+pub fn find_by_wiki_id(conn: &Connection, user_id: &str, wiki_id: &str) -> Result<Wiki> {
     let mut stmt = conn.prepare(
         "
         SELECT
@@ -40,8 +42,9 @@ pub fn find_by_wiki_id(conn: &Connection, user_id: &str, wiki_id: &i64) -> Resul
           updated_at
         FROM
           wiki
-        WHERE user_id = ?1
-              AND wiki_id = ?2
+        WHERE
+          user_id = ?1
+          AND wiki_id = ?2
         ",
     )?;
 
@@ -67,8 +70,9 @@ pub fn find_by_wiki_ids(conn: &Connection, user_id: &str, wiki_ids: &str) -> Res
           updated_at
         FROM
           wiki
-        WHERE user_id = ?1
-              AND wiki_id in (?2)
+        WHERE
+          user_id = ?1
+          AND wiki_id in (?2)
         ",
     )?;
 
@@ -116,10 +120,11 @@ pub fn find_by_search(conn: &Connection, keyword: &str) -> Result<Vec<Wiki>> {
     Ok(wiki)
 }
 
-pub fn create_wiki(conn: &Connection, user_id: &str, title: &str) -> Result<i64> {
+pub fn create_wiki(conn: &Connection, user_id: &str, wiki_id: &str, title: &str) -> Result<i64> {
     conn.execute(
         "
         INSERT INTO wiki (
+          wiki_id,
           user_id,
           title,
           content
@@ -127,10 +132,11 @@ pub fn create_wiki(conn: &Connection, user_id: &str, title: &str) -> Result<i64>
         VALUES (
           ?1,
           ?2,
+          ?3,
           ''
         )
         ",
-        [user_id, title],
+        [wiki_id, user_id, title],
     )?;
 
     Ok(conn.last_insert_rowid())
@@ -163,7 +169,7 @@ pub fn update_wiki(
         SET
           title = ?3,
           content = ?4,
-          updated_at= CURRENT_TIMESTAMP
+          updated_at = CURRENT_TIMESTAMP
         WHERE
           user_id = ?1
           AND wiki_id = ?2
