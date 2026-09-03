@@ -13,4 +13,5 @@ pub struct Wiki {
     pub title: String,
     pub content: String,
     pub updated_at: String,
+    pub favorite_id: String,
 }

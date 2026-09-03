@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { FilePlus, Save } from "lucide-react";
+import { FilePlus, Save, Star } from "lucide-react";
 
 import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
 import Sidebar from "@/pages/wiki/Sidebar";
 
 import { getWikis, getWiki, createWiki, updateWiki, deleteWiki } from "@/api/wiki";
+import { createFavoriteWiki, deleteFavorite } from "@/api/favorite";
 import type { Wiki as WikiType } from "@/types/wiki";
 
 export default function Wiki() {
@@ -13,6 +14,7 @@ export default function Wiki() {
   const [message, setMessage] = useState("");
   const [wikis, setWikis] = useState<WikiType[]>([]);
   const [wikiName, setWikiName] = useState("");
+  const [favoriteId, setFavoriteId] = useState("");
   const [deleteChecked, setDeleteChecked] = useState(false);
   const [selectedWiki, setSelectedWiki] = useState<WikiDetail | null>(null);
 
@@ -103,6 +105,18 @@ export default function Wiki() {
     await loadWikis();
   };
 
+  const apiCreateFavoriteWiki = async () => {
+    let wikiId = String(selectedWiki.wikiId);
+    await createFavoriteWiki(wikiId);
+    showMessage("Wikiをお気にいり登録しました");
+  };
+
+  const apiDeleteFavoriteWiki = async () => {
+    let wikiId = String(selectedWiki.wikiId);
+    await deleteFavorite(selectedWiki.favoriteId);
+    showMessage("Wikiをお気にいり解除しました");
+  };
+
   return (
     <div className="flex h-full">
       <Sidebar 
@@ -122,14 +136,32 @@ export default function Wiki() {
           </p>
         )}
         <div className="flex items-center justify-between">
-          <h1>Wiki</h1>
-
           <div className="flex items-center gap-2">
             <Button
               onClick={apiUpdateWiki}>
               <Save size={18} />
               <span>保存</span>
             </Button>
+
+            {selectedWiki && (
+              <div>
+                {selectedWiki.favoriteId ? (
+                  <Button
+                    onClick={apiDeleteFavoriteWiki}
+                  >
+                    <Star size={18} />
+                    お気に入り解除
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={apiCreateFavoriteWiki}
+                  >
+                    <Star size={18} />
+                    お気に入り登録
+                  </Button>
+                )}
+              </div>
+            )}
 
             <label className="flex items-center gap-2">
               <input

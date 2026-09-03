@@ -13,8 +13,8 @@ use crate::config::app_state::AppState;
 use crate::api::auth;
 use crate::api::folder;
 use crate::api::{
-    home::handler as home, node::handler as node, note::handler as note,
-    setting::handler as setting, wiki::handler as wiki,
+    favorite::handler as favorite, home::handler as home, node::handler as node,
+    note::handler as note, setting::handler as setting, wiki::handler as wiki,
 };
 
 pub fn create_router() -> Router<AppState> {
@@ -28,6 +28,12 @@ pub fn create_router() -> Router<AppState> {
         // Home
         .route("/api/home/search", post(home::search))
         .route("/api/home/favorites", post(home::get_favorites))
+        // Favorite
+        .route(
+            "/api/favorite/wiki/create",
+            post(favorite::create_favorite_wiki),
+        )
+        .route("/api/favorite/delete", post(favorite::delete_favorite))
         // Common
         .route("/api/login", post(auth::login))
         .route("/api/logout", post(auth::logout))

@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod favorite;
 pub mod folder;
 pub mod home;
 pub mod node;

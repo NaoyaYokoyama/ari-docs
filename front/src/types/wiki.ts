@@ -9,6 +9,7 @@ export interface WikiDetail {
   title: string;
   content: string;
   updatedAt: string;
+  favoriteId: string;
 }
 
 export interface WikiList {
