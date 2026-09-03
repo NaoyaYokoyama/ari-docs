@@ -29,3 +29,34 @@ pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Favorite>
         .collect::<Result<Vec<_>>>()?;
     Ok(favorites)
 }
+
+pub fn create_favorite(
+    conn: &Connection,
+    user_id: &str,
+    favorite_id: &str,
+    node_path: &str,
+    note_id: &str,
+    wiki_id: &str,
+) -> Result<i64> {
+    conn.execute(
+        "
+        INSERT INTO favorite (
+          favorite_id,
+          user_id,
+          node_path,
+          note_id,
+          wiki_id
+        )
+        VALUES (
+          ?1,
+          ?2,
+          ?3,
+          ?4,
+          ?5
+        )
+        ",
+        [favorite_id, user_id, node_path, note_id, wiki_id],
+    )?;
+
+    Ok(conn.last_insert_rowid())
+}

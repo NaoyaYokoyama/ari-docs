@@ -113,3 +113,24 @@ pub async fn update_wiki(
 
     Ok(Json(response))
 }
+
+pub async fn favorite_wiki(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<FavoriteWikiRequest>,
+) -> Result<Json<ApiResponse<()>>, StatusCode> {
+    let conn = connection::connect();
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+
+    wiki::favorite_wiki(&conn, &user.user_id, &request.wiki_id).map_err(|e| {
+        eprintln!("favorite_wiki_error: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    let response = ApiResponse {
+        message: Some("お気に入りに登録しました。".to_string()),
+        data: None,
+    };
+
+    Ok(Json(response))
+}

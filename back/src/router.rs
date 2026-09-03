@@ -45,12 +45,14 @@ pub fn create_router() -> Router<AppState> {
         .route("/api/note/create", post(note::create_note))
         .route("/api/note/delete", post(note::delete_note))
         .route("/api/note/update", post(note::update_note))
+        .route("/api/note/favarote", post(note::update_note))
         // Wiki
         .route("/api/wikis", get(wiki::get_wikis))
         .route("/api/wiki/{node_id}", get(wiki::get_wiki))
         .route("/api/wiki/create", post(wiki::create_wiki))
         .route("/api/wiki/delete", post(wiki::delete_wiki))
         .route("/api/wiki/update", post(wiki::update_wiki))
+        .route("/api/wiki/favorite", post(wiki::favorite_wiki))
         // Setting
         .route(
             "/api/setting/update/display-name",

@@ -1,7 +1,7 @@
 use crate::{
     api::wiki::{response::Wiki, response::WikiResponse},
-    common::id::generate_wiki_id,
-    repository::wiki as wiki_repository,
+    common::id::{generate_favorite_id, generate_wiki_id},
+    repository::{favorite as favorite_repository, wiki as wiki_repository},
 };
 use rusqlite::Connection;
 
@@ -57,4 +57,19 @@ pub fn update_wiki(
 ) -> rusqlite::Result<usize> {
     let result = wiki_repository::update_wiki(conn, user_id, wiki_id, title, content)?;
     Ok(result)
+}
+
+pub fn favorite_wiki(conn: &Connection, user_id: &str, wiki_id: &str) -> rusqlite::Result<()> {
+    let favorite_id = generate_favorite_id();
+    let mut node_path = "".to_string();
+    let mut note_id = "".to_string();
+    let result = favorite_repository::create_favorite(
+        conn,
+        user_id,
+        &favorite_id,
+        &node_path,
+        &note_id,
+        &wiki_id,
+    )?;
+    Ok(())
 }

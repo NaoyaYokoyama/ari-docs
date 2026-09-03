@@ -25,3 +25,9 @@ pub struct UpdateWikiRequest {
     pub title: String,
     pub content: String,
 }
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FavoriteWikiRequest {
+    pub wiki_id: String,
+}
