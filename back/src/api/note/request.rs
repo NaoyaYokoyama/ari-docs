@@ -19,3 +19,9 @@ pub struct UpdateNoteRequest {
     pub title: String,
     pub content: String,
 }
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FavoriteNoteRequest {
+    pub note_id: String,
+}

@@ -1,9 +1,8 @@
 use crate::model::note::Note;
-use rusqlite::{Connection, Result, params};
+use rusqlite::{Connection, Result, params, params_from_iter};
 
 pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Note>> {
-    let mut stmt = conn.prepare(
-        "
+    let sql = "
         SELECT
           note_id,
           title,
@@ -13,9 +12,8 @@ pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Note>> {
         WHERE user_id = ?1
         ORDER BY title ASC 
         LIMIT 30
-        ",
-    )?;
-
+        ";
+    let mut stmt = conn.prepare(sql)?;
     let notes = stmt
         .query_map([user_id], |row| {
             Ok(Note {
@@ -31,8 +29,7 @@ pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Note>> {
 }
 
 pub fn find_by_search(conn: &Connection, keyword: &str) -> Result<Vec<Note>> {
-    let mut stmt = conn.prepare(
-        "
+    let sql = "
         SELECT
           note_id,
           title,
@@ -43,8 +40,8 @@ pub fn find_by_search(conn: &Connection, keyword: &str) -> Result<Vec<Note>> {
           title Like '%' || ?1 || '%'
           OR content Like '%' || ?1 || '%'
         ORDER BY updated_at ASC 
-        ",
-    )?;
+        ";
+    let mut stmt = conn.prepare(sql)?;
     let notes = stmt
         .query_map(params![keyword], |row| {
             Ok(Note {
@@ -60,8 +57,7 @@ pub fn find_by_search(conn: &Connection, keyword: &str) -> Result<Vec<Note>> {
 }
 
 pub fn find_by_note_id(conn: &Connection, user_id: &str, note_id: &str) -> Result<Note> {
-    let mut stmt = conn.prepare(
-        "
+    let sql = "
         SELECT
           note_id,
           title,
@@ -71,9 +67,8 @@ pub fn find_by_note_id(conn: &Connection, user_id: &str, note_id: &str) -> Resul
           note
         WHERE user_id = ?1
               AND note_id = ?2
-        ",
-    )?;
-
+        ";
+    let mut stmt = conn.prepare(sql)?;
     let note = stmt.query_row(params![user_id, note_id], |row| {
         Ok(Note {
             note_id: row.get(0)?,
@@ -86,8 +81,13 @@ pub fn find_by_note_id(conn: &Connection, user_id: &str, note_id: &str) -> Resul
     Ok(note)
 }
 
-pub fn find_by_note_ids(conn: &Connection, user_id: &str, note_ids: &str) -> Result<Vec<Note>> {
-    let mut stmt = conn.prepare(
+pub fn find_by_note_ids(
+    conn: &Connection,
+    user_id: &str,
+    note_ids: &[String],
+) -> Result<Vec<Note>> {
+    let placeholders = vec!["?"; note_ids.len()].join(",");
+    let sql = format!(
         "
         SELECT
           note_id,
@@ -96,13 +96,15 @@ pub fn find_by_note_ids(conn: &Connection, user_id: &str, note_ids: &str) -> Res
           updated_at
         FROM
           note
-        WHERE user_id = ?1
-              AND note_id in (?2)
+        WHERE user_id = ?
+              AND note_id in ({})
         ",
-    )?;
-
+        placeholders
+    );
+    let mut stmt = conn.prepare(&sql)?;
+    let params = std::iter::once(user_id).chain(note_ids.iter().map(String::as_str));
     let notes = stmt
-        .query_map(params![user_id, note_ids], |row| {
+        .query_map(params_from_iter(params), |row| {
             Ok(Note {
                 note_id: row.get(0)?,
                 user_id: String::new(),
@@ -116,8 +118,7 @@ pub fn find_by_note_ids(conn: &Connection, user_id: &str, note_ids: &str) -> Res
 }
 
 pub fn create_note(conn: &Connection, user_id: &str, note_id: &str, title: &str) -> Result<i64> {
-    conn.execute(
-        "
+    let sql = "
         INSERT INTO note (
           note_id,
           user_id,
@@ -130,24 +131,20 @@ pub fn create_note(conn: &Connection, user_id: &str, note_id: &str, title: &str)
           ?3,
           ''
         )
-        ",
-        [note_id, user_id, title],
-    )?;
-
+        ";
+    conn.execute(sql, [note_id, user_id, title])?;
     Ok(conn.last_insert_rowid())
 }
 
 pub fn delete_note(conn: &Connection, user_id: &str, note_id: &str) -> Result<usize> {
-    conn.execute(
-        "
+    let sql = "
         DELETE FROM 
           note
         WHERE
           user_id = ?1
           AND note_id = ?2
-        ",
-        params![user_id, note_id],
-    )
+        ";
+    conn.execute(sql, params![user_id, note_id])
 }
 
 pub fn update_note(
@@ -157,8 +154,7 @@ pub fn update_note(
     title: &str,
     content: &str,
 ) -> Result<usize> {
-    conn.execute(
-        "
+    let sql = "
         UPDATE
           note
         SET
@@ -168,7 +164,6 @@ pub fn update_note(
         WHERE
           user_id = ?1
           AND note_id = ?2
-        ",
-        params![user_id, note_id, title, content],
-    )
+        ";
+    conn.execute(sql, params![user_id, note_id, title, content])
 }

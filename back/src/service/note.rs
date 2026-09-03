@@ -1,7 +1,7 @@
 use crate::{
     api::note::{response::Note, response::NoteResponse},
-    common::id::generate_note_id,
-    repository::note as note_repository,
+    common::id::{generate_favorite_id, generate_note_id},
+    repository::{favorite as favorite_repository, note as note_repository},
 };
 use rusqlite::Connection;
 
@@ -64,4 +64,19 @@ pub fn update_note(
 ) -> rusqlite::Result<usize> {
     let result = note_repository::update_note(conn, user_id, note_id, title, content)?;
     Ok(result)
+}
+
+pub fn favorite_note(conn: &Connection, user_id: &str, note_id: &str) -> rusqlite::Result<()> {
+    let favorite_id = generate_favorite_id();
+    let mut node_path = "".to_string();
+    let mut wiki_id = "".to_string();
+    let result = favorite_repository::create_favorite(
+        conn,
+        user_id,
+        &favorite_id,
+        &node_path,
+        &note_id,
+        &wiki_id,
+    )?;
+    Ok(())
 }

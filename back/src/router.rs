@@ -45,7 +45,7 @@ pub fn create_router() -> Router<AppState> {
         .route("/api/note/create", post(note::create_note))
         .route("/api/note/delete", post(note::delete_note))
         .route("/api/note/update", post(note::update_note))
-        .route("/api/note/favarote", post(note::update_note))
+        .route("/api/note/favorite", post(note::favorite_note))
         // Wiki
         .route("/api/wikis", get(wiki::get_wikis))
         .route("/api/wiki/{node_id}", get(wiki::get_wiki))

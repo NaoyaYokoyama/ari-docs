@@ -110,3 +110,24 @@ pub async fn update_note(
 
     Ok(Json(response))
 }
+
+pub async fn favorite_note(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<FavoriteNoteRequest>,
+) -> Result<Json<ApiResponse<()>>, StatusCode> {
+    let conn = connection::connect();
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+
+    note::favorite_note(&conn, &user.user_id, &request.note_id).map_err(|e| {
+        eprintln!("favorite_wiki_error: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    let response = ApiResponse {
+        message: Some("お気に入りに登録しました。".to_string()),
+        data: None,
+    };
+
+    Ok(Json(response))
+}

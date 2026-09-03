@@ -2,8 +2,7 @@ use crate::model::favorite::Favorite;
 use rusqlite::{Connection, Result, params};
 
 pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Favorite>> {
-    let mut stmt = conn.prepare(
-        "
+    let sql = "
         SELECT
           favorite_id,
           node_path,
@@ -13,9 +12,8 @@ pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Favorite>
           favorite
         WHERE user_id = ?1
         LIMIT 30
-        ",
-    )?;
-
+        ";
+    let mut stmt = conn.prepare(sql)?;
     let favorites = stmt
         .query_map(params![user_id], |row| {
             Ok(Favorite {
@@ -38,8 +36,7 @@ pub fn create_favorite(
     note_id: &str,
     wiki_id: &str,
 ) -> Result<i64> {
-    conn.execute(
-        "
+    let sql = "
         INSERT INTO favorite (
           favorite_id,
           user_id,
@@ -54,9 +51,7 @@ pub fn create_favorite(
           ?4,
           ?5
         )
-        ",
-        [favorite_id, user_id, node_path, note_id, wiki_id],
-    )?;
-
+        ";
+    conn.execute(sql, [favorite_id, user_id, node_path, note_id, wiki_id])?;
     Ok(conn.last_insert_rowid())
 }

@@ -1,9 +1,8 @@
 use crate::model::wiki::Wiki;
-use rusqlite::{Connection, Result, params};
+use rusqlite::{Connection, Result, params, params_from_iter};
 
 pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Wiki>> {
-    let mut stmt = conn.prepare(
-        "
+    let sql = "
         SELECT
           wiki_id,
           title,
@@ -15,8 +14,8 @@ pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Wiki>> {
         ORDER BY
           title ASC 
         LIMIT 30
-        ",
-    )?;
+        ";
+    let mut stmt = conn.prepare(sql)?;
 
     let wikis = stmt
         .query_map([user_id], |row| {
@@ -33,8 +32,7 @@ pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Wiki>> {
 }
 
 pub fn find_by_wiki_id(conn: &Connection, user_id: &str, wiki_id: &str) -> Result<Wiki> {
-    let mut stmt = conn.prepare(
-        "
+    let sql = "
         SELECT
           wiki_id,
           title,
@@ -45,8 +43,9 @@ pub fn find_by_wiki_id(conn: &Connection, user_id: &str, wiki_id: &str) -> Resul
         WHERE
           user_id = ?1
           AND wiki_id = ?2
-        ",
-    )?;
+        ";
+
+    let mut stmt = conn.prepare(sql)?;
 
     let wiki = stmt.query_row(params![user_id, wiki_id], |row| {
         Ok(Wiki {
@@ -60,23 +59,34 @@ pub fn find_by_wiki_id(conn: &Connection, user_id: &str, wiki_id: &str) -> Resul
     Ok(wiki)
 }
 
-pub fn find_by_wiki_ids(conn: &Connection, user_id: &str, wiki_ids: &str) -> Result<Vec<Wiki>> {
-    let mut stmt = conn.prepare(
+pub fn find_by_wiki_ids(
+    conn: &Connection,
+    user_id: &str,
+    wiki_ids: &[String],
+) -> Result<Vec<Wiki>> {
+    if wiki_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+    let placeholders = vec!["?"; wiki_ids.len()].join(",");
+    let sql = format!(
         "
-        SELECT
-          wiki_id,
-          title,
-          content,
-          updated_at
-        FROM
-          wiki
-        WHERE
-          user_id = ?1
-          AND wiki_id in (?2)
-        ",
-    )?;
+            SELECT
+              wiki_id,
+              title,
+              content,
+              updated_at
+            FROM
+              wiki
+            WHERE
+              user_id = ?
+              AND wiki_id IN ({})
+            ",
+        placeholders
+    );
+    let params = std::iter::once(user_id).chain(wiki_ids.iter().map(String::as_str));
+    let mut stmt = conn.prepare(&sql)?;
     let wikis = stmt
-        .query_map(params![user_id, wiki_ids], |row| {
+        .query_map(params_from_iter(params), |row| {
             Ok(Wiki {
                 wiki_id: row.get(0)?,
                 user_id: String::new(),
@@ -90,8 +100,7 @@ pub fn find_by_wiki_ids(conn: &Connection, user_id: &str, wiki_ids: &str) -> Res
 }
 
 pub fn find_by_search(conn: &Connection, keyword: &str) -> Result<Vec<Wiki>> {
-    let mut stmt = conn.prepare(
-        "
+    let sql = "
         SELECT
           wiki_id,
           title,
@@ -102,8 +111,9 @@ pub fn find_by_search(conn: &Connection, keyword: &str) -> Result<Vec<Wiki>> {
         WHERE 
           title Like '%' || ?1 || '%'
           OR content Like '%' || ?1 || '%'
-        ",
-    )?;
+        ";
+
+    let mut stmt = conn.prepare(sql)?;
 
     let wiki = stmt
         .query_map(params![keyword], |row| {
@@ -120,8 +130,7 @@ pub fn find_by_search(conn: &Connection, keyword: &str) -> Result<Vec<Wiki>> {
 }
 
 pub fn create_wiki(conn: &Connection, user_id: &str, wiki_id: &str, title: &str) -> Result<i64> {
-    conn.execute(
-        "
+    let sql = "
         INSERT INTO wiki (
           wiki_id,
           user_id,
@@ -134,24 +143,22 @@ pub fn create_wiki(conn: &Connection, user_id: &str, wiki_id: &str, title: &str)
           ?3,
           ''
         )
-        ",
-        [wiki_id, user_id, title],
-    )?;
+        ";
+
+    conn.execute(sql, [wiki_id, user_id, title])?;
 
     Ok(conn.last_insert_rowid())
 }
 
 pub fn delete_wiki(conn: &Connection, user_id: &str, wiki_id: &str) -> Result<usize> {
-    conn.execute(
-        "
+    let sql = "
         DELETE FROM 
           wiki
         WHERE
           user_id = ?1
           AND wiki_id = ?2
-        ",
-        params![user_id, wiki_id],
-    )
+        ";
+    conn.execute(sql, params![user_id, wiki_id])
 }
 
 pub fn update_wiki(
@@ -161,8 +168,7 @@ pub fn update_wiki(
     title: &str,
     content: &str,
 ) -> Result<usize> {
-    conn.execute(
-        "
+    let sql = "
         UPDATE
           wiki
         SET
@@ -172,7 +178,6 @@ pub fn update_wiki(
         WHERE
           user_id = ?1
           AND wiki_id = ?2
-        ",
-        params![user_id, wiki_id, title, content],
-    )
+        ";
+    conn.execute(sql, params![user_id, wiki_id, title, content])
 }
