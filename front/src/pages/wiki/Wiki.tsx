@@ -124,14 +124,22 @@ export default function Wiki() {
 
   const apiCreateFavoriteWiki = async () => {
     let wikiId = String(selectedWiki.wikiId);
-    await createFavoriteWiki(wikiId);
+    const response = await createFavoriteWiki(wikiId);
     showMessage("Wikiをお気にいり登録しました");
+    setSelectedWiki({
+      ...selectedWiki,
+      favoriteId: response.data.favoriteId,
+    });
   };
 
   const apiDeleteFavoriteWiki = async () => {
     let wikiId = String(selectedWiki.wikiId);
-    await deleteFavorite(selectedWiki.favoriteId);
+    const response = await deleteFavorite(selectedWiki.favoriteId);
     showMessage("Wikiをお気にいり解除しました");
+    setSelectedWiki({
+      ...selectedWiki,
+      favoriteId: "",
+    });
   };
 
   return (

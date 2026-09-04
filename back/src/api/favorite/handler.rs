@@ -17,21 +17,22 @@ pub async fn create_favorite_wiki(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(request): Json<CreateFavoriteWikiRequest>,
-) -> Result<Json<ApiResponse<()>>, StatusCode> {
+) -> Result<Json<ApiResponse<FavoriteIdResponse>>, StatusCode> {
     let conn = connection::connect();
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
     let node_path = "".to_string();
     let note_id = "".to_string();
 
-    favorite::create_favorite(&conn, &user.user_id, &node_path, &note_id, &request.wiki_id)
-        .map_err(|e| {
-            eprintln!("favorite_wiki_error: {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    let favorite_id =
+        favorite::create_favorite(&conn, &user.user_id, &node_path, &note_id, &request.wiki_id)
+            .map_err(|e| {
+                eprintln!("favorite_wiki_error: {:?}", e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
 
     let response = ApiResponse {
         message: Some("お気に入りに登録しました。".to_string()),
-        data: None,
+        data: Some(FavoriteIdResponse { favorite_id }),
     };
 
     Ok(Json(response))
