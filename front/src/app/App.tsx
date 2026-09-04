@@ -3,16 +3,23 @@ import Login from "@/pages/common/Login";
 import AppRoutes from "@/routes";
 import MainLayout from "@/pages/common/MainLayout";
 import ShortcutProvider from "@/shortcut/ShortcutProvider";
+import Toast from "@/components/common/Toast";
 
 import {
   AppContext,
   type LoginUser,
-} from "@/AppContext";
+} from "@/app/AppContext";
 
 
 export default function App() {
   const [user, setUser] = useState<LoginUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+
+  const showMessage = (message: string) => {
+    setMessage(message);
+  };
+
 
   const handleLogout = async () => {
     const response = await fetch("http://localhost:8080/api/logout", {
@@ -24,6 +31,7 @@ export default function App() {
       setUser(null);
     }
   };
+
 
   useEffect(() => {
     const checkLogin = async () => {
@@ -51,20 +59,18 @@ export default function App() {
     checkLogin();
   }, []);
 
-useEffect(() => {
-  if (loading) {
-    return;
-  }
+  useEffect(() => {
+    if (loading) {
+      return;
+    }
 
-  const message = sessionStorage.getItem("message");
+    const storedMessage = sessionStorage.getItem("message");
 
-  if (message) {
-    sessionStorage.removeItem("message");
-    setTimeout(() => {
-      alert(message);
-    }, 100);
-  }
-}, [loading, user]);
+    if (storedMessage) {
+      sessionStorage.removeItem("message");
+      showMessage(storedMessage);
+    }
+  }, [loading, user]);
 
 
   if (loading) {
@@ -77,7 +83,12 @@ useEffect(() => {
 
   return (
     <ShortcutProvider>
-      <AppContext.Provider value={{ user, setUser }}>
+      <AppContext.Provider
+        value={{
+          user,
+          setUser,
+          showMessage,
+        }}>
         <MainLayout
           onLogout={handleLogout}
         >
@@ -85,6 +96,10 @@ useEffect(() => {
             onLogout={handleLogout}
           />
         </MainLayout>
+        <Toast
+          message={message}
+          onClose={() => setMessage("")}
+        />
       </AppContext.Provider>
     </ShortcutProvider>
   );

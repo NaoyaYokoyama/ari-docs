@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { FilePlus, Save, Star } from "lucide-react";
-
+import { useApp } from "@/app/AppContext";
 import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
 import Sidebar from "@/pages/wiki/Sidebar";
@@ -11,29 +11,45 @@ import type { Wiki as WikiType } from "@/types/wiki";
 
 export default function Wiki() {
   const [errorMessage, setErrorMessage] = useState("");
-  const [message, setMessage] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingWikiId, setPendingWikiId] = useState<string | null>(
+    null,
+  );
   const [wikis, setWikis] = useState<WikiType[]>([]);
   const [wikiName, setWikiName] = useState("");
   const [favoriteId, setFavoriteId] = useState("");
+  const [isDirty, setIsDirty] = useState(false);
   const [deleteChecked, setDeleteChecked] = useState(false);
   const [selectedWiki, setSelectedWiki] = useState<WikiDetail | null>(null);
 
-  const showMessage = (message: string) => {
-    setMessage(message);
-
-    setTimeout(() => {
-      setMessage("");
-    }, 3000);
-  };
+  const { showMessage } = useApp();
 
   const handleSelect = async (wikiId: string) => {
+    if (isDirty) {
+      const confirmed = window.confirm(
+        "未保存の変更があります。破棄して移動しますか？",
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+
     try {
       const wiki = await getWiki(wikiId);
       setSelectedWiki(wiki);
+      setIsDirty(false);
     } catch (error) {
       console.error("Wikiの取得に失敗しました", error);
     }
   };
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement>,
+  ) => {
+    setContent(e.target.value);
+    setIsDirty(true);
+  };
+
 
   const loadWikis = async () => {
     try {
@@ -90,6 +106,7 @@ export default function Wiki() {
     await updateWiki(wikiId, title, content);
     await loadWikis();
     showMessage("Wikiを更新しました");
+    setIsDirty(false);
   };
 
   const apiDeleteWiki = async () => {
@@ -128,11 +145,6 @@ export default function Wiki() {
         {errorMessage && (
           <p className="text-red-500">
             {errorMessage}
-          </p>
-        )}
-        {message && (
-          <p className="text-black-500">
-            {message}
           </p>
         )}
         <div className="flex items-center justify-between">
@@ -200,26 +212,33 @@ export default function Wiki() {
           <main className="flex h-full flex-col p-6">
             {selectedWiki ? (
               <>
+                {isDirty && (
+                  <span className="text-sm text-slate-500">
+                    ● 未保存
+                  </span>
+                )}
                 <input
                   className="mb-4 border-b p-2 text-xl font-bold outline-none"
                   value={selectedWiki.title}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setSelectedWiki({
                       ...selectedWiki,
                       title: e.target.value,
-                    })
-                  }
+                    });
+                    setIsDirty(true);
+                  }}
                 />
 
                 <textarea
                   className="flex-1 resize-none rounded-md border p-4 outline-none"
                   value={selectedWiki.content}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setSelectedWiki({
                       ...selectedWiki,
                       content: e.target.value,
-                    })
-                  }
+                    });
+                    setIsDirty(true);
+                  }}
                 />
               </>
             ) : (

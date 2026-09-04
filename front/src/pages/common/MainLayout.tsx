@@ -8,11 +8,13 @@ type Props = {
   onLogout: () => void;
 };
 
+
 function MainLayout({
   children,
   displayName,
   onLogout,
 }: Props) {
+
   return (
     <div className="h-screen">
       <Header
@@ -23,6 +25,7 @@ function MainLayout({
       <div className="h-[calc(100vh-60px)]">
         {children}
       </div>
+
     </div>
   );
 }

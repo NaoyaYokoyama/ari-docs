@@ -1,7 +1,7 @@
 import Button from "@/components/common/Button";
 import { BookOpen, FileText, Folder, Home, Settings, LogOut } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
-import { useApp } from "@/AppContext";
+import { useApp } from "@/app/AppContext";
 
 const menus = [
   { id: "home", icon: Home, label: "ホーム", path: "/" },

@@ -12,6 +12,7 @@ export type LoginUser = {
 type AppContextType = {
   user: LoginUser | null;
   setUser: React.Dispatch<React.SetStateAction<LoginUser | null>>;
+  showMessage: (message: string) => void;
 };
 
 export const AppContext = createContext<AppContextType | null>(null);
