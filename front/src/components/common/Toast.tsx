@@ -1,13 +1,18 @@
 import { useEffect, useState } from "react";
-import { CircleCheck } from "lucide-react";
+import {
+  CircleAlert,
+  CircleCheck,
+} from "lucide-react";
 
 type Props = {
+  type: "info" | "error";
   message: string;
   duration?: number;
   onClose: () => void;
 };
 
 export default function Toast({
+  type,
   message,
   duration = 3000,
   onClose,
@@ -15,7 +20,9 @@ export default function Toast({
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (!message) return;
+    if (!message) {
+      return;
+    }
 
     setVisible(true);
 
@@ -50,17 +57,15 @@ export default function Toast({
         gap-2
         rounded-md
         bg-slate-800
-        shadow-2xl
-        shadow-black/70
         px-7
         py-4
-        text-md
-        text-white
         text-lg
-        shadow-lg
+        font-semibold
+        text-white
+        shadow-2xl
+        shadow-black/70
         transition-all
         duration-300
-        font-semibold
         ${
           visible
             ? "translate-y-0 opacity-100"
@@ -68,13 +73,20 @@ export default function Toast({
         }
       `}
     >
-      <CircleCheck
-        size={22}
-        className="
-          text-slate-200
+      {type === "error" ? (
+        <CircleAlert
+          size={22}
           strokeWidth={2.5}
-        "
-      />
+          className="text-red-400"
+        />
+      ) : (
+        <CircleCheck
+          size={22}
+          strokeWidth={2.5}
+          className="text-slate-200"
+        />
+      )}
+
       <span>{message}</span>
     </div>
   );

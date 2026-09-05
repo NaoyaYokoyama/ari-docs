@@ -5,6 +5,8 @@ import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
 import Sidebar from "@/pages/wiki/Sidebar";
 
+import MDEditor, { commands } from "@uiw/react-md-editor";
+
 import { getWikis, getWiki, createWiki, updateWiki, deleteWiki } from "@/api/wiki";
 import { createFavoriteWiki, deleteFavorite } from "@/api/favorite";
 import type { Wiki as WikiType } from "@/types/wiki";
@@ -17,14 +19,8 @@ export default function Wiki() {
     setIsDirty,
   } = useApp();
 
-  const [errorMessage, setErrorMessage] = useState("");
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingWikiId, setPendingWikiId] = useState<string | null>(
-    null,
-  );
   const [wikis, setWikis] = useState<WikiType[]>([]);
   const [wikiName, setWikiName] = useState("");
-  const [favoriteId, setFavoriteId] = useState("");
   const [selectedWiki, setSelectedWiki] = useState<WikiDetail | null>(null);
 
   const handleSelect = async (wikiId: string) => {
@@ -45,14 +41,6 @@ export default function Wiki() {
       console.error("Wikiの取得に失敗しました", error);
     }
   };
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLTextAreaElement>,
-  ) => {
-    setContent(e.target.value);
-    setIsDirty(true);
-  };
-
 
   const loadWikis = async () => {
     try {
@@ -88,14 +76,16 @@ export default function Wiki() {
       if (!trimmedName) {
         return;
       }
-      const response = await createWiki(trimmedName);
+      await createWiki(trimmedName);
       setWikiName("");
       await loadWikis();
       showMessage("info", "Wikiを作成しました");
     } catch (error) {
-      if (error instanceof Error) {
-        setErrorMessage(error.message);
-      }
+      console.log(error);
+      showMessage(
+        "error",
+        "Wikiの登録に失敗しました",
+      );
     }
   };
 
@@ -103,13 +93,21 @@ export default function Wiki() {
     if (!selectedWiki) {
       return;
     }
-    let wikiId = String(selectedWiki.wikiId);
-    let title = selectedWiki.title;
-    let content = selectedWiki.content;
-    await updateWiki(wikiId, title, content);
-    await loadWikis();
-    showMessage("info", "Wikiを更新しました");
-    setIsDirty(false);
+    try {
+      const wikiId = String(selectedWiki.wikiId);
+      const  title = selectedWiki.title;
+      const  content = selectedWiki.content;
+      await updateWiki(wikiId, title, content);
+      await loadWikis();
+      showMessage("info", "Wikiを更新しました");
+      setIsDirty(false);
+    } catch (error) {
+      console.log(error);
+      showMessage(
+        "error",
+        "Wikiの更新に失敗しました",
+      );
+    }
   };
 
   const apiDeleteWiki = async () => {
@@ -119,32 +117,54 @@ export default function Wiki() {
     if (!confirmed) {
       return;
     }
-
-    let wikiId = String(selectedWiki.wikiId);
-    await deleteWiki(wikiId);
-    setSelectedWiki(null);
-    showMessage("info", "Wikiを削除しました");
+    try {
+      let wikiId = String(selectedWiki.wikiId);
+      await deleteWiki(wikiId);
+      setSelectedWiki(null);
+      showMessage("info", "Wikiを削除しました");
+    } catch (error) {
+      console.log(error);
+      showMessage(
+        "error",
+        "Wikiの削除に失敗しました",
+      );
+    }
     await loadWikis();
   };
 
   const apiCreateFavoriteWiki = async () => {
     let wikiId = String(selectedWiki.wikiId);
-    const response = await createFavoriteWiki(wikiId);
-    showMessage("info", "Wikiをお気にいり登録しました");
-    setSelectedWiki({
-      ...selectedWiki,
-      favoriteId: response.data.favoriteId,
-    });
+    try {
+      const response = await createFavoriteWiki(wikiId);
+      showMessage("info", "Wikiをお気にいり登録しました");
+      setSelectedWiki({
+        ...selectedWiki,
+        favoriteId: response.data.favoriteId,
+      });
+    } catch (error) {
+      console.log(error);
+      showMessage(
+        "error",
+        "Wikiのお気に入り登録に失敗しました",
+      );
+    }
   };
 
   const apiDeleteFavoriteWiki = async () => {
-    let wikiId = String(selectedWiki.wikiId);
-    const response = await deleteFavorite(selectedWiki.favoriteId);
-    showMessage("info", "Wikiをお気にいり解除しました");
-    setSelectedWiki({
-      ...selectedWiki,
-      favoriteId: "",
-    });
+    try {
+      await deleteFavorite(selectedWiki.favoriteId);
+      showMessage("info", "Wikiをお気にいり解除しました");
+      setSelectedWiki({
+        ...selectedWiki,
+        favoriteId: "",
+      });
+    } catch (error) {
+      console.log(error);
+      showMessage(
+        "error",
+        "Wikiのお気に入り解除に失敗しました",
+      );
+    }
   };
 
   return (
@@ -154,12 +174,7 @@ export default function Wiki() {
         onSelect={handleSelect} 
       />
 
-      <main className="flex-1">
-        {errorMessage && (
-          <p className="text-red-500">
-            {errorMessage}
-          </p>
-        )}
+      <main className="flex-1 p-2">
         <div className="h-[90%]">
           <main className="flex h-full flex-col px-1 pt-2">
             {selectedWiki ? (
@@ -247,19 +262,39 @@ export default function Wiki() {
                   </div>
 
                 </div>
-                      </div>
-
-                      <textarea
-                        className="flex-1 resize-none rounded-md border p-4 outline-none"
+              </div>
+                    <div className="flex flex-1 flex-col pb-5">
+                      <MDEditor
+                        height="100%"
                         value={selectedWiki.content}
-                        onChange={(e) => {
+                        onChange={(value) => {
                           setSelectedWiki({
                             ...selectedWiki,
-                            content: e.target.value,
+                            content: value ?? "",
                           });
                           setIsDirty(true);
                         }}
+                        commands={[
+                          commands.bold,
+                          commands.italic,
+                          commands.strikethrough,
+                          commands.hr,
+                          commands.title,
+                          commands.divider,
+
+                          commands.link,
+                          commands.quote,
+                          commands.code,
+                          commands.codeBlock,
+                          commands.divider,
+
+                          commands.unorderedListCommand,
+                          commands.orderedListCommand,
+                          commands.checkedListCommand,
+                        ]}
                       />
+                    </div>
+
                     </>
                   ) : (
                     <div>

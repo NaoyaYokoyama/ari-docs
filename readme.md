@@ -21,6 +21,9 @@
     - docker compose exec frontend npm install @tauri-apps/api
     - docker compose exec frontend npm install prettier prettier-plugin-tailwindcss
     - docker compose exec frontend npm install -D eslint @eslint/js typescript-eslint eslint-plugin-simple-import-sort
+    - docker compose exec frontend npm install -D eslint @eslint/js typescript-eslint eslint-plugin-simple-import-sort
+    - docker compose exec frontend npm install @uiw/react-md-editor
+
 
 ## 開発参加者へ
 ### 0. 概要
