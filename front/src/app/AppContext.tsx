@@ -24,6 +24,12 @@ type AppContextType = {
   showConfirm: (
     message: string,
   ) => Promise<boolean>;
+
+  isDirty: boolean;
+  setIsDirty: React.Dispatch<
+    React.SetStateAction<boolean>
+  >;
+
 };
 
 export const AppContext =

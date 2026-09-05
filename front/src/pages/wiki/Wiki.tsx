@@ -10,8 +10,12 @@ import { createFavoriteWiki, deleteFavorite } from "@/api/favorite";
 import type { Wiki as WikiType } from "@/types/wiki";
 
 export default function Wiki() {
-  const { showMessage } = useApp();
-  const { showConfirm } = useApp();
+  const {
+    showMessage,
+    showConfirm,
+    isDirty,
+    setIsDirty,
+  } = useApp();
 
   const [errorMessage, setErrorMessage] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -21,7 +25,6 @@ export default function Wiki() {
   const [wikis, setWikis] = useState<WikiType[]>([]);
   const [wikiName, setWikiName] = useState("");
   const [favoriteId, setFavoriteId] = useState("");
-  const [isDirty, setIsDirty] = useState(false);
   const [selectedWiki, setSelectedWiki] = useState<WikiDetail | null>(null);
 
   const handleSelect = async (wikiId: string) => {
@@ -110,6 +113,13 @@ export default function Wiki() {
   };
 
   const apiDeleteWiki = async () => {
+    const confirmed = await showConfirm(
+      "Wiki「" + selectedWiki.title + "」を削除しますか？",
+    );
+    if (!confirmed) {
+      return;
+    }
+
     let wikiId = String(selectedWiki.wikiId);
     await deleteWiki(wikiId);
     setSelectedWiki(null);

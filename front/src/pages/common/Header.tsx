@@ -1,29 +1,93 @@
 import Button from "@/components/common/Button";
-import { BookOpen, FileText, Folder, Home, Settings, LogOut } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import {
+  BookOpen,
+  FileText,
+  Folder,
+  Home,
+  Settings,
+  LogOut,
+} from "lucide-react";
+import {
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import { useApp } from "@/app/AppContext";
 
 const menus = [
-  { id: "home", icon: Home, label: "ホーム", path: "/" },
-  { id: "folder", icon: Folder, label: "フォルダ", path: "/folder" },
-  { id: "memo", icon: FileText, label: "個人メモ", path: "/note" },
-  { id: "wiki", icon: BookOpen, label: "Wiki", path: "/wiki" },
-  { id: "settings", icon: Settings, label: "設定", path: "/setting" },
+  {
+    id: "home",
+    icon: Home,
+    label: "ホーム",
+    path: "/",
+  },
+  {
+    id: "folder",
+    icon: Folder,
+    label: "フォルダ",
+    path: "/folder",
+  },
+  {
+    id: "memo",
+    icon: FileText,
+    label: "個人メモ",
+    path: "/note",
+  },
+  {
+    id: "wiki",
+    icon: BookOpen,
+    label: "Wiki",
+    path: "/wiki",
+  },
+  {
+    id: "settings",
+    icon: Settings,
+    label: "設定",
+    path: "/setting",
+  },
 ];
 
 type Props = {
   displayName: string;
   onLogout: () => void;
 };
+
 export default function Header({
   displayName,
   onLogout,
 }: Props) {
-  const { user } = useApp();
+  const {
+    user,
+    isDirty,
+    setIsDirty,
+    showConfirm,
+  } = useApp();
+
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleNavigate = async (path: string) => {
+    if (location.pathname === path) {
+      return;
+    }
+
+    if (isDirty) {
+      const confirmed = await showConfirm(
+        "未保存の変更があります。破棄して移動しますか？",
+      );
+
+      if (!confirmed) {
+        return;
+      }
+
+      setIsDirty(false);
+    }
+
+    navigate(path);
+  };
+
   return (
     <header className="flex items-center bg-slate-800 px-3 py-1 text-white">
-      {/* TODO icon*/}
+      {/* TODO icon */}
       <div className="font-semibold">
         <div className="text-xl"></div>
       </div>
@@ -31,25 +95,25 @@ export default function Header({
       <nav className="ml-16 flex items-center gap-8">
         {menus.map((menu) => {
           const Icon = menu.icon;
-        return (
-          <Link
-            to={menu.path}
-            key={menu.id}
-            className={
-              location.pathname === menu.path
-                ? "border-b-3 border-white"
-                : "border-b-3 border-transparent"
-            }
-          >
-            <Button>
+
+          return (
+            <Button
+              key={menu.id}
+              onClick={() => handleNavigate(menu.path)}
+              className={
+                location.pathname === menu.path
+                  ? "border-b-3 border-white"
+                  : "border-b-3 border-transparent"
+              }
+            >
               <span className="flex items-center gap-2">
                 <Icon size={18} />
+
                 <span className="hidden lg:inline">
                   {menu.label}
                 </span>
               </span>
             </Button>
-          </Link>
           );
         })}
       </nav>
@@ -63,7 +127,10 @@ export default function Header({
           <Button onClick={onLogout}>
             <span className="flex items-center gap-2">
               <LogOut size={16} />
-              <span className="hidden lg:inline">ログアウト</span>
+
+              <span className="hidden lg:inline">
+                ログアウト
+              </span>
             </span>
           </Button>
         </div>

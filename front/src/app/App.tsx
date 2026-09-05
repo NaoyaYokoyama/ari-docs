@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useAuth } from "@/app/useAuth";
 import { useMessage } from "@/app/useMessage";
 import { useConfirmDialog } from "@/app/useConfirmDialog";
@@ -34,6 +35,9 @@ export default function App() {
     cancel,
   } = useConfirmDialog();
 
+
+  const [isDirty, setIsDirty] = useState(false);
+
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -50,6 +54,8 @@ export default function App() {
           setUser,
           showMessage,
           showConfirm,
+          isDirty,
+          setIsDirty,
         }}
       >
         <MainLayout onLogout={logout}>
