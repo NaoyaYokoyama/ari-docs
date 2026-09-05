@@ -6,11 +6,12 @@ export default function Input({
   className = "",
   ...props
 }: Props) {
+
+  console.log(props);
   return (
     <input
       {...props}
       className={`
-        w-full
         rounded-md
         border
         border-gray-300

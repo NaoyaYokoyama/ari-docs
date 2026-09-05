@@ -11,17 +11,27 @@ export type LoginUser = {
 
 type AppContextType = {
   user: LoginUser | null;
-  setUser: React.Dispatch<React.SetStateAction<LoginUser | null>>;
-  showMessage: (message: string) => void;
+
+  setUser: React.Dispatch<
+    React.SetStateAction<LoginUser | null>
+  >;
+
+  showMessage: (
+    type: "info" | "error",
+    text: string,
+  ) => void;
 };
 
-export const AppContext = createContext<AppContextType | null>(null);
+export const AppContext =
+  createContext<AppContextType | null>(null);
 
 export function useApp() {
   const context = useContext(AppContext);
 
   if (!context) {
-    throw new Error("AppContext is not available");
+    throw new Error(
+      "AppContext is not available",
+    );
   }
 
   return context;

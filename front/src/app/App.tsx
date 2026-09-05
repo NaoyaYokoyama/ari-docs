@@ -1,77 +1,28 @@
-import { useEffect, useState } from "react";
+import { useAuth } from "@/app/useAuth";
+import { useMessage } from "@/app/useMessage";
+
 import Login from "@/pages/common/Login";
 import AppRoutes from "@/routes";
 import MainLayout from "@/pages/common/MainLayout";
 import ShortcutProvider from "@/shortcut/ShortcutProvider";
 import Toast from "@/components/common/Toast";
 
-import {
-  AppContext,
-  type LoginUser,
-} from "@/app/AppContext";
-
+import { AppContext } from "@/app/AppContext";
 
 export default function App() {
-  const [user, setUser] = useState<LoginUser | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
+  const {
+    user,
+    setUser,
+    loading,
+    logout,
+  } = useAuth();
 
-  const showMessage = (message: string) => {
-    setMessage(message);
-  };
-
-
-  const handleLogout = async () => {
-    const response = await fetch("http://localhost:8080/api/logout", {
-      method: "POST",
-      credentials: "include",
-    });
-
-    if (response.ok) {
-      setUser(null);
-    }
-  };
-
-
-  useEffect(() => {
-    const checkLogin = async () => {
-      try {
-        const response = await fetch("http://localhost:8080/api/me", {
-          credentials: "include",
-        });
-
-        if (!response.ok) {
-          setUser(null);
-          return;
-        }
-
-        const loginUser: LoginUser = await response.json();
-        setUser(loginUser);
-
-      } catch (error) {
-        console.error("ログイン確認に失敗しました", error);
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkLogin();
-  }, []);
-
-  useEffect(() => {
-    if (loading) {
-      return;
-    }
-
-    const storedMessage = sessionStorage.getItem("message");
-
-    if (storedMessage) {
-      sessionStorage.removeItem("message");
-      showMessage(storedMessage);
-    }
-  }, [loading, user]);
-
+  const {
+    text,
+    type,
+    showMessage,
+    closeMessage,
+  } = useMessage(loading, user);
 
   if (loading) {
     return <div>Loading...</div>;
@@ -88,17 +39,16 @@ export default function App() {
           user,
           setUser,
           showMessage,
-        }}>
-        <MainLayout
-          onLogout={handleLogout}
-        >
-          <AppRoutes
-            onLogout={handleLogout}
-          />
+        }}
+      >
+        <MainLayout onLogout={logout}>
+          <AppRoutes onLogout={logout} />
         </MainLayout>
+
         <Toast
-          message={message}
-          onClose={() => setMessage("")}
+          type={type}
+          message={text}
+          onClose={closeMessage}
         />
       </AppContext.Provider>
     </ShortcutProvider>

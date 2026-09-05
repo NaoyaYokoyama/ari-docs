@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FilePlus, Save, Star } from "lucide-react";
+import { CircleCheck, FilePlus, Save, Star, Trash2 } from "lucide-react";
 import { useApp } from "@/app/AppContext";
 import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
@@ -19,7 +19,6 @@ export default function Wiki() {
   const [wikiName, setWikiName] = useState("");
   const [favoriteId, setFavoriteId] = useState("");
   const [isDirty, setIsDirty] = useState(false);
-  const [deleteChecked, setDeleteChecked] = useState(false);
   const [selectedWiki, setSelectedWiki] = useState<WikiDetail | null>(null);
 
   const { showMessage } = useApp();
@@ -88,7 +87,7 @@ export default function Wiki() {
       const response = await createWiki(trimmedName);
       setWikiName("");
       await loadWikis();
-      showMessage("Wikiを作成しました");
+      showMessage("info", "Wikiを作成しました");
     } catch (error) {
       if (error instanceof Error) {
         setErrorMessage(error.message);
@@ -105,27 +104,22 @@ export default function Wiki() {
     let content = selectedWiki.content;
     await updateWiki(wikiId, title, content);
     await loadWikis();
-    showMessage("Wikiを更新しました");
+    showMessage("info", "Wikiを更新しました");
     setIsDirty(false);
   };
 
   const apiDeleteWiki = async () => {
-    if (!deleteChecked || !selectedWiki) {
-      setDeleteChecked(false);
-      return;
-    }
     let wikiId = String(selectedWiki.wikiId);
     await deleteWiki(wikiId);
     setSelectedWiki(null);
-    setDeleteChecked(false);
-    showMessage("Wikiを削除しました");
+    showMessage("info", "Wikiを削除しました");
     await loadWikis();
   };
 
   const apiCreateFavoriteWiki = async () => {
     let wikiId = String(selectedWiki.wikiId);
     const response = await createFavoriteWiki(wikiId);
-    showMessage("Wikiをお気にいり登録しました");
+    showMessage("info", "Wikiをお気にいり登録しました");
     setSelectedWiki({
       ...selectedWiki,
       favoriteId: response.data.favoriteId,
@@ -135,7 +129,7 @@ export default function Wiki() {
   const apiDeleteFavoriteWiki = async () => {
     let wikiId = String(selectedWiki.wikiId);
     const response = await deleteFavorite(selectedWiki.favoriteId);
-    showMessage("Wikiをお気にいり解除しました");
+    showMessage("info", "Wikiをお気にいり解除しました");
     setSelectedWiki({
       ...selectedWiki,
       favoriteId: "",
@@ -155,107 +149,132 @@ export default function Wiki() {
             {errorMessage}
           </p>
         )}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={apiUpdateWiki}>
-              <Save size={18} />
-              <span>保存</span>
-            </Button>
-
-            {selectedWiki && (
-              <div>
-                {selectedWiki.favoriteId ? (
-                  <Button
-                    onClick={apiDeleteFavoriteWiki}
-                  >
-                    <Star size={18} />
-                    お気に入り解除
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={apiCreateFavoriteWiki}
-                  >
-                    <Star size={18} />
-                    お気に入り登録
-                  </Button>
-                )}
-              </div>
-            )}
-
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={deleteChecked}
-                onChange={(e) => setDeleteChecked(e.target.checked)}
-              />
-              <span>削除確認</span>
-            </label>
-
-            <Button
-              type="button"
-              disabled={!deleteChecked}
-              onClick={apiDeleteWiki}
-              variant="danger"
-            >
-              削除
-            </Button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Input
-              value={wikiName}
-              onChange={(e) => setWikiName(e.target.value)}
-              placeholder="Wiki名"
-              maxLength={20}
-            />
-
-            <Button onClick={apiCreateWiki}>
-              <FilePlus size={18} />
-              <span>追加</span>
-            </Button>
-          </div>
-        </div>
         <div className="h-[90%]">
-          <main className="flex h-full flex-col p-6">
+          <main className="flex h-full flex-col px-1 pt-2">
             {selectedWiki ? (
               <>
-                {isDirty && (
-                  <span className="text-sm text-slate-500">
-                    ● 未保存
-                  </span>
-                )}
-                <input
-                  className="mb-4 border-b p-2 text-xl font-bold outline-none"
-                  value={selectedWiki.title}
-                  onChange={(e) => {
-                    setSelectedWiki({
-                      ...selectedWiki,
-                      title: e.target.value,
-                    });
-                    setIsDirty(true);
-                  }}
-                />
+                <div className="flex items-center gap-1.5">
+                  {isDirty ? (
+                    <>
+                      <span className="text-xs text-slate-500">
+                        ●
+                      </span>
+                      <span className="text-sm text-slate-500">
+                        未保存
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <CircleCheck
+                        size={16}
+                        className="text-slate-500"
+                      />
+                      <span className="text-sm text-slate-500">
+                        保存済
+                      </span>
+                    </>
+                  )}
+                </div>
 
-                <textarea
-                  className="flex-1 resize-none rounded-md border p-4 outline-none"
-                  value={selectedWiki.content}
-                  onChange={(e) => {
-                    setSelectedWiki({
-                      ...selectedWiki,
-                      content: e.target.value,
-                    });
-                    setIsDirty(true);
-                  }}
-                />
-              </>
-            ) : (
-              <div className="flex flex-1 items-center justify-center text-slate-400">
-                Wikiを選択してください
+                <div className="flex">
+                  <input
+                    className="w-100 mb-4 border-b p-2 text-lg font-bold outline-none"
+                    value={selectedWiki.title}
+                    onChange={(e) => {
+                      setSelectedWiki({
+                        ...selectedWiki,
+                        title: e.target.value,
+                      });
+                      setIsDirty(true);
+                    }}
+                    maxLength={20}
+                  />
+
+
+                <div className="ml-10 flex items-center gap-5">
+                  <Save size={22}
+                    title="保存"
+                    onClick={apiUpdateWiki}
+                    className="cursor-pointer text-slate-500 hover:bg-slate-200" />
+
+                  {selectedWiki && (
+                    <div>
+                      {selectedWiki.favoriteId ? (
+                        <Star size={22} 
+                          title="お気に入り解除"
+                          onClick={apiDeleteFavoriteWiki}
+                          className="cursor-pointer fill-yellow-400 text-yellow-400 hover:bg-slate-100" />
+                      ) : (
+                        <Star size={22}
+                          title="お気に入り登録"
+                          onClick={apiCreateFavoriteWiki}
+                          className="cursor-pointer text-slate-500 hover:bg-slate-200" />
+                      )}
+                    </div>
+                  )}
+
+                  <Trash2 size={22}
+                    title="削除"
+                    onClick={apiDeleteWiki}
+                    className="cursor-pointer text-slate-500 hover:bg-slate-200" />
+
+                  <div className="ml-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={wikiName}
+                        onChange={(e) => setWikiName(e.target.value)}
+                        placeholder="新規Wiki名"
+                        maxLength={20}
+                        className="w-80"
+                      />
+
+                      <Button onClick={apiCreateWiki}>
+                        <FilePlus size={18} />
+                        <span>追加</span>
+                      </Button>
+                    </div>
+                  </div>
+
+                </div>
+                      </div>
+
+                      <textarea
+                        className="flex-1 resize-none rounded-md border p-4 outline-none"
+                        value={selectedWiki.content}
+                        onChange={(e) => {
+                          setSelectedWiki({
+                            ...selectedWiki,
+                            content: e.target.value,
+                          });
+                          setIsDirty(true);
+                        }}
+                      />
+                    </>
+                  ) : (
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={wikiName}
+                            onChange={(e) => setWikiName(e.target.value)}
+                            placeholder="新規Wiki名"
+                            maxLength={20}
+                            className="w-80"
+                          />
+                          <Button onClick={apiCreateWiki}>
+                            <FilePlus size={18} />
+                            <span>追加</span>
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="pt-10 flex flex-1 text-slate-400">
+                        Wikiを選択してください
+                      </div>
+                    </div>
+                  )}
+
+                </main>
               </div>
-            )}
-          </main>
-        </div>
       </main>
     </div>
   );
