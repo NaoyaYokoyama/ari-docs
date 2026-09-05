@@ -1,19 +1,15 @@
+import Button from "@/components/common/Button";
+
 type Props = {
   open: boolean;
-  title: string;
   message: string;
-  confirmText?: string;
-  cancelText?: string;
   onConfirm: () => void;
   onCancel: () => void;
 };
 
 export default function ConfirmDialog({
   open,
-  title,
   message,
-  confirmText = "OK",
-  cancelText = "キャンセル",
   onConfirm,
   onCancel,
 }: Props) {
@@ -22,30 +18,37 @@ export default function ConfirmDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-2xl">
-        <h2 className="text-lg font-semibold">
-          {title}
-        </h2>
-
-        <p className="mt-3 text-sm text-slate-600">
+    <div
+      className="
+        fixed inset-0 z-50
+        flex items-center justify-center
+        bg-black/30
+      "
+    >
+      <div
+        className="
+          w-100
+          rounded-lg
+          bg-white
+          p-6
+          shadow-xl
+        "
+      >
+        <p className="mb-6 text-sm text-slate-700">
           {message}
         </p>
 
-        <div className="mt-6 flex justify-end gap-2">
-          <button
-            className="rounded-md border px-4 py-2"
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="secondary"
             onClick={onCancel}
           >
-            {cancelText}
-          </button>
+            キャンセル
+          </Button>
 
-          <button
-            className="rounded-md bg-slate-800 px-4 py-2 text-white"
-            onClick={onConfirm}
-          >
-            {confirmText}
-          </button>
+          <Button onClick={onConfirm}>
+            OK
+          </Button>
         </div>
       </div>
     </div>

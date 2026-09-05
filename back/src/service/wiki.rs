@@ -54,6 +54,7 @@ pub fn create_wiki(conn: &Connection, user_id: &str, title: &str) -> rusqlite::R
 }
 
 pub fn delete_wiki(conn: &Connection, user_id: &str, wiki_id: &str) -> rusqlite::Result<usize> {
+    favorite_repo::delete_favorite_wiki(conn, user_id, wiki_id)?;
     let result = wiki_repo::delete_wiki(conn, user_id, wiki_id)?;
     Ok(result)
 }

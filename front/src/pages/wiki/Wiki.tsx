@@ -10,6 +10,9 @@ import { createFavoriteWiki, deleteFavorite } from "@/api/favorite";
 import type { Wiki as WikiType } from "@/types/wiki";
 
 export default function Wiki() {
+  const { showMessage } = useApp();
+  const { showConfirm } = useApp();
+
   const [errorMessage, setErrorMessage] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingWikiId, setPendingWikiId] = useState<string | null>(
@@ -21,11 +24,9 @@ export default function Wiki() {
   const [isDirty, setIsDirty] = useState(false);
   const [selectedWiki, setSelectedWiki] = useState<WikiDetail | null>(null);
 
-  const { showMessage } = useApp();
-
   const handleSelect = async (wikiId: string) => {
     if (isDirty) {
-      const confirmed = window.confirm(
+      const confirmed = await showConfirm(
         "未保存の変更があります。破棄して移動しますか？",
       );
       if (!confirmed) {

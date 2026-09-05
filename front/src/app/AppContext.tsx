@@ -20,6 +20,10 @@ type AppContextType = {
     type: "info" | "error",
     text: string,
   ) => void;
+
+  showConfirm: (
+    message: string,
+  ) => Promise<boolean>;
 };
 
 export const AppContext =

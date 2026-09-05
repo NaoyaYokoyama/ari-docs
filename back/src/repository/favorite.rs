@@ -100,3 +100,14 @@ pub fn delete_favorite(conn: &Connection, user_id: &str, favorite_id: &str) -> R
         ";
     conn.execute(sql, params![user_id, favorite_id])
 }
+
+pub fn delete_favorite_wiki(conn: &Connection, user_id: &str, wiki_id: &str) -> Result<usize> {
+    let sql = "
+        DELETE FROM 
+          favorite
+        WHERE
+          user_id = ?1
+          AND wiki_id = ?2
+        ";
+    conn.execute(sql, params![user_id, wiki_id])
+}
