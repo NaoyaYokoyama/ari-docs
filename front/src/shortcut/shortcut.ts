@@ -81,6 +81,13 @@ export const SHORTCUT = {
     description: "設定へ移動",
   },
 
+  CREATE: {
+    ctrl: true,
+    key: "n",
+    pages: ["folder", "note", "wiki"],
+    description: "新規作成",
+  },
+
   SAVE: {
     ctrl: true,
     key: "s",
@@ -98,5 +105,57 @@ export const SHORTCUT = {
     key: "F2",
     pages: ["folder", "note", "wiki"],
     description: "名前変更",
+  },
+
+  FOCUS_LEFT: {
+    alt: true,
+    key: "h",
+    pages: [
+      "dashboard",
+      "folder",
+      "note",
+      "wiki",
+      "setting",
+    ],
+    description: "左の領域へ移動",
+  },
+
+  FOCUS_DOWN: {
+    alt: true,
+    key: "j",
+    pages: [
+      "dashboard",
+      "folder",
+      "note",
+      "wiki",
+      "setting",
+    ],
+    description: "下の領域へ移動",
+  },
+
+  FOCUS_UP: {
+    alt: true,
+    key: "k",
+    pages: [
+      "dashboard",
+      "folder",
+      "note",
+      "wiki",
+      "setting",
+    ],
+    description: "上の領域へ移動",
+  },
+
+  FOCUS_RIGHT: {
+    alt: true,
+    key: "l",
+    pages: [
+      "dashboard",
+      "folder",
+      "note",
+      "wiki",
+      "setting",
+    ],
+    description: "右の領域へ移動",
   },
 } satisfies Record<string, Shortcut>;
