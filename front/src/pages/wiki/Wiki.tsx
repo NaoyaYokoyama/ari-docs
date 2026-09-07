@@ -132,6 +132,9 @@ export default function Wiki() {
     if (wikiId) {
       handleSelectWiki(wikiId);
     }
+    requestAnimationFrame(() => {
+      sidebarRef.current?.focus();
+    });
   }, []);
 
   // Ctrl + SでWikiを保存
@@ -338,19 +341,18 @@ export default function Wiki() {
         wikis={wikis}
         onSelect={handleSelectWiki}
       />
-
-      <main className="flex-1 p-2">
-        <div className="h-[90%]">
-          <main className="flex h-full flex-col px-1 pt-2">
+    <main className="min-h-0 min-w-0 flex-1 overflow-hidden p-0">
+      <div className="h-full min-h-0 w-full">
+        <main className="flex h-full min-h-0 w-full flex-col px-1 pt-2 pb-0">
             {selectedWiki ? (
               <>
                 <div className="flex items-center gap-1.5">
                   {isDirty ? (
                     <>
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-orange-500">
                         ●
                       </span>
-                      <span className="text-sm text-slate-500">
+                      <span className="text-sm text-orange-500">
                         未保存
                       </span>
                     </>
@@ -455,10 +457,11 @@ export default function Wiki() {
 
                 <div
                   ref={editorRef}
-                  className="flex flex-1 flex-col pb-5"
+                  className="flex-1 overflow-hidden"
                 >
                   <MDEditor
                     height="100%"
+                    preview="preview"
                     value={
                       selectedWiki.content
                     }
