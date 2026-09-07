@@ -59,8 +59,8 @@ export default function Toast({
         bg-slate-800
         px-7
         py-4
-        text-lg
         font-semibold
+        text-base
         text-white
         shadow-2xl
         shadow-black/70
@@ -76,13 +76,13 @@ export default function Toast({
       {type === "error" ? (
         <CircleAlert
           size={22}
-          strokeWidth={2.5}
+          strokeWidth={2}
           className="text-red-400"
         />
       ) : (
         <CircleCheck
           size={22}
-          strokeWidth={2.5}
+          strokeWidth={2}
           className="text-slate-200"
         />
       )}

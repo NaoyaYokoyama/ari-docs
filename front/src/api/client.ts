@@ -32,7 +32,6 @@ export async function post<T>(url: string, body: unknown): Promise<T> {
 
   if (!response.ok) {
     const error = await response.json();
-    alert(error);
     throw new Error(error.message);
   }
 

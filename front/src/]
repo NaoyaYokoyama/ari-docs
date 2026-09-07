@@ -162,31 +162,29 @@ export default function Wiki() {
 
   // Wiki作成
   const handleCreateWiki = async () => {
-    let result;
     try {
       const trimmedName = wikiName.trim();
+
       if (!trimmedName) {
         return;
       }
-      result = await createWiki(trimmedName);
+
+      await createWiki(trimmedName);
+
       setWikiName("");
       await loadWikis();
+
       showMessage(
         "info",
         "Wikiを作成しました",
       );
     } catch (error) {
-      if (error.message) {
-        showMessage(
-          "error",
-          error.message
-        );
-      } else {
-        showMessage(
-          "error",
-          "Wikiの登録に失敗しました",
-        );
-      }
+      console.log(error);
+
+      showMessage(
+        "error",
+        "Wikiの登録に失敗しました",
+      );
     }
   };
 
@@ -507,7 +505,7 @@ export default function Wiki() {
                         )
                       }
                       placeholder="新規Wiki名"
-                      maxLength={25}
+                      maxLength={20}
                       className="w-80"
                     />
 

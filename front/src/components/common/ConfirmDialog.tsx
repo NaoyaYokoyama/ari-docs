@@ -30,7 +30,7 @@ export default function ConfirmDialog({
           w-100
           rounded-lg
           bg-white
-          p-6
+          p-5
           shadow-xl
         "
       >
