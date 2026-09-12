@@ -13,10 +13,35 @@ use axum::{
 };
 use validator::Validate;
 
+pub async fn create_favorite_note(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<CreateFavoriteRequest>,
+) -> Result<Json<ApiResponse<FavoriteIdResponse>>, StatusCode> {
+    let conn = connection::connect();
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let node_path = "".to_string();
+    let wiki_id = "".to_string();
+
+    let favorite_id =
+        favorite::create_favorite(&conn, &user.user_id, &node_path, &request.id, &wiki_id)
+            .map_err(|e| {
+                eprintln!("favorite_note_error: {:?}", e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
+
+    let response = ApiResponse {
+        message: Some("お気に入りに登録しました。".to_string()),
+        data: Some(FavoriteIdResponse { favorite_id }),
+    };
+
+    Ok(Json(response))
+}
+
 pub async fn create_favorite_wiki(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Json(request): Json<CreateFavoriteWikiRequest>,
+    Json(request): Json<CreateFavoriteRequest>,
 ) -> Result<Json<ApiResponse<FavoriteIdResponse>>, StatusCode> {
     let conn = connection::connect();
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
@@ -24,7 +49,7 @@ pub async fn create_favorite_wiki(
     let note_id = "".to_string();
 
     let favorite_id =
-        favorite::create_favorite(&conn, &user.user_id, &node_path, &note_id, &request.wiki_id)
+        favorite::create_favorite(&conn, &user.user_id, &node_path, &note_id, &request.id)
             .map_err(|e| {
                 eprintln!("favorite_wiki_error: {:?}", e);
                 StatusCode::INTERNAL_SERVER_ERROR

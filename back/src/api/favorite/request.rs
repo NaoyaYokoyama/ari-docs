@@ -3,8 +3,8 @@ use validator::Validate;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateFavoriteWikiRequest {
-    pub wiki_id: String,
+pub struct CreateFavoriteRequest {
+    pub id: String,
 }
 
 #[derive(Deserialize)]

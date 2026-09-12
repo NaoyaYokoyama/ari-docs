@@ -33,6 +33,10 @@ pub fn create_router() -> Router<AppState> {
             "/api/favorite/wiki/create",
             post(favorite::create_favorite_wiki),
         )
+        .route(
+            "/api/favorite/note/create",
+            post(favorite::create_favorite_note),
+        )
         .route("/api/favorite/delete", post(favorite::delete_favorite))
         // Common
         .route("/api/login", post(auth::login))

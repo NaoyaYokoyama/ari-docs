@@ -1,10 +1,19 @@
 import { get, post } from "@/api/client";
 
 export function createFavoriteWiki(
-  wikiId: string,
+  id: string,
 ) {
   return post("/api/favorite/wiki/create", {
-    wikiId,
+    id,
+  });
+}
+
+
+export function createFavoriteNote(
+  id: string,
+) {
+  return post("/api/favorite/note/create", {
+    id,
   });
 }
 

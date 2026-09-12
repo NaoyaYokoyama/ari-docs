@@ -17,19 +17,19 @@ const menus = [
   {
     id: "home",
     icon: Home,
-    label: "ホーム",
+    label: "Home",
     path: "/",
   },
   {
     id: "folder",
     icon: Folder,
-    label: "フォルダ",
+    label: "Folder",
     path: "/folder",
   },
   {
     id: "memo",
     icon: FileText,
-    label: "個人メモ",
+    label: "Note",
     path: "/note",
   },
   {
