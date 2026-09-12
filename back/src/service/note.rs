@@ -1,12 +1,12 @@
 use crate::{
     api::note::{response::Note, response::NoteResponse},
     common::id::{generate_favorite_id, generate_note_id},
-    repository::{favorite as favorite_repository, note as note_repository},
+    repository::{favorite as favorite_repo, note as note_repo},
 };
 use rusqlite::Connection;
 
 pub fn get_notes(conn: &Connection, user_id: &str) -> rusqlite::Result<NoteResponse> {
-    let notes = note_repository::find_by_user_id(conn, user_id)?;
+    let notes = note_repo::find_by_user_id(conn, user_id)?;
 
     let notes = notes
         .into_iter()
@@ -22,7 +22,7 @@ pub fn get_notes(conn: &Connection, user_id: &str) -> rusqlite::Result<NoteRespo
 }
 
 pub fn get_note(conn: &Connection, user_id: &str, note_id: &str) -> rusqlite::Result<Note> {
-    let note_result = note_repository::find_by_note_id(conn, user_id, note_id)?;
+    let note_result = note_repo::find_by_note_id(conn, user_id, note_id)?;
 
     let note = Note {
         note_id: note_result.note_id,
@@ -36,10 +36,10 @@ pub fn get_note(conn: &Connection, user_id: &str, note_id: &str) -> rusqlite::Re
 
 pub fn create_note(conn: &Connection, user_id: &str, title: &str) -> rusqlite::Result<Note> {
     let note_id = generate_note_id();
-    note_repository::create_note(conn, user_id, &note_id, title)?;
+    note_repo::create_note(conn, user_id, &note_id, title)?;
     println!("created note_id: {}", &note_id);
 
-    let note_result = note_repository::find_by_note_id(conn, user_id, &note_id)?;
+    let note_result = note_repo::find_by_note_id(conn, user_id, &note_id)?;
 
     let note = Note {
         note_id: note_result.note_id,
@@ -51,7 +51,7 @@ pub fn create_note(conn: &Connection, user_id: &str, title: &str) -> rusqlite::R
 }
 
 pub fn delete_note(conn: &Connection, user_id: &str, note_id: &str) -> rusqlite::Result<usize> {
-    let result = note_repository::delete_note(conn, user_id, note_id)?;
+    let result = note_repo::delete_note(conn, user_id, note_id)?;
     Ok(result)
 }
 
@@ -62,7 +62,7 @@ pub fn update_note(
     title: &str,
     content: &str,
 ) -> rusqlite::Result<usize> {
-    let result = note_repository::update_note(conn, user_id, note_id, title, content)?;
+    let result = note_repo::update_note(conn, user_id, note_id, title, content)?;
     Ok(result)
 }
 
@@ -70,7 +70,7 @@ pub fn favorite_note(conn: &Connection, user_id: &str, note_id: &str) -> rusqlit
     let favorite_id = generate_favorite_id();
     let mut node_path = "".to_string();
     let mut wiki_id = "".to_string();
-    let result = favorite_repository::create_favorite(
+    let result = favorite_repo::create_favorite(
         conn,
         user_id,
         &favorite_id,

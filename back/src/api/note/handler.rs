@@ -1,5 +1,6 @@
 use super::{request::*, response::*};
 use crate::{
+    api::error::ApiError,
     api::response::ApiResponse,
     config::app_state::AppState,
     database::connection,
@@ -10,6 +11,7 @@ use axum::{
     extract::{Path, State},
     http::{HeaderMap, StatusCode},
 };
+use validator::Validate;
 
 pub async fn get_notes(
     State(state): State<AppState>,

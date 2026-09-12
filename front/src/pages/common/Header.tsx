@@ -41,7 +41,7 @@ const menus = [
   {
     id: "settings",
     icon: Settings,
-    label: "設定",
+    label: "Setting",
     path: "/setting",
   },
 ];
