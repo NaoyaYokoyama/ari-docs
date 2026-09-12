@@ -28,6 +28,7 @@ import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
 import Sidebar from "@/pages/wiki/Sidebar";
 import { useFocusNavigation } from "@/shortcut/useFocusNavigation";
+import remarkBreaks from "remark-breaks";
 import type {
   Wiki as WikiType,
 } from "@/types/wiki";
@@ -52,6 +53,7 @@ export default function Wiki() {
     useState("");
   const [selectedWiki, setSelectedWiki] =
     useState<WikiDetail | null>(null);
+  const [mdMode, setMdMode] = useState<"edit" | "live" | "preview" >("preview");
 
   const sidebarRef =
     useRef<HTMLDivElement>(null);
@@ -373,7 +375,7 @@ export default function Wiki() {
                 <div className="flex">
                   <input
                     ref={titleRef}
-                    className="mb-4 w-100 border-b p-2 text-lg font-bold outline-none"
+                    className="mb-4 w-100 border-b py-2 text-base font-bold outline-none"
                     value={selectedWiki.title}
                     onChange={(e) => {
                       setSelectedWiki({
@@ -383,49 +385,66 @@ export default function Wiki() {
 
                       setIsDirty(true);
                     }}
-                    maxLength={20}
+                    maxLength={25}
                   />
 
                   <div className="ml-10 flex items-center gap-5">
-                    <Save
-                      size={22}
-                      title="保存"
-                      onClick={
-                        handleUpdateWiki
-                      }
-                      className="cursor-pointer text-slate-500 hover:bg-slate-200"
-                    />
+                    <button
+                        title="保存（Ctrl+S）"
+                        onClick={handleUpdateWiki}
+                        className="cursor-pointer bg-transparent p-0"
+                    >
+                      <Save className="text-slate-500 hover:bg-slate-200" />
+                    </button>
 
-                    <div>
-                      {selectedWiki.favoriteId ? (
-                        <Star
-                          size={22}
-                          title="お気に入り解除"
-                          onClick={
-                            handleDeleteFavoriteWiki
-                          }
-                          className="cursor-pointer fill-yellow-400 text-yellow-400 hover:bg-slate-100"
-                        />
-                      ) : (
-                        <Star
-                          size={22}
-                          title="お気に入り登録"
-                          onClick={
-                            handleCreateFavoriteWiki
-                          }
-                          className="cursor-pointer text-slate-500 hover:bg-slate-200"
-                        />
-                      )}
-                    </div>
+                    {selectedWiki.favoriteId ? (
+                      <button
+                        type="button"
+                        title="お気に入り解除"
+                        onClick={handleDeleteFavoriteWiki}
+                        className="cursor-pointer bg-transparent p-0"
+                      >
+                        <Star className="fill-yellow-400 text-yellow-400 hover:bg-slate-100" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        title="お気に入り登録"
+                        onClick={handleCreateFavoriteWiki}
+                        className="cursor-pointer bg-transparent p-0"
+                      >
+                        <Star  className="text-slate-500 hover:bg-slate-200" />
+                      </button>
+                    )}
 
-                    <Trash2
-                      size={22}
-                      title="削除"
-                      onClick={
-                        handleDeleteWiki
-                      }
-                      className="cursor-pointer text-slate-500 hover:bg-slate-200"
-                    />
+                    <button
+                        title="削除"
+                        onClick={handleDeleteWiki}
+                        className="cursor-pointer bg-transparent p-0"
+                    >
+                      <Trash2 className="text-slate-500 hover:bg-slate-200" />
+                    </button>
+
+                    <Button
+                      variant={mdMode === "edit" ? "primary" : "secondary"}
+                      onClick={() => setMdMode("edit")}
+                      >
+                      <span>編集</span>
+                    </Button>
+
+                    <Button
+                      variant={mdMode === "live" ? "primary" : "secondary"}
+                      onClick={() => setMdMode("live")}
+                      >
+                      <span>分割</span>
+                    </Button>
+
+                    <Button
+                      variant={mdMode === "preview" ? "primary" : "secondary"}
+                      onClick={() => setMdMode("preview")}
+                      >
+                      <span>プレビュー</span>
+                    </Button>
 
                     <div className="ml-3 flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -437,8 +456,8 @@ export default function Wiki() {
                             )
                           }
                           placeholder="新規Wiki名"
-                          maxLength={20}
-                          className="w-80"
+                          maxLength={25}
+                          className="w-60"
                         />
 
                         <Button
@@ -458,20 +477,23 @@ export default function Wiki() {
 
                 <div
                   ref={editorRef}
-                  className="flex-1 overflow-hidden"
+                  className="flex-1 text-base overflow-hidden"
+                  data-color-mode="light"
                 >
                   <MDEditor
                     height="100%"
-                    preview="preview"
+                    preview={mdMode}
                     value={
                       selectedWiki.content
                     }
+                    previewOptions={{
+                      remarkPlugins: [remarkBreaks],
+                    }}
                     onChange={(value) => {
                       setSelectedWiki({
                         ...selectedWiki,
                         content: value ?? "",
                       });
-
                       setIsDirty(true);
                     }}
                     commands={[
@@ -481,13 +503,11 @@ export default function Wiki() {
                       commands.hr,
                       commands.title,
                       commands.divider,
-
                       commands.link,
                       commands.quote,
                       commands.code,
                       commands.codeBlock,
                       commands.divider,
-
                       commands.unorderedListCommand,
                       commands.orderedListCommand,
                       commands.checkedListCommand,

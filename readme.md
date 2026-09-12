@@ -24,6 +24,7 @@
     - docker compose exec frontend npm install -D eslint @eslint/js typescript-eslint eslint-plugin-simple-import-sort
     - docker compose exec frontend npm install @uiw/react-md-editor
     - docker compose exec frontend npm install -D @tauri-apps/cli@latest
+    - docker compose exec frontend npm install remark-breaks
 - cargo
     - cargo install tauri-cli --version "^2.0"
 
