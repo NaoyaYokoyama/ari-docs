@@ -5,6 +5,10 @@ fn generate_id(prefix: &str) -> String {
     format!("{}_{}", prefix, &id[14..])
 }
 
+pub fn generate_node_id() -> String {
+    generate_id("nd")
+}
+
 pub fn generate_note_id() -> String {
     generate_id("nt")
 }

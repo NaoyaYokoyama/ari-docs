@@ -1,6 +1,7 @@
 use tokio_cron_scheduler::{Job, JobScheduler};
 
-use crate::batch::index;
+use crate::batch::health_check;
+use crate::batch::node_sync;
 
 /// バッチスケジューラーを起動する。
 ///
@@ -20,14 +21,31 @@ use crate::batch::index;
 /// - `0 0 */2 * * *`    : 2時間間隔で実行
 ///
 /// 現在は毎時00分に `index::execute` を実行する。
+///
 pub async fn start() {
     let scheduler = JobScheduler::new().await.unwrap();
 
+    // 既存Indexバッチ
     scheduler
         .add(
             Job::new_async("0 */5 * * * *", |_uuid, _lock| {
                 Box::pin(async move {
-                    index::execute().await;
+                    health_check::execute().await;
+                })
+            })
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // Node同期バッチ
+    scheduler
+        .add(
+            Job::new_async("0 */1 * * * *", |_uuid, _lock| {
+                Box::pin(async move {
+                    if let Err(e) = node_sync::execute() {
+                        eprintln!("Node sync failed: {e}");
+                    }
                 })
             })
             .unwrap(),
