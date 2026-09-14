@@ -2,6 +2,7 @@ import { FolderStatus, FolderStatusInfo } from "@/types/folderStatus";
 import type { Node } from "@/types/node";
 import { NodeType } from "@/types/nodeType";
 import { uploadNode, openNode } from "@/api/node";
+import { useApp } from "@/app/AppContext";
 
 type Props = {
   nodes: Node[];
@@ -17,9 +18,16 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { EllipsisVertical,FileText, Folder as FolderIcon } from "lucide-react";
+import { EllipsisVertical, FileText, Folder as FolderIcon } from "lucide-react";
 
 function NodeTable({ nodes, currentPath, onOpenFolder, onOpenNode, reload }: Props) {
+  const {
+    user,
+    isDirty,
+    setIsDirty,
+    showConfirm,
+  } = useApp();
+
   const apiOpenNode = async (node: Node) => {
     await openNode(node.path);
   };
@@ -144,25 +152,30 @@ function NodeTable({ nodes, currentPath, onOpenFolder, onOpenNode, reload }: Pro
       accessorKey: "name",
       header: "名前",
     },
-    {
-      accessorKey: "status",
-      header: "状態",
-      cell: ({ getValue }) => {
-        const status = getValue<FolderStatus>();
-        const info = FolderStatusInfo[status];
+    ...(user?.mode !== "local"
+    ? [
+        {
+          accessorKey: "status",
+          header: "状態",
+          cell: ({ getValue }) => {
+            const status = getValue<FolderStatus>();
+            const info = FolderStatusInfo[status];
 
-        return (
-          <span className="flex items-center gap-2">
-            <span className={info.color}>●</span>
-            <span>{info.label}</span>
-          </span>
-        );
-      },
-    },
-    {
-      accessorKey: "updatedBy",
-      header: "更新者",
-    },
+            return (
+              <span className="flex items-center gap-2">
+                <span className={info.color}>●</span>
+                <span>{info.label}</span>
+              </span>
+            );
+          },
+        },
+        {
+          accessorKey: "updatedBy",
+          header: "更新者",
+        },
+      ] as ColumnDef<Node>[]
+    : []),
+
     {
       accessorKey: "updatedAt",
       header: "更新日時",
