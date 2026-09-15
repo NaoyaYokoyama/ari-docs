@@ -1,5 +1,5 @@
 use crate::model::note::Note;
-use rusqlite::{Connection, Result, params, params_from_iter};
+use rusqlite::{Connection, OptionalExtension, Result, params, params_from_iter};
 use std::collections::HashSet;
 
 pub fn find_all_paths(conn: &Connection) -> Result<HashSet<String>> {
@@ -15,6 +15,19 @@ pub fn find_all_paths(conn: &Connection) -> Result<HashSet<String>> {
     let paths = stmt.query_map([], |row| row.get::<_, String>(0))?;
 
     paths.collect()
+}
+
+pub fn find_node_id_by_node_path(conn: &Connection, path: &str) -> Result<Option<String>> {
+    let sql = "
+        SELECT
+          node_id
+        FROM
+          node
+        WHERE
+          path = ?1
+    ";
+
+    conn.query_row(sql, [path], |row| row.get(0)).optional()
 }
 
 pub fn create_node(conn: &Connection, node_id: &str, path: &str) -> Result<i64> {

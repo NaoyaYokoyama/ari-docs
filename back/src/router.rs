@@ -30,12 +30,16 @@ pub fn create_router() -> Router<AppState> {
         .route("/api/home/favorites", post(home::get_favorites))
         // Favorite
         .route(
-            "/api/favorite/wiki/create",
-            post(favorite::create_favorite_wiki),
+            "/api/favorite/node/create",
+            post(favorite::create_favorite_node),
         )
         .route(
             "/api/favorite/note/create",
             post(favorite::create_favorite_note),
+        )
+        .route(
+            "/api/favorite/wiki/create",
+            post(favorite::create_favorite_wiki),
         )
         .route("/api/favorite/delete", post(favorite::delete_favorite))
         // Common

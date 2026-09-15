@@ -1,4 +1,5 @@
 export interface Node {
+  nodeId: string;
   path: string;
   name: string;
   nodeType: string;

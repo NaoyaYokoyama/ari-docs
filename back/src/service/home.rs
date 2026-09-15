@@ -42,8 +42,8 @@ pub fn get_favorite_list(
         if !favorite.note_id.is_empty() {
             note_ids.push(favorite.note_id);
         }
-        if !favorite.node_path.is_empty() {
-            node_ids.push(favorite.node_path);
+        if !favorite.node_id.is_empty() {
+            node_ids.push(favorite.node_id);
         }
         if !favorite.wiki_id.is_empty() {
             wiki_ids.push(favorite.wiki_id);

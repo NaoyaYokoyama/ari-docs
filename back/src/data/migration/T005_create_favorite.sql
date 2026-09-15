@@ -9,10 +9,9 @@ CREATE TABLE IF NOT EXISTS favorite (
 
     user_id TEXT NOT NULL,
 
-    node_path TEXT NOT NULL,
+    node_id TEXT NOT NULL,
 
     note_id TEXT NOT NULL,
 
     wiki_id TEXT NOT NULL
-
 );

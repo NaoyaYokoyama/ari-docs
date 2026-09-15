@@ -13,6 +13,31 @@ use axum::{
 };
 use validator::Validate;
 
+pub async fn create_favorite_node(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<CreateFavoriteNodeRequest>,
+) -> Result<Json<ApiResponse<FavoriteIdResponse>>, StatusCode> {
+    let conn = connection::connect();
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let note_id = "".to_string();
+    let wiki_id = "".to_string();
+
+    let favorite_id =
+        favorite::create_favorite(&conn, &user.user_id, &request.path, &note_id, &wiki_id)
+            .map_err(|e| {
+                eprintln!("favorite_note_error: {:?}", e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
+
+    let response = ApiResponse {
+        message: Some("お気に入りに登録しました。".to_string()),
+        data: Some(FavoriteIdResponse { favorite_id }),
+    };
+
+    Ok(Json(response))
+}
+
 pub async fn create_favorite_note(
     State(state): State<AppState>,
     headers: HeaderMap,

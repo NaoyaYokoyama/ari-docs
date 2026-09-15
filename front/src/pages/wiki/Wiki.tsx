@@ -197,32 +197,25 @@ export default function Wiki() {
     if (!selectedWiki) {
       return;
     }
-
     try {
       const wikiId = String(
         selectedWiki.wikiId,
       );
-
       const title = selectedWiki.title;
       const content = selectedWiki.content;
-
       await updateWiki(
         wikiId,
         title,
         content,
       );
-
       await loadWikis();
-
       showMessage(
         "info",
         "Wikiを更新しました",
       );
-
       setIsDirty(false);
     } catch (error) {
       console.log(error);
-
       showMessage(
         "error",
         "Wikiの更新に失敗しました",
@@ -235,35 +228,27 @@ export default function Wiki() {
     if (!selectedWiki) {
       return;
     }
-
     const confirmed = await showConfirm(
       "Wiki「" +
         selectedWiki.title +
         "」を削除しますか？",
     );
-
     if (!confirmed) {
       return;
     }
-
     try {
       const wikiId = String(
         selectedWiki.wikiId,
       );
-
       await deleteWiki(wikiId);
-
       setSelectedWiki(null);
-
       showMessage(
         "info",
         "Wikiを削除しました",
       );
-
       await loadWikis();
     } catch (error) {
       console.log(error);
-
       showMessage(
         "error",
         "Wikiの削除に失敗しました",
@@ -277,20 +262,16 @@ export default function Wiki() {
       if (!selectedWiki) {
         return;
       }
-
       const wikiId = String(
         selectedWiki.wikiId,
       );
-
       try {
         const response =
           await createFavoriteWiki(wikiId);
-
         showMessage(
           "info",
           "Wikiをお気にいり登録しました",
         );
-
         setSelectedWiki({
           ...selectedWiki,
           favoriteId:
@@ -298,7 +279,6 @@ export default function Wiki() {
         });
       } catch (error) {
         console.log(error);
-
         showMessage(
           "error",
           "Wikiのお気に入り登録に失敗しました",
@@ -312,24 +292,20 @@ export default function Wiki() {
       if (!selectedWiki) {
         return;
       }
-
       try {
         await deleteFavorite(
           selectedWiki.favoriteId,
         );
-
         showMessage(
           "info",
           "Wikiをお気にいり解除しました",
         );
-
         setSelectedWiki({
           ...selectedWiki,
           favoriteId: "",
         });
       } catch (error) {
         console.log(error);
-
         showMessage(
           "error",
           "Wikiのお気に入り解除に失敗しました",

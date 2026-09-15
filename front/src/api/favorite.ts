@@ -1,5 +1,13 @@
 import { get, post } from "@/api/client";
 
+export function createFavoriteNode(
+  path: string,
+) {
+  return post("/api/favorite/node/create", {
+    path,
+  });
+}
+
 export function createFavoriteWiki(
   id: string,
 ) {
@@ -7,7 +15,6 @@ export function createFavoriteWiki(
     id,
   });
 }
-
 
 export function createFavoriteNote(
   id: string,

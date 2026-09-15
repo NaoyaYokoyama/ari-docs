@@ -6,7 +6,7 @@ pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Favorite>
     let sql = "
         SELECT
           favorite_id,
-          node_path,
+          node_id,
           note_id,
           wiki_id
         FROM
@@ -20,7 +20,7 @@ pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Favorite>
             Ok(Favorite {
                 favorite_id: row.get(0)?,
                 user_id: String::new(),
-                node_path: row.get(1)?,
+                node_id: row.get(1)?,
                 note_id: row.get(2)?,
                 wiki_id: row.get(3)?,
             })
@@ -37,7 +37,7 @@ pub fn find_by_wiki_id(
     let sql = "
         SELECT
           favorite_id,
-          node_path,
+          node_id,
           note_id,
           wiki_id
         FROM
@@ -53,7 +53,7 @@ pub fn find_by_wiki_id(
             Ok(Favorite {
                 favorite_id: row.get(0)?,
                 user_id: String::new(),
-                node_path: row.get(1)?,
+                node_id: row.get(1)?,
                 note_id: row.get(2)?,
                 wiki_id: row.get(3)?,
             })
@@ -66,7 +66,7 @@ pub fn create_favorite(
     conn: &Connection,
     user_id: &str,
     favorite_id: &str,
-    node_path: &str,
+    node_id: &str,
     note_id: &str,
     wiki_id: &str,
 ) -> Result<i64> {
@@ -74,7 +74,7 @@ pub fn create_favorite(
         INSERT INTO favorite (
           favorite_id,
           user_id,
-          node_path,
+          node_id,
           note_id,
           wiki_id
         )
@@ -86,7 +86,7 @@ pub fn create_favorite(
           ?5
         )
         ";
-    conn.execute(sql, [favorite_id, user_id, node_path, note_id, wiki_id])?;
+    conn.execute(sql, [favorite_id, user_id, node_id, note_id, wiki_id])?;
     Ok(conn.last_insert_rowid())
 }
 

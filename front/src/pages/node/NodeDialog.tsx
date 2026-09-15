@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
-
+import { useApp } from "@/app/AppContext";
 import { deleteNode } from "@/api/node";
 import Button from "@/components/common/Button";
 import Dialog from "@/components/common/Dialog";
 import type { Node } from "@/types/node";
 import { Folder as FolderIcon, Star, Trash2 } from "lucide-react";
+import {
+  createFavoriteNode,
+  deleteFavorite,
+} from "@/api/favorite";
 
 type Props = {
   nodeOpen: boolean;
@@ -14,15 +18,24 @@ type Props = {
 
 function NodeDialog({ nodeOpen, node, onClose }: Props) {
   const [newName, setNewName] = useState();
-  const [deleteChecked, setDeleteChecked] = useState(false);
+
+  const {
+    showMessage,
+    showConfirm,
+    isDirty,
+    setIsDirty,
+  } = useApp();
 
   // nodeをお気に入り登録
   const handleCreateFavoriteNode =
     async () => {
-      alert("favorite_create");
+      if (node === null) {
+        return; 
+      }
+      alert(node.path);
       try {
         const response =
-          await createFavoriteNode(node.nodeId);
+          await createFavoriteNode(node.path);
         showMessage(
           "info",
           "お気にいり登録しました",
@@ -39,7 +52,6 @@ function NodeDialog({ nodeOpen, node, onClose }: Props) {
   // Wikiのお気に入り解除
   const handleDeleteFavoriteNode =
     async () => {
-      alert("favorite_delete");
       try {
         await deleteFavorite(
           node.favoriteId,
@@ -63,7 +75,6 @@ function NodeDialog({ nodeOpen, node, onClose }: Props) {
       return;
     }
     setNewName(node.name);
-    setDeleteChecked(false);
   }, [nodeOpen, node?.name]);
 
   if (!nodeOpen || !node) {
@@ -87,17 +98,6 @@ function NodeDialog({ nodeOpen, node, onClose }: Props) {
       </div>
       <div>
         {node.updatedAt}
-      </div>
-
-      <div>
-        <label className="mb-6 flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={deleteChecked}
-            onChange={(e) => setDeleteChecked(e.target.checked)}
-          />
-          <span>削除確認</span>
-        </label>
       </div>
 
       <div className="flex justify-end gap-7">
