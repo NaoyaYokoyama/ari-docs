@@ -1,9 +1,8 @@
 import { useState } from "react";
 
-import SearchBar from "@/pages/home/SearchBar";
 import FavoriteSidebar from "@/pages/home/FavoriteSidebar";
+import SearchBar from "@/pages/home/SearchBar";
 import SearchResult from "@/pages/home/SearchResult";
-import Sidebar from "@/pages/home/Sidebar";
 import type { SearchItem } from "@/types/searchItem";
 
 function Home() {

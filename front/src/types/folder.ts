@@ -1,3 +1,5 @@
+import type { FolderStatus } from "@/types/folderStatus";
+
 export type Folder = {
   /** 一意のID */
   id: string;

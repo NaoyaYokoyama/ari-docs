@@ -1,18 +1,18 @@
-import { useEffect, useState } from "react";
 import {
   BookOpen,
   FileText,
   Folder,
   Star,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { getFavorites } from "@/api/home";
-import type { FavoriteList } from "@/types/favorite";
+import type { Favorite } from "@/types/favorite";
 
 function FavoriteSidebar() {
   const [favorites, setFavorites] =
-    useState<FavoriteList[]>([]);
+    useState<Favorite[]>([]);
 
   const navigate = useNavigate();
 
@@ -33,7 +33,7 @@ function FavoriteSidebar() {
   }, []);
 
   const handleNavigate = (
-    favorite: FavoriteList,
+    favorite: Favorite,
   ) => {
     if (favorite.wikiId) {
       navigate("/wiki", {
@@ -53,10 +53,11 @@ function FavoriteSidebar() {
       return;
     }
 
+    // ノードのお気に入りはnameにパスが入っている
     if (favorite.nodeId) {
       navigate("/folder", {
         state: {
-          nodeId: favorite.nodeId,
+          nodePath: favorite.name,
         },
       });
     }
@@ -81,7 +82,7 @@ function FavoriteSidebar() {
       <div className="space-y-1">
         {favorites.map((favorite) => (
           <div
-            key={favorite.favoriteId}
+            key={`${favorite.nodeId}-${favorite.noteId}-${favorite.wikiId}`}
             onClick={() =>
               handleNavigate(favorite)
             }
@@ -105,8 +106,13 @@ function FavoriteSidebar() {
               <Folder size={18} />
             )}
 
-            <div className="truncate">
-              {favorite.name}
+            <div
+              className="truncate"
+              title={favorite.name}
+            >
+              {favorite.nodeId
+                ? favorite.name.split("/").pop()
+                : favorite.name}
             </div>
           </div>
         ))}

@@ -5,8 +5,8 @@ import {
 } from "react";
 
 import {
-  ShortcutContext,
   type FocusDirection,
+  ShortcutContext,
 } from "./ShortcutProvider";
 
 type FocusNavigation = Partial<

@@ -1,10 +1,12 @@
 use crate::api::node::{response::Node, response::NodeResponse};
 use crate::model::node_type::NodeType;
+use crate::repository::favorite as favorite_repo;
+use rusqlite::Connection;
 use std::fs;
 use std::path::PathBuf;
 
 const ROOT_PATH: &str = "../folder";
-pub fn get_nodes(path: &str) -> NodeResponse {
+pub fn get_nodes(conn: &Connection, user_id: &str, path: &str) -> rusqlite::Result<NodeResponse> {
     let path = if path == "/" {
         ""
     } else {
@@ -40,13 +42,22 @@ pub fn get_nodes(path: &str) -> NodeResponse {
             updated_at: chrono::DateTime::<chrono::Local>::from(updated_at)
                 .format("%Y/%m/%d %H:%M")
                 .to_string(),
+            favorite_id: String::new(),
         });
     }
 
-    NodeResponse {
+    let paths: Vec<String> = nodes.iter().map(|node| node.path.clone()).collect();
+    let favorite_ids = favorite_repo::find_node_favorite_ids_by_paths(conn, user_id, &paths)?;
+    for node in &mut nodes {
+        if let Some(favorite_id) = favorite_ids.get(&node.path) {
+            node.favorite_id = favorite_id.clone();
+        }
+    }
+
+    Ok(NodeResponse {
         current_path: current_path.to_string(),
         nodes: nodes,
-    }
+    })
 }
 
 pub fn create_node(parent_path: &str, node_type: &str, name: &str) {
@@ -61,13 +72,22 @@ pub fn create_node(parent_path: &str, node_type: &str, name: &str) {
     }
 }
 
-pub fn delete_node(parent_path: &str, node_type: &str, name: &str) {
-    let full_path = PathBuf::from(ROOT_PATH).join(parent_path.trim_start_matches('/'));
+pub fn delete_node(parent_path: &str, node_type: &str, name: &str) -> std::io::Result<()> {
+    // nameが空や".."だと親フォルダ以上を消してしまうため弾く
+    if name.is_empty() || name == "." || name == ".." || name.contains('/') || name.contains('\\') {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            format!("invalid node name: {}", name),
+        ));
+    }
 
-    println!("{}", name);
+    let full_path = PathBuf::from(ROOT_PATH)
+        .join(parent_path.trim_start_matches('/'))
+        .join(name);
+
     if node_type == "folder" {
-        fs::remove_dir_all(full_path).unwrap();
+        fs::remove_dir_all(full_path)
     } else {
-        fs::remove_file(full_path).unwrap();
+        fs::remove_file(full_path)
     }
 }

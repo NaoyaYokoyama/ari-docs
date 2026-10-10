@@ -1,9 +1,10 @@
-import { get, post } from "@/api/client";
+import { post } from "@/api/client";
+import type { MessageResponse } from "@/types/messageResponse";
 
 export function updateDisplayName(
   displayName: string,
 ) {
-  return post("/api/setting/update/display-name", {
+  return post<MessageResponse>("/api/setting/update/display-name", {
     displayName,
   });
 }
@@ -13,7 +14,7 @@ export function updatePassword(
   newPassword: string,
   newPasswordConfirm: string,
 ) {
-  return post("/api/setting/update/password", {
+  return post<MessageResponse>("/api/setting/update/password", {
     currentPassword,
     newPassword,
     newPasswordConfirm,

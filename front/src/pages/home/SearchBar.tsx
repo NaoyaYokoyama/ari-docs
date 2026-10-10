@@ -1,8 +1,8 @@
 import { Search } from "lucide-react";
-import { search } from "@/api/home";
-import { useState, useRef, useEffect } from "react";
+import { useEffect,useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 
+import { search } from "@/api/home";
 import type { SearchItem } from "@/types/searchItem";
 
 type Props = {

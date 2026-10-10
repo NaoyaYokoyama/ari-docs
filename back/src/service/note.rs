@@ -15,6 +15,7 @@ pub fn get_notes(conn: &Connection, user_id: &str) -> rusqlite::Result<NoteRespo
             title: note.title,
             content: note.content,
             updated_at: note.updated_at,
+            favorite_id: "".to_string(),
         })
         .collect();
 
@@ -23,13 +24,19 @@ pub fn get_notes(conn: &Connection, user_id: &str) -> rusqlite::Result<NoteRespo
 
 pub fn get_note(conn: &Connection, user_id: &str, note_id: &str) -> rusqlite::Result<Note> {
     let note_result = note_repo::find_by_note_id(conn, user_id, note_id)?;
+    let favorite_result = favorite_repo::find_by_note_id(conn, user_id, note_id)?;
 
-    let note = Note {
+    let mut note = Note {
         note_id: note_result.note_id,
         title: note_result.title,
         content: note_result.content,
         updated_at: note_result.updated_at,
+        favorite_id: String::new(),
     };
+
+    if let Some(favorite) = favorite_result {
+        note.favorite_id = favorite.favorite_id;
+    }
 
     Ok(note)
 }
@@ -46,11 +53,13 @@ pub fn create_note(conn: &Connection, user_id: &str, title: &str) -> rusqlite::R
         title: note_result.title,
         content: note_result.content,
         updated_at: note_result.updated_at,
+        favorite_id: "".to_string(),
     };
     Ok(note)
 }
 
 pub fn delete_note(conn: &Connection, user_id: &str, note_id: &str) -> rusqlite::Result<usize> {
+    favorite_repo::delete_favorite_note(conn, user_id, note_id)?;
     let result = note_repo::delete_note(conn, user_id, note_id)?;
     Ok(result)
 }

@@ -7,4 +7,5 @@ export interface Node {
   description: string;
   updatedBy: string;
   updatedAt: string;
+  favoriteId: string;
 }

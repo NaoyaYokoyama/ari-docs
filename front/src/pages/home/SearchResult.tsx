@@ -1,3 +1,5 @@
+import type { SearchItem } from "@/types/searchItem";
+
 type Props = {
   items: SearchItem[];
 };

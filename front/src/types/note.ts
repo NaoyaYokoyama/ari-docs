@@ -9,6 +9,7 @@ export interface NoteDetail {
   title: string;
   content: string;
   updatedAt: string;
+  favoriteId: string;
 }
 
 export interface NoteList {

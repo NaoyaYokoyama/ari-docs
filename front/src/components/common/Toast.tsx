@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
 import {
   CircleAlert,
   CircleCheck,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 type Props = {
   type: "info" | "error";

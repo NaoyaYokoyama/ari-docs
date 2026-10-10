@@ -58,7 +58,5 @@ export async function postForm<T>(
   if (!response.ok) {
     throw new Error("Request failed");
   }
-  return;
-
-  // return response.json();
+  return undefined as T;
 }

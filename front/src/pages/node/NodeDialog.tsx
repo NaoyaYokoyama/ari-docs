@@ -1,14 +1,16 @@
+import { Star, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useApp } from "@/app/AppContext";
-import { deleteNode } from "@/api/node";
-import Button from "@/components/common/Button";
-import Dialog from "@/components/common/Dialog";
-import type { Node } from "@/types/node";
-import { Folder as FolderIcon, Star, Trash2 } from "lucide-react";
+
 import {
   createFavoriteNode,
   deleteFavorite,
 } from "@/api/favorite";
+import { deleteNode } from "@/api/node";
+import { useApp } from "@/app/AppContext";
+import Button from "@/components/common/Button";
+import Dialog from "@/components/common/Dialog";
+import type { Node } from "@/types/node";
+import type { NodeType } from "@/types/nodeType";
 
 type Props = {
   nodeOpen: boolean;
@@ -17,13 +19,11 @@ type Props = {
 };
 
 function NodeDialog({ nodeOpen, node, onClose }: Props) {
-  const [newName, setNewName] = useState();
+  const [favoriteId, setFavoriteId] = useState("");
 
   const {
     showMessage,
     showConfirm,
-    isDirty,
-    setIsDirty,
   } = useApp();
 
   // nodeをお気に入り登録
@@ -32,10 +32,10 @@ function NodeDialog({ nodeOpen, node, onClose }: Props) {
       if (node === null) {
         return; 
       }
-      alert(node.path);
       try {
         const response =
           await createFavoriteNode(node.path);
+        setFavoriteId(response.data.favoriteId);
         showMessage(
           "info",
           "お気にいり登録しました",
@@ -49,13 +49,12 @@ function NodeDialog({ nodeOpen, node, onClose }: Props) {
       }
     };
 
-  // Wikiのお気に入り解除
+  // nodeのお気に入り解除
   const handleDeleteFavoriteNode =
     async () => {
       try {
-        await deleteFavorite(
-          node.favoriteId,
-        );
+        await deleteFavorite(favoriteId);
+        setFavoriteId("");
         showMessage(
           "info",
           "お気にいり解除しました",
@@ -70,12 +69,42 @@ function NodeDialog({ nodeOpen, node, onClose }: Props) {
     };
 
 
+  // nodeの削除
+  const handleDeleteNode = async () => {
+    if (node === null) {
+      return;
+    }
+    const confirmed = await showConfirm(
+      "「" + node.name + "」を削除しますか？",
+    );
+    if (!confirmed) {
+      return;
+    }
+    // "a/b/c" -> "a/b"
+    const index = node.path.lastIndexOf("/");
+    const parentPath = index === -1 ? "" : node.path.slice(0, index);
+    try {
+      await deleteNode(parentPath, node.nodeType as NodeType, node.name);
+      showMessage(
+        "info",
+        "削除しました",
+      );
+      onClose();
+    } catch (error) {
+      console.log(error);
+      showMessage(
+        "error",
+        "削除に失敗しました",
+      );
+    }
+  };
+
   useEffect(() => {
     if (!nodeOpen || !node) {
       return;
     }
-    setNewName(node.name);
-  }, [nodeOpen, node?.name]);
+    setFavoriteId(node.favoriteId);
+  }, [nodeOpen, node?.favoriteId]);
 
   if (!nodeOpen || !node) {
     return null;
@@ -101,7 +130,7 @@ function NodeDialog({ nodeOpen, node, onClose }: Props) {
       </div>
 
       <div className="flex justify-end gap-7">
-        {node.favoriteId ? (
+        {favoriteId ? (
           <button
             type="button"
             title="お気に入り解除"
@@ -123,7 +152,7 @@ function NodeDialog({ nodeOpen, node, onClose }: Props) {
         <button
           type="button"
           title="削除"
-          onClick={handleDeleteFavoriteNode}
+          onClick={handleDeleteNode}
           className="cursor-pointer bg-transparent p-0"
         >
           <Trash2 className="text-slate-500 hover:bg-slate-200" />

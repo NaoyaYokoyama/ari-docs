@@ -12,6 +12,7 @@ export type Shortcut = {
   key: string;
   pages: ShortcutPage[];
   description: string;
+  focus?: string;
 };
 
 export const SHORTCUT = {

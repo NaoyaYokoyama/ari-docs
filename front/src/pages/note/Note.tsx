@@ -1,9 +1,6 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import { useLocation } from "react-router-dom";
+import MDEditor, {
+  commands,
+} from "@uiw/react-md-editor";
 import {
   CircleCheck,
   FilePlus,
@@ -11,6 +8,13 @@ import {
   Star,
   Trash2,
 } from "lucide-react";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { useLocation } from "react-router-dom";
+import remarkBreaks from "remark-breaks";
 
 import {
   createFavoriteNote,
@@ -28,14 +32,10 @@ import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
 import Sidebar from "@/pages/note/Sidebar";
 import { useFocusNavigation } from "@/shortcut/useFocusNavigation";
-import remarkBreaks from "remark-breaks";
 import type {
   Note as NoteType,
+  NoteDetail,
 } from "@/types/note";
-
-import MDEditor, {
-  commands,
-} from "@uiw/react-md-editor";
 
 export default function Note() {
   const location = useLocation();
@@ -164,13 +164,12 @@ export default function Note() {
 
   // Note作成
   const handleCreateNote = async () => {
-    let result;
     try {
       const trimmedName = noteName.trim();
       if (!trimmedName) {
         return;
       }
-      result = await createNote(trimmedName);
+      await createNote(trimmedName);
       setNoteName("");
       await loadNotes();
       showMessage(
@@ -178,7 +177,7 @@ export default function Note() {
         "Noteを作成しました",
       );
     } catch (error) {
-      if (error.message) {
+      if (error instanceof Error && error.message) {
         showMessage(
           "error",
           error.message

@@ -12,7 +12,12 @@ pub fn execute() -> io::Result<()> {
     let registered_paths = node_repo::find_all_paths(&conn).map_err(io::Error::other)?;
 
     for path in paths {
-        let path = path.to_string_lossy().to_string();
+        // 画面側と合わせてルートからの相対パスで登録する
+        let path = path
+            .strip_prefix(root_path)
+            .map_err(io::Error::other)?
+            .to_string_lossy()
+            .to_string();
         if registered_paths.contains(&path) {
             continue;
         }

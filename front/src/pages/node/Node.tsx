@@ -1,24 +1,34 @@
 import { FilePlus,FolderPlus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 
-import Sidebar from "@/pages/node/Sidebar";
+import { useNodes } from "@/hooks/useNodes";
 import Breadcrumb from "@/pages/node/Breadcrumb";
-import { useNodeShortcuts } from "@/pages/node/useNodeShortcuts";
-
 import CreateNodeDialog from "@/pages/node/CreateNodeDialog";
 import NodeDialog from "@/pages/node/NodeDialog";
 import NodeTable from "@/pages/node/NodeTable";
-import { useNodes } from "@/hooks/useNodes";
+import Sidebar from "@/pages/node/Sidebar";
+import { useNodeShortcuts } from "@/pages/node/useNodeShortcuts";
+import type { Node as NodeItem } from "@/types/node";
 import { NodeType } from "@/types/nodeType";
 
-import type { Node } from "../types/node";
+// "a/b/c" -> "a/b"、"a" -> ""
+function parentPath(path: string) {
+  const index = path.lastIndexOf("/");
+  return index === -1 ? "" : path.slice(0, index);
+}
 
 function Node() {
+  const location = useLocation();
+  // お気に入りから遷移してきた場合は対象ノードの親フォルダを開く
+  const initialNodePath: string = location.state?.nodePath ?? "";
+
   const [createOpen, setCreateOpen] = useState(false);
   const [nodeOpen, setNodeOpen] = useState(false);
-  const [path, setPath] = useState("");
+  const [path, setPath] = useState(parentPath(initialNodePath));
   const [defaultType, setDefaultType] = useState<NodeType>(NodeType.Folder);
-  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [selectedNode, setSelectedNode] = useState<NodeItem | null>(null);
+  const [targetPath, setTargetPath] = useState(initialNodePath);
 
   const handleClose = async () => {
     setCreateOpen(false);
@@ -27,6 +37,24 @@ function Node() {
   };
 
   const { currentPath, nodes, reload } = useNodes(path);
+
+  // 親フォルダの読み込み後、フォルダなら中を開き、ファイルなら詳細ダイアログを開く
+  useEffect(() => {
+    if (!targetPath) {
+      return;
+    }
+    const target = nodes.find((node) => node.path === targetPath);
+    if (!target) {
+      return;
+    }
+    setTargetPath("");
+    if (target.nodeType === NodeType.Folder) {
+      setPath(target.path);
+    } else {
+      setSelectedNode(target);
+      setNodeOpen(true);
+    }
+  }, [nodes, targetPath]);
 
   useNodeShortcuts({
     currentPath,

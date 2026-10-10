@@ -1,9 +1,10 @@
-import { get, post } from "@/api/client";
+import { post } from "@/api/client";
+import type { CreateFavoriteResponse } from "@/types/favorite";
 
 export function createFavoriteNode(
   path: string,
 ) {
-  return post("/api/favorite/node/create", {
+  return post<CreateFavoriteResponse>("/api/favorite/node/create", {
     path,
   });
 }
@@ -11,7 +12,7 @@ export function createFavoriteNode(
 export function createFavoriteWiki(
   id: string,
 ) {
-  return post("/api/favorite/wiki/create", {
+  return post<CreateFavoriteResponse>("/api/favorite/wiki/create", {
     id,
   });
 }
@@ -19,7 +20,7 @@ export function createFavoriteWiki(
 export function createFavoriteNote(
   id: string,
 ) {
-  return post("/api/favorite/note/create", {
+  return post<CreateFavoriteResponse>("/api/favorite/note/create", {
     id,
   });
 }

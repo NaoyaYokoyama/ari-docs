@@ -1,10 +1,18 @@
 export interface Favorite {
+  favoriteId: string;
   name: string;
+  nodeId: string;
   noteId: string;
   wikiId: string;
-  nodePath: string;
 }
 
-export interface FavoriteList {
-  favorites: Favorite[];
+export interface FavoriteListResponse {
+  favoriteList: Favorite[];
+}
+
+export interface CreateFavoriteResponse {
+  message: string;
+  data: {
+    favoriteId: string;
+  };
 }

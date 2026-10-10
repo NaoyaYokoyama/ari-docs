@@ -1,9 +1,12 @@
-export enum FolderStatus {
-  Working = "working",
-  Review = "review",
-  Completed = "completed",
-  Hold = "hold",
-}
+export const FolderStatus = {
+  Working: "working",
+  Review: "review",
+  Completed: "completed",
+  Hold: "hold",
+} as const;
+
+export type FolderStatus =
+  (typeof FolderStatus)[keyof typeof FolderStatus];
 
 export const FolderStatusInfo = {
   [FolderStatus.Working]: {

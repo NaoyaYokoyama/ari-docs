@@ -1,9 +1,12 @@
 use super::{request::*, response::*};
-use crate::service::node;
+use crate::{
+    database::connection,
+    service::{auth, node},
+};
 use axum::{
     Json,
     extract::{Multipart, Query, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
 };
 
 use crate::config::app_state::AppState;
@@ -11,8 +14,20 @@ use crate::config::app_state::AppState;
 use std::path::Path;
 
 // ノード一覧を取得
-pub async fn get_nodes(Query(query): Query<NodeQuery>) -> Json<NodeResponse> {
-    Json(node::get_nodes(&query.path))
+pub async fn get_nodes(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<NodeQuery>,
+) -> Result<Json<NodeResponse>, StatusCode> {
+    let conn = connection::connect();
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+
+    let response = node::get_nodes(&conn, &user.user_id, &query.path).map_err(|e| {
+        eprintln!("get_nodes error: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    Ok(Json(response))
 }
 
 // ノードの作成
@@ -23,8 +38,17 @@ pub async fn create_node(Json(request): Json<CreateNodeRequest>) -> StatusCode {
 
 // ノードの削除
 pub async fn delete_node(Json(request): Json<CreateNodeRequest>) -> StatusCode {
-    node::delete_node(&request.parent_path, &request.node_type, &request.name);
-    StatusCode::CREATED
+    match node::delete_node(&request.parent_path, &request.node_type, &request.name) {
+        Ok(()) => StatusCode::NO_CONTENT,
+        Err(e) => {
+            eprintln!("delete_node error: {:?}", e);
+            if e.kind() == std::io::ErrorKind::InvalidInput {
+                StatusCode::BAD_REQUEST
+            } else {
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
+        }
+    }
 }
 
 // ファイルを開く

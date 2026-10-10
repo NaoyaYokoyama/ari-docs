@@ -1,8 +1,9 @@
+import { openNode,uploadNode } from "@/api/node";
+import { useApp } from "@/app/AppContext";
 import { FolderStatus, FolderStatusInfo } from "@/types/folderStatus";
 import type { Node } from "@/types/node";
 import { NodeType } from "@/types/nodeType";
-import { uploadNode, openNode } from "@/api/node";
-import { useApp } from "@/app/AppContext";
+import type { UploadFile } from "@/types/uploadFile";
 
 type Props = {
   nodes: Node[];
@@ -23,9 +24,6 @@ import { EllipsisVertical, FileText, Folder as FolderIcon } from "lucide-react";
 function NodeTable({ nodes, currentPath, onOpenFolder, onOpenNode, reload }: Props) {
   const {
     user,
-    isDirty,
-    setIsDirty,
-    showConfirm,
   } = useApp();
 
   const apiOpenNode = async (node: Node) => {

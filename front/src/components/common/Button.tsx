@@ -19,6 +19,7 @@
  */
 import { cva } from "class-variance-authority";
 import type { ButtonHTMLAttributes } from "react";
+import { twMerge } from "tailwind-merge";
 
 
 const buttonVariants = cva(
@@ -64,10 +65,13 @@ function Button({
 }: Props) {
   return (
     <button
-      className={buttonVariants({
-        variant,
-        size,
-      })}
+      className={twMerge(
+        buttonVariants({
+          variant,
+          size,
+        }),
+        className,
+      )}
       {...props}
     />
   );

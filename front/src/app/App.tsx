@@ -1,16 +1,15 @@
 import { useState } from "react";
-import { useAuth } from "@/app/useAuth";
-import { useMessage } from "@/app/useMessage";
-import { useConfirmDialog } from "@/app/useConfirmDialog";
-
-import Login from "@/pages/common/Login";
-import AppRoutes from "@/routes";
-import MainLayout from "@/pages/common/MainLayout";
-import ShortcutProvider from "@/shortcut/ShortcutProvider";
-import Toast from "@/components/common/Toast";
-import ConfirmDialog from "@/components/common/ConfirmDialog";
 
 import { AppContext } from "@/app/AppContext";
+import { useAuth } from "@/app/useAuth";
+import { useConfirmDialog } from "@/app/useConfirmDialog";
+import { useMessage } from "@/app/useMessage";
+import ConfirmDialog from "@/components/common/ConfirmDialog";
+import Toast from "@/components/common/Toast";
+import Login from "@/pages/common/Login";
+import MainLayout from "@/pages/common/MainLayout";
+import AppRoutes from "@/routes";
+import ShortcutProvider from "@/shortcut/ShortcutProvider";
 
 export default function App() {
   const {
@@ -43,7 +42,7 @@ export default function App() {
   }
 
   if (!user) {
-    return <Login onLogin={setUser} />;
+    return <Login />;
   }
 
   return (
@@ -58,8 +57,11 @@ export default function App() {
           setIsDirty,
         }}
       >
-        <MainLayout onLogout={logout}>
-          <AppRoutes onLogout={logout} />
+        <MainLayout
+          displayName={user.displayName}
+          onLogout={logout}
+        >
+          <AppRoutes />
         </MainLayout>
 
         <Toast

@@ -1,7 +1,7 @@
 import SidebarItem from "@/components/common/SidebarItem";
 import {
-  settingSections,
   type SettingSection,
+  settingSections,
 } from "@/pages/setting/settingSection";
 
 type Props = {

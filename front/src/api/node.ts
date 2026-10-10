@@ -1,6 +1,7 @@
 import { get, post, postForm } from "@/api/client";
 import type { NodeResponse } from "@/types/nodeResponse";
 import type { NodeType } from "@/types/nodeType";
+import type { UploadFile } from "@/types/uploadFile";
 
 export function getNodes(path: string) {
   return get<NodeResponse>(`/api/nodes?path=${encodeURIComponent(path)}`);

@@ -1,5 +1,5 @@
 import { get, post } from "@/api/client";
-import type { NoteList, NoteDetail  } from "@/types/note";
+import type { NoteDetail,NoteList  } from "@/types/note";
 
 export function getNotes() {
   return get<NoteList>("/api/notes");

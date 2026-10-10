@@ -1,9 +1,6 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import { useLocation } from "react-router-dom";
+import MDEditor, {
+  commands,
+} from "@uiw/react-md-editor";
 import {
   CircleCheck,
   FilePlus,
@@ -11,6 +8,13 @@ import {
   Star,
   Trash2,
 } from "lucide-react";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { useLocation } from "react-router-dom";
+import remarkBreaks from "remark-breaks";
 
 import {
   createFavoriteWiki,
@@ -28,14 +32,10 @@ import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
 import Sidebar from "@/pages/wiki/Sidebar";
 import { useFocusNavigation } from "@/shortcut/useFocusNavigation";
-import remarkBreaks from "remark-breaks";
 import type {
   Wiki as WikiType,
+  WikiDetail,
 } from "@/types/wiki";
-
-import MDEditor, {
-  commands,
-} from "@uiw/react-md-editor";
 
 export default function Wiki() {
   const location = useLocation();
@@ -164,13 +164,12 @@ export default function Wiki() {
 
   // Wiki作成
   const handleCreateWiki = async () => {
-    let result;
     try {
       const trimmedName = wikiName.trim();
       if (!trimmedName) {
         return;
       }
-      result = await createWiki(trimmedName);
+      await createWiki(trimmedName);
       setWikiName("");
       await loadWikis();
       showMessage(
@@ -178,7 +177,7 @@ export default function Wiki() {
         "Wikiを作成しました",
       );
     } catch (error) {
-      if (error.message) {
+      if (error instanceof Error && error.message) {
         showMessage(
           "error",
           error.message

@@ -1,9 +1,10 @@
 import { useState } from "react";
+
 import { updateDisplayName, updatePassword } from "@/api/setting"
-import Sidebar from "@/pages/setting/Sidebar";
 import Button from "@/components/common/Button";
 import Input from "@/components/common/Input"
 import type { SettingSection } from "@/pages/setting/settingSection";
+import Sidebar from "@/pages/setting/Sidebar";
 
 export default function Setting() {
   const [section, setSection] = useState<SettingSection>("username");

@@ -1,6 +1,7 @@
 use crate::model::favorite::Favorite;
 use rusqlite::OptionalExtension;
-use rusqlite::{Connection, Result, params};
+use rusqlite::{Connection, Result, params, params_from_iter};
+use std::collections::HashMap;
 
 pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Favorite>> {
     let sql = "
@@ -62,6 +63,39 @@ pub fn find_by_wiki_id(
     Ok(favorite)
 }
 
+pub fn find_by_note_id(
+    conn: &Connection,
+    user_id: &str,
+    note_id: &str,
+) -> Result<Option<Favorite>> {
+    let sql = "
+        SELECT
+          favorite_id,
+          node_id,
+          note_id,
+          wiki_id
+        FROM
+          favorite
+        WHERE
+          user_id = ?1
+          AND note_id = ?2
+        LIMIT 30
+        ";
+    let mut stmt = conn.prepare(sql)?;
+    let favorite = stmt
+        .query_row(params![user_id, note_id], |row| {
+            Ok(Favorite {
+                favorite_id: row.get(0)?,
+                user_id: String::new(),
+                node_id: row.get(1)?,
+                note_id: row.get(2)?,
+                wiki_id: row.get(3)?,
+            })
+        })
+        .optional()?;
+    Ok(favorite)
+}
+
 pub fn create_favorite(
     conn: &Connection,
     user_id: &str,
@@ -110,4 +144,49 @@ pub fn delete_favorite_wiki(conn: &Connection, user_id: &str, wiki_id: &str) -> 
           AND wiki_id = ?2
         ";
     conn.execute(sql, params![user_id, wiki_id])
+}
+
+pub fn delete_favorite_note(conn: &Connection, user_id: &str, note_id: &str) -> Result<usize> {
+    let sql = "
+        DELETE FROM 
+          favorite
+        WHERE
+          user_id = ?1
+          AND note_id = ?2
+        ";
+    conn.execute(sql, params![user_id, note_id])
+}
+
+// 指定パスのノードのうち、ユーザーがお気に入り登録しているものを path -> favorite_id で返す
+pub fn find_node_favorite_ids_by_paths(
+    conn: &Connection,
+    user_id: &str,
+    paths: &[String],
+) -> Result<HashMap<String, String>> {
+    if paths.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let placeholders = vec!["?"; paths.len()].join(",");
+    let sql = format!(
+        "
+        SELECT
+          node.path,
+          favorite.favorite_id
+        FROM
+          favorite
+          INNER JOIN node ON node.node_id = favorite.node_id
+        WHERE
+          favorite.user_id = ?
+          AND node.path IN ({})
+        ",
+        placeholders
+    );
+
+    let mut stmt = conn.prepare(&sql)?;
+    let params = std::iter::once(user_id).chain(paths.iter().map(String::as_str));
+    stmt.query_map(params_from_iter(params), |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+    })?
+    .collect()
 }

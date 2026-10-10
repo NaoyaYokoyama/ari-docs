@@ -19,4 +19,5 @@ pub struct Node {
     pub description: String,
     pub updated_by: String,
     pub updated_at: String,
+    pub favorite_id: String,
 }

@@ -1,6 +1,6 @@
 
 import { get, post } from "@/api/client";
-import type { WikiList, WikiDetail  } from "@/types/wiki";
+import type { WikiDetail,WikiList  } from "@/types/wiki";
 
 export function getWikis() {
   return get<WikiList>("/api/wikis");
