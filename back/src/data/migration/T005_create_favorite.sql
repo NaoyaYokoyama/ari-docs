@@ -3,7 +3,7 @@
 -- Description : ユーザーごとのお気に入りを管理する
 -- ============================================
 
-DROP TABLE favorite;
+DROP TABLE IF EXISTS favorite;
 CREATE TABLE IF NOT EXISTS favorite (
     favorite_id TEXT PRIMARY KEY,
 

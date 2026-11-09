@@ -1,6 +1,5 @@
 use super::{request::*, response::*};
 use crate::{
-    api::error::ApiError,
     api::response::ApiResponse,
     config::app_state::AppState,
     database::connection,
@@ -8,10 +7,9 @@ use crate::{
 };
 use axum::{
     Json,
-    extract::{Path, State},
+    extract::State,
     http::{HeaderMap, StatusCode},
 };
-use validator::Validate;
 
 pub async fn create_favorite_node(
     State(state): State<AppState>,
@@ -26,7 +24,7 @@ pub async fn create_favorite_node(
     let favorite_id =
         favorite::create_favorite(&conn, &user.user_id, &request.path, &note_id, &wiki_id)
             .map_err(|e| {
-                eprintln!("favorite_note_error: {:?}", e);
+                eprintln!("create_favorite_node error: {:?}", e);
                 StatusCode::INTERNAL_SERVER_ERROR
             })?;
 
@@ -51,7 +49,7 @@ pub async fn create_favorite_note(
     let favorite_id =
         favorite::create_favorite(&conn, &user.user_id, &node_path, &request.id, &wiki_id)
             .map_err(|e| {
-                eprintln!("favorite_note_error: {:?}", e);
+                eprintln!("create_favorite_note error: {:?}", e);
                 StatusCode::INTERNAL_SERVER_ERROR
             })?;
 
@@ -76,7 +74,7 @@ pub async fn create_favorite_wiki(
     let favorite_id =
         favorite::create_favorite(&conn, &user.user_id, &node_path, &note_id, &request.id)
             .map_err(|e| {
-                eprintln!("favorite_wiki_error: {:?}", e);
+                eprintln!("create_favorite_wiki error: {:?}", e);
                 StatusCode::INTERNAL_SERVER_ERROR
             })?;
 
@@ -96,12 +94,12 @@ pub async fn delete_favorite(
     let conn = connection::connect();
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
     favorite::delete_favorite(&conn, &user.user_id, &request.favorite_id).map_err(|e| {
-        eprintln!("update_password error: {:?}", e);
+        eprintln!("delete_favorite error: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
     let response = ApiResponse {
-        message: Some("メモを削除しました。".to_string()),
+        message: Some("お気に入りを解除しました。".to_string()),
         data: None,
     };
 

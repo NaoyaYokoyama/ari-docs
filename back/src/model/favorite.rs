@@ -1,3 +1,5 @@
+// DBテーブルに対応するため、未使用のカラムも保持する
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Favorite {
     pub favorite_id: String,

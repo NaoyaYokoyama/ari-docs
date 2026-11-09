@@ -1,9 +1,9 @@
 -- ============================================
 -- Table : note
--- Description : 個人メモの管理情報
+-- Description : Noteの管理情報
 -- ============================================
 
-DROP TABLE note;
+DROP TABLE IF EXISTS note;
 CREATE TABLE IF NOT EXISTS note (
     note_id TEXT PRIMARY KEY,
 

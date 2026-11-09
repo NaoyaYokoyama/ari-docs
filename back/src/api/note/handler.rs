@@ -1,7 +1,7 @@
 use super::{request::*, response::*};
+use crate::api::history::SavedResponse;
 use crate::{
-    api::error::ApiError,
-    api::response::ApiResponse,
+    api::{error::ApiError, response::ApiResponse},
     config::app_state::AppState,
     database::connection,
     service::{auth, note},
@@ -39,7 +39,7 @@ pub async fn get_note(
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     let response = note::get_note(&conn, &user.user_id, &note_id).map_err(|e| {
-        eprintln!("get_notes error: {:?}", e);
+        eprintln!("get_note error: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
@@ -50,14 +50,15 @@ pub async fn create_note(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(request): Json<CreateNoteRequest>,
-) -> Result<Json<Note>, StatusCode> {
+) -> Result<Json<Note>, ApiError> {
     println!("created start");
+    request.validate()?;
     let conn = connection::connect();
 
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     let response = note::create_note(&conn, &user.user_id, &request.title).map_err(|e| {
-        eprintln!("create_notes error: {:?}", e);
+        eprintln!("create_note error: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
@@ -73,7 +74,7 @@ pub async fn delete_note(
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     note::delete_note(&conn, &user.user_id, &request.note_id).map_err(|e| {
-        eprintln!("update_password error: {:?}", e);
+        eprintln!("delete_note error: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
@@ -89,46 +90,24 @@ pub async fn update_note(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(request): Json<UpdateNoteRequest>,
-) -> Result<Json<ApiResponse<()>>, StatusCode> {
+) -> Result<Json<ApiResponse<SavedResponse>>, ApiError> {
+    request.validate()?;
     let conn = connection::connect();
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
-    note::update_note(
+    let updated_at = note::update_note(
         &conn,
         &user.user_id,
         &request.note_id,
         &request.title,
         &request.content,
-    )
-    .map_err(|e| {
-        eprintln!("update_password error: {:?}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+        request.base_updated_at.as_deref(),
+        request.force,
+    )?;
 
     let response = ApiResponse {
         message: Some("メモを更新しました。".to_string()),
-        data: None,
-    };
-
-    Ok(Json(response))
-}
-
-pub async fn favorite_note(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-    Json(request): Json<FavoriteNoteRequest>,
-) -> Result<Json<ApiResponse<()>>, StatusCode> {
-    let conn = connection::connect();
-    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
-
-    note::favorite_note(&conn, &user.user_id, &request.note_id).map_err(|e| {
-        eprintln!("favorite_wiki_error: {:?}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    let response = ApiResponse {
-        message: Some("お気に入りに登録しました。".to_string()),
-        data: None,
+        data: Some(SavedResponse { updated_at }),
     };
 
     Ok(Json(response))

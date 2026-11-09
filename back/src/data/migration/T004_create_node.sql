@@ -3,7 +3,7 @@
 -- Description : フォルダ・ファイルの管理情報
 -- ============================================
 
-DROP TABLE node;
+DROP TABLE IF EXISTS node;
 CREATE TABLE IF NOT EXISTS node (
     node_id TEXT PRIMARY KEY,
 

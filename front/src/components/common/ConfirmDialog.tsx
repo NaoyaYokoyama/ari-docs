@@ -1,3 +1,5 @@
+import { TriangleAlert } from "lucide-react";
+
 import Button from "@/components/common/Button";
 
 type Props = {
@@ -18,35 +20,24 @@ export default function ConfirmDialog({
   }
 
   return (
-    <div
-      className="
-        fixed inset-0 z-50
-        flex items-center justify-center
-        bg-black/30
-      "
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 animate-in fade-in-0">
       <div
-        className="
-          w-100
-          rounded-lg
-          bg-white
-          p-5
-          shadow-xl
-        "
+        role="alertdialog"
+        aria-modal="true"
+        className="w-full max-w-sm rounded-xl border border-border bg-card p-5 text-card-foreground shadow-xl animate-in zoom-in-95 fade-in-0"
       >
-        <p className="mb-6 text-sm text-slate-700">
-          {message}
-        </p>
+        <div className="mb-5 flex gap-3">
+          <TriangleAlert size={20} className="mt-0.5 shrink-0 text-warning" />
+          <p className="text-sm leading-relaxed">{message}</p>
+        </div>
 
         <div className="flex justify-end gap-2">
-          <Button
-            variant="secondary"
-            onClick={onCancel}
-          >
+          <Button variant="secondary" onClick={onCancel}>
             キャンセル
           </Button>
 
-          <Button onClick={onConfirm}>
+          {/* 開いたらすぐ Enter で決定できるようにする */}
+          <Button autoFocus onClick={onConfirm}>
             OK
           </Button>
         </div>

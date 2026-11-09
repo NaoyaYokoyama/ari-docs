@@ -3,7 +3,7 @@
 -- Description : ロールおよび機能ごとの権限を管理する
 -- ============================================
 
-DROP TABLE role;
+DROP TABLE IF EXISTS role;
 CREATE TABLE IF NOT EXISTS role (
     user_id TEXT PRIMARY KEY,
 

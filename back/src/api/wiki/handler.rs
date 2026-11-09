@@ -1,4 +1,5 @@
 use super::{request::*, response::*};
+use crate::api::history::SavedResponse;
 use crate::{
     api::error::ApiError,
     api::response::ApiResponse,
@@ -19,9 +20,9 @@ pub async fn get_wikis(
 ) -> Result<Json<WikiResponse>, StatusCode> {
     let conn = connection::connect();
 
-    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
-    let response = wiki::get_wikis(&conn, &user.user_id).map_err(|e| {
+    let response = wiki::get_wikis(&conn).map_err(|e| {
         eprintln!("get_wikis error: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
@@ -39,7 +40,7 @@ pub async fn get_wiki(
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     let response = wiki::get_wiki(&conn, &user.user_id, &wiki_id).map_err(|e| {
-        eprintln!("get_wikis error: {:?}", e);
+        eprintln!("get_wiki error: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
@@ -58,7 +59,7 @@ pub async fn create_wiki(
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     let response = wiki::create_wiki(&conn, &user.user_id, &request.title).map_err(|e| {
-        eprintln!("create_wikis error: {:?}", e);
+        eprintln!("create_wiki error: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
@@ -71,15 +72,15 @@ pub async fn delete_wiki(
     Json(request): Json<WikiQuery>,
 ) -> Result<Json<ApiResponse<()>>, StatusCode> {
     let conn = connection::connect();
-    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
-    wiki::delete_wiki(&conn, &user.user_id, &request.wiki_id).map_err(|e| {
-        eprintln!("update_password error: {:?}", e);
+    wiki::delete_wiki(&conn, &request.wiki_id).map_err(|e| {
+        eprintln!("delete_wiki error: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
     let response = ApiResponse {
-        message: Some("メモを削除しました。".to_string()),
+        message: Some("Wikiを削除しました。".to_string()),
         data: None,
     };
 
@@ -90,46 +91,24 @@ pub async fn update_wiki(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(request): Json<UpdateWikiRequest>,
-) -> Result<Json<ApiResponse<()>>, StatusCode> {
+) -> Result<Json<ApiResponse<SavedResponse>>, ApiError> {
+    request.validate()?;
     let conn = connection::connect();
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
-    wiki::update_wiki(
+    let updated_at = wiki::update_wiki(
         &conn,
         &user.user_id,
         &request.wiki_id,
         &request.title,
         &request.content,
-    )
-    .map_err(|e| {
-        eprintln!("update_password error: {:?}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+        request.base_updated_at.as_deref(),
+        request.force,
+    )?;
 
     let response = ApiResponse {
-        message: Some("メモを更新しました。".to_string()),
-        data: None,
-    };
-
-    Ok(Json(response))
-}
-
-pub async fn favorite_wiki(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-    Json(request): Json<FavoriteWikiRequest>,
-) -> Result<Json<ApiResponse<()>>, StatusCode> {
-    let conn = connection::connect();
-    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
-
-    wiki::favorite_wiki(&conn, &user.user_id, &request.wiki_id).map_err(|e| {
-        eprintln!("favorite_wiki_error: {:?}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    let response = ApiResponse {
-        message: Some("お気に入りに登録しました。".to_string()),
-        data: None,
+        message: Some("Wikiを更新しました。".to_string()),
+        data: Some(SavedResponse { updated_at }),
     };
 
     Ok(Json(response))

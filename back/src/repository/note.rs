@@ -11,7 +11,6 @@ pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Note>> {
           note
         WHERE user_id = ?1
         ORDER BY title ASC 
-        LIMIT 30
         ";
     let mut stmt = conn.prepare(sql)?;
     let notes = stmt
@@ -28,7 +27,7 @@ pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Note>> {
     Ok(notes)
 }
 
-pub fn find_by_search(conn: &Connection, keyword: &str) -> Result<Vec<Note>> {
+pub fn find_by_search(conn: &Connection, user_id: &str, keyword: &str) -> Result<Vec<Note>> {
     let sql = "
         SELECT
           note_id,
@@ -37,13 +36,16 @@ pub fn find_by_search(conn: &Connection, keyword: &str) -> Result<Vec<Note>> {
         FROM
           note
         WHERE
-          title Like '%' || ?1 || '%'
-          OR content Like '%' || ?1 || '%'
+          user_id = ?2
+          AND (
+            title Like '%' || ?1 || '%'
+            OR content Like '%' || ?1 || '%'
+          )
         ORDER BY updated_at ASC 
         ";
     let mut stmt = conn.prepare(sql)?;
     let notes = stmt
-        .query_map(params![keyword], |row| {
+        .query_map(params![keyword, user_id], |row| {
             Ok(Note {
                 note_id: row.get(0)?,
                 user_id: String::new(),
@@ -166,4 +168,30 @@ pub fn update_note(
           AND note_id = ?2
         ";
     conn.execute(sql, params![user_id, note_id, title, content])
+}
+
+// 本人の最近更新した Note（ホーム。FN0201-BR07）。戻り値は (note_id, title, updated_at)
+pub fn find_recent(
+    conn: &Connection,
+    user_id: &str,
+    limit: i64,
+) -> Result<Vec<(String, String, String)>> {
+    let sql = "
+        SELECT
+          note_id,
+          title,
+          updated_at
+        FROM
+          note
+        WHERE
+          user_id = ?1
+        ORDER BY
+          updated_at DESC
+        LIMIT ?2
+        ";
+    let mut stmt = conn.prepare(sql)?;
+    stmt.query_map(params![user_id, limit], |row| {
+        Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+    })?
+    .collect()
 }

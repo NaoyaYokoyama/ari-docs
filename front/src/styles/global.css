@@ -16,6 +16,10 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
@@ -27,6 +31,7 @@
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
+  --color-selected: var(--selected);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -62,6 +67,8 @@
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
   --accent: oklch(0.97 0 0);
+  /* 選んだ行の背景（差し色を薄く。ダークは背景に溶けないよう濃いめ） */
+  --selected: color-mix(in oklch, var(--brand) 16%, transparent);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
@@ -81,6 +88,11 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  /* アプリの差し色（ロゴ・選択中の印・リンク） */
+  --brand: oklch(0.55 0.17 255);
+  --brand-foreground: oklch(0.985 0 0);
+  --success: oklch(0.6 0.15 150);
+  --warning: oklch(0.7 0.16 65);
 }
 
 .dark {
@@ -97,6 +109,7 @@
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
+  --selected: color-mix(in oklch, var(--brand) 32%, transparent);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
@@ -115,6 +128,10 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --brand: oklch(0.7 0.14 255);
+  --brand-foreground: oklch(0.145 0 0);
+  --success: oklch(0.72 0.15 150);
+  --warning: oklch(0.8 0.15 70);
 }
 
 @layer base {
@@ -126,26 +143,59 @@
   }
   html {
     @apply font-sans;
+    color-scheme: light;
   }
-  h1 {
-    @apply text-lg py-5;
+  html.dark {
+    color-scheme: dark;
   }
-  h2 {
-    @apply text-lg py-3;
-  }
-  main {
-     @apply p-5;
-     @apply w-full;
+  button:not(:disabled) {
+    @apply cursor-pointer;
   }
 }
 
-.w-md-editor-text .w-md-editor-text-pre > code {
-  font-size: 16px !important;
-  line-height: 24px !important;
+/* Markdown エディタ・プレビューの背景と枠は画面に合わせる（エディタのダーク配色より優先する） */
+[data-color-mode] .w-md-editor,
+[data-color-mode] .w-md-editor-toolbar,
+[data-color-mode] .wmde-markdown {
+  --color-canvas-default: var(--background);
+  background-color: var(--background);
+}
+[data-color-mode] .w-md-editor {
+  --md-editor-background-color: var(--background);
+  border: 0;
+  box-shadow: none;
+}
+[data-color-mode] .w-md-editor-toolbar {
+  border-bottom-color: var(--border);
 }
 
+/* 文字の大きさの設定（FN0701）に合わせて大きくなるよう rem で指定する。
+   字体は等幅（日本語は半角 2 文字分）にし、整えた表（FN0404-BR03）の | が縦にそろって見えるようにする（Vim のエディタと同じ字体） */
+.w-md-editor-text .w-md-editor-text-pre > code,
 .w-md-editor-text .w-md-editor-text-input {
-  font-size: 16px !important;
-  line-height: 24px !important;
+  font-family: ui-monospace, SFMono-Regular, "Cascadia Code", Menlo, Consolas, "Noto Sans Mono CJK JP", "BIZ UDGothic", "MS Gothic", monospace !important;
+  font-size: 1rem !important;
+  line-height: 1.5rem !important;
 }
 
+/* 「画面の動きを減らす」の設定（FN0701） */
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  transition-duration: 0s !important;
+  scroll-behavior: auto !important;
+}
+
+
+/* Vim モード（FN0702）: 今いる領域と、サイドバーで選んでいる行を見えるようにする */
+html.vim-mode [data-vim-pane]:focus-within,
+html.vim-mode main:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 2px color-mix(in oklch, var(--ring) 70%, transparent);
+}
+html.vim-mode [data-vim-item]:focus {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}

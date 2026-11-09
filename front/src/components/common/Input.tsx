@@ -1,29 +1,22 @@
-import type { InputHTMLAttributes } from "react";
+import { forwardRef, type InputHTMLAttributes } from "react";
+import { twMerge } from "tailwind-merge";
 
 type Props = InputHTMLAttributes<HTMLInputElement>;
 
-export default function Input({
-  className = "",
-  ...props
-}: Props) {
-
-  console.log(props);
+const Input = forwardRef<HTMLInputElement, Props>(function Input(
+  { className, ...props },
+  ref,
+) {
   return (
     <input
+      ref={ref}
       {...props}
-      className={`
-        rounded-md
-        border
-        border-gray-300
-        bg-white
-        px-3
-        py-2
-        text-sm
-        outline-none
-        focus:ring-2
-        focus:ring-gray-400
-        ${className}
-      `}
+      className={twMerge(
+        "h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground transition-colors outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30 disabled:opacity-50",
+        className,
+      )}
     />
   );
-}
+});
+
+export default Input;

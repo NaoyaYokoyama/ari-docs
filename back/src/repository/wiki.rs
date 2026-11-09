@@ -1,7 +1,8 @@
 use crate::model::wiki::Wiki;
 use rusqlite::{Connection, Result, params, params_from_iter};
 
-pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Wiki>> {
+// Wikiは全ユーザーで共有するため、作成者(user_id)では絞り込まない
+pub fn find_all(conn: &Connection) -> Result<Vec<Wiki>> {
     let sql = "
         SELECT
           wiki_id,
@@ -9,16 +10,13 @@ pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Wiki>> {
           updated_at
         FROM
           wiki
-        WHERE
-          user_id = ?1
         ORDER BY
           title ASC 
-        LIMIT 30
         ";
     let mut stmt = conn.prepare(sql)?;
 
     let wikis = stmt
-        .query_map([user_id], |row| {
+        .query_map([], |row| {
             Ok(Wiki {
                 wiki_id: row.get(0)?,
                 user_id: String::new(),
@@ -31,7 +29,7 @@ pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Wiki>> {
     Ok(wikis)
 }
 
-pub fn find_by_wiki_id(conn: &Connection, user_id: &str, wiki_id: &str) -> Result<Wiki> {
+pub fn find_by_wiki_id(conn: &Connection, wiki_id: &str) -> Result<Wiki> {
     let sql = "
         SELECT
           wiki_id,
@@ -41,13 +39,12 @@ pub fn find_by_wiki_id(conn: &Connection, user_id: &str, wiki_id: &str) -> Resul
         FROM
           wiki
         WHERE
-          user_id = ?1
-          AND wiki_id = ?2
+          wiki_id = ?1
         ";
 
     let mut stmt = conn.prepare(sql)?;
 
-    let wiki = stmt.query_row(params![user_id, wiki_id], |row| {
+    let wiki = stmt.query_row(params![wiki_id], |row| {
         Ok(Wiki {
             wiki_id: row.get(0)?,
             user_id: String::new(),
@@ -59,11 +56,7 @@ pub fn find_by_wiki_id(conn: &Connection, user_id: &str, wiki_id: &str) -> Resul
     Ok(wiki)
 }
 
-pub fn find_by_wiki_ids(
-    conn: &Connection,
-    user_id: &str,
-    wiki_ids: &[String],
-) -> Result<Vec<Wiki>> {
+pub fn find_by_wiki_ids(conn: &Connection, wiki_ids: &[String]) -> Result<Vec<Wiki>> {
     if wiki_ids.is_empty() {
         return Ok(Vec::new());
     }
@@ -78,15 +71,13 @@ pub fn find_by_wiki_ids(
             FROM
               wiki
             WHERE
-              user_id = ?
-              AND wiki_id IN ({})
+              wiki_id IN ({})
             ",
         placeholders
     );
-    let params = std::iter::once(user_id).chain(wiki_ids.iter().map(String::as_str));
     let mut stmt = conn.prepare(&sql)?;
     let wikis = stmt
-        .query_map(params_from_iter(params), |row| {
+        .query_map(params_from_iter(wiki_ids), |row| {
             Ok(Wiki {
                 wiki_id: row.get(0)?,
                 user_id: String::new(),
@@ -108,7 +99,7 @@ pub fn find_by_search(conn: &Connection, keyword: &str) -> Result<Vec<Wiki>> {
           updated_at
         FROM
           wiki
-        WHERE 
+        WHERE
           title Like '%' || ?1 || '%'
           OR content Like '%' || ?1 || '%'
         ";
@@ -150,34 +141,69 @@ pub fn create_wiki(conn: &Connection, user_id: &str, wiki_id: &str, title: &str)
     Ok(conn.last_insert_rowid())
 }
 
-pub fn delete_wiki(conn: &Connection, user_id: &str, wiki_id: &str) -> Result<usize> {
+pub fn delete_wiki(conn: &Connection, wiki_id: &str) -> Result<usize> {
     let sql = "
-        DELETE FROM 
+        DELETE FROM
           wiki
         WHERE
-          user_id = ?1
-          AND wiki_id = ?2
+          wiki_id = ?1
         ";
-    conn.execute(sql, params![user_id, wiki_id])
+    conn.execute(sql, params![wiki_id])
 }
 
 pub fn update_wiki(
     conn: &Connection,
-    user_id: &str,
     wiki_id: &str,
     title: &str,
     content: &str,
+    updated_by: &str,
 ) -> Result<usize> {
     let sql = "
         UPDATE
           wiki
         SET
-          title = ?3,
-          content = ?4,
+          title = ?2,
+          content = ?3,
+          updated_by = ?4,
           updated_at = CURRENT_TIMESTAMP
         WHERE
-          user_id = ?1
-          AND wiki_id = ?2
+          wiki_id = ?1
         ";
-    conn.execute(sql, params![user_id, wiki_id, title, content])
+    conn.execute(sql, params![wiki_id, title, content, updated_by])
+}
+
+// 最後に更新した人（まだ誰も更新していなければ作成者）の表示名（FN0501-BR09）
+pub fn find_updated_by_name(conn: &Connection, wiki_id: &str) -> Result<String> {
+    let sql = "
+        SELECT
+          COALESCE(user.display_name, CASE wiki.updated_by WHEN '' THEN wiki.user_id ELSE wiki.updated_by END)
+        FROM
+          wiki
+          LEFT JOIN user ON user.user_id = CASE wiki.updated_by WHEN '' THEN wiki.user_id ELSE wiki.updated_by END
+        WHERE
+          wiki.wiki_id = ?1
+        ";
+    conn.query_row(sql, [wiki_id], |row| row.get(0))
+}
+
+// 最近更新された Wiki（ホーム。FN0201-BR07）。戻り値は (wiki_id, title, updated_at, 最後に更新した人の表示名)
+pub fn find_recent(conn: &Connection, limit: i64) -> Result<Vec<(String, String, String, String)>> {
+    let sql = "
+        SELECT
+          wiki.wiki_id,
+          wiki.title,
+          wiki.updated_at,
+          COALESCE(user.display_name, CASE wiki.updated_by WHEN '' THEN wiki.user_id ELSE wiki.updated_by END)
+        FROM
+          wiki
+          LEFT JOIN user ON user.user_id = CASE wiki.updated_by WHEN '' THEN wiki.user_id ELSE wiki.updated_by END
+        ORDER BY
+          wiki.updated_at DESC
+        LIMIT ?1
+        ";
+    let mut stmt = conn.prepare(sql)?;
+    stmt.query_map([limit], |row| {
+        Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
+    })?
+    .collect()
 }

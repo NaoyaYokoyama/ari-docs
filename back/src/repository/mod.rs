@@ -1,6 +1,14 @@
+pub mod backup;
+pub mod content_folder;
+pub mod content_image;
 pub mod favorite;
+pub mod history;
 pub mod node;
 pub mod note;
+pub mod search;
+pub mod session;
 pub mod setting;
+pub mod system_setting;
+pub mod trash;
 pub mod user;
 pub mod wiki;

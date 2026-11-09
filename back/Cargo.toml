@@ -3,13 +3,23 @@ name = "back"
 version = "0.1.0"
 edition = "2024"
 
+# デスクトップアプリ（desktop/src-tauri）から同じプロセスで起動するためのライブラリ
+[lib]
+name = "ari_back"
+path = "src/lib.rs"
+
+# 開発用（cd back && cargo run）
+[[bin]]
+name = "back"
+path = "src/main.rs"
+
 [dependencies]
 axum = { version = "0.8", features = ["multipart"] }
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tower-http = { version = "0.6", features = ["cors"] }
-rusqlite = { version = "0.37", features = ["bundled"] }
+rusqlite = { version = "0.37", features = ["bundled", "backup"] }
 chrono = "0.4"
 rand_core = { version = "0.6", features = ["std"] }
 argon2 = "0.5.3"
@@ -22,3 +32,33 @@ tokio-cron-scheduler = "0.15.1"
 open = "5.4.2"
 rust-embed = "8.12.0"
 ulid = "3.0.0"
+# ファイルの中身の検索（FN0202）。日本語の単語の区切り（IPADIC を組み込む）と、各形式からの文字の取り出し
+lindera = { version = "6.2.0", features = ["embed-ipadic"] }
+calamine = "0.37.0"
+pdf-extract = "0.12.1"
+# PDF の中の画像を取り出す（文字認識。pdf-extract と同じ版・機能にそろえる）
+lopdf = { version = "0.42", default-features = false }
+# 文字認識（PaddleOCR PP-OCRv6 を ONNX Runtime で動かす。ONNX Runtime は組み込む。FN0202-BR11）
+oar-ocr = "0.10.2"
+# PDF のページを画像に描く（スキャン・白黒の複合機の形式・文字を図形にした PDF を文字認識するため）
+hayro = { version = "0.9.0", default-features = false }
+image = "0.25"
+zip = { version = "9.1.3", default-features = false, features = ["deflate"] }
+quick-xml = "0.42.0"
+encoding_rs = "0.8.42"
+# 共有サーバーの HTTPS（FN0101-BR14）。暗号は ring を使う（Windows でも C コンパイラだけでビルドできるため）
+axum-server = { version = "0.8.0", features = ["tls-rustls-no-provider"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+# folder/ の変更を OS から知らせてもらう（BAT0301）
+notify = "8"
+# バックアップのファイルを分けて送る（大きなファイルを一度にメモリに読まないため）
+tokio-util = { version = "0.7", features = ["io"] }
+unicode-normalization = "0.1.24"
+
+[build-dependencies]
+# 文字認識のモデルの確認（build_models.rs）
+sha2 = "0.10"
+
+# 開発用のビルドでも外部の部品は最適化する（文字認識・PDF の描画・単語の区切りは、最適化しないと数倍遅いため）
+[profile.dev.package."*"]
+opt-level = 2

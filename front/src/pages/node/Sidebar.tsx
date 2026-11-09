@@ -1,148 +1,159 @@
-import {
-  ChevronDown,
-  ChevronRight,
-  Folder,
-} from "lucide-react";
+import { ChevronDown, ChevronRight, Folder, FolderOpen, HardDrive, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { twMerge } from "tailwind-merge";
 
 import { getNodes } from "@/api/node";
+import PageSidebar from "@/components/common/PageSidebar";
 import type { Node } from "@/types/node";
 import { NodeType } from "@/types/nodeType";
 
 type Props = {
   currentPath: string;
   onNavigate: (path: string) => void;
+  // ゴミ箱を表示している
+  trashOpen: boolean;
+  onOpenTrash: () => void;
+  // 作成・削除・アップロードのたびに増やし、ツリーを読み込み直す
+  version: number;
 };
 
 type TreeProps = {
   path: string;
+  depth: number;
   currentPath: string;
   onNavigate: (path: string) => void;
+  version: number;
 };
 
-function Tree({
-  path,
-  currentPath,
-  onNavigate,
-}: TreeProps) {
+function Tree({ path, depth, currentPath, onNavigate, version }: TreeProps) {
   const [nodes, setNodes] = useState<Node[]>([]);
-  const [openPaths, setOpenPaths] = useState<Set<string>>(
-    new Set(),
-  );
+  const [openPaths, setOpenPaths] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    const loadNodes = async () => {
-      const response = await getNodes(path);
-
-      setNodes(
-        response.nodes.filter(
-          (node) => node.nodeType === NodeType.Folder,
+    getNodes(path)
+      .then((response) =>
+        setNodes(
+          response.nodes
+            .filter((node) => node.nodeType === NodeType.Folder)
+            .sort((a, b) => a.name.localeCompare(b.name, "ja")),
         ),
-      );
-    };
+      )
+      .catch(() => setNodes([]));
+  }, [path, version]);
 
-    void loadNodes();
-  }, [path]);
-
-  const handleToggle = (path: string) => {
+  const toggle = (target: string) => {
     setOpenPaths((current) => {
       const next = new Set(current);
-
-      if (next.has(path)) {
-        next.delete(path);
+      if (next.has(target)) {
+        next.delete(target);
       } else {
-        next.add(path);
+        next.add(target);
       }
-
       return next;
     });
   };
 
   return (
-    <div>
+    <ul>
       {nodes.map((node) => {
-        const open =
-          openPaths.has(node.path) ||
-          currentPath === node.path ||
-          currentPath.startsWith(`${node.path}/`);
-
-        const selected =
-          currentPath === node.path;
+        // 表示中のフォルダまでの道筋は開いておく
+        const inPath = currentPath === node.path || currentPath.startsWith(`${node.path}/`);
+        const open = openPaths.has(node.path) !== inPath;
+        const selected = currentPath === node.path;
+        const Icon = open ? FolderOpen : Folder;
 
         return (
-          <div key={node.nodeId}>
-            <div className="flex items-center gap-1">
-              {nodes.length > 0 ? (
-                <button
-                  type="button"
-                  className="shrink-0 rounded p-0.5 hover:bg-slate-200"
-                  onClick={() =>
-                    handleToggle(node.path)
-                  }
-                >
-                  {open ? (
-                    <ChevronDown size={14} />
-                  ) : (
-                    <ChevronRight size={14} />
-                  )}
-                </button>
-              ) : (
-                <div className="w-5" />
+          <li key={node.path}>
+            <div
+              // Vim モード（FN0702）: 行は j・k、l で開く、h で閉じる・上の階層へ
+              data-vim-row
+              className={twMerge(
+                "group flex h-7 items-center rounded-md text-sm",
+                selected ? "bg-accent font-medium" : "hover:bg-accent/60",
               )}
+              style={{ paddingLeft: depth * 12 }}
+            >
+              <button
+                type="button"
+                aria-label={open ? "閉じる" : "開く"}
+                className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                onClick={() => toggle(node.path)}
+                data-vim-toggle
+              >
+                {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </button>
 
               <button
                 type="button"
-                className={`flex h-7 w-full items-center gap-1 rounded px-1 text-left ${
-                  selected
-                    ? "bg-slate-300"
-                    : "hover:bg-slate-200"
-                }`}
-                onClick={() =>
-                  onNavigate(node.path)
-                }
+                className="flex h-full min-w-0 flex-1 items-center gap-1.5 pr-2 text-left"
+                onClick={() => onNavigate(node.path)}
+                title={node.path}
+                data-vim-item
+                data-vim-depth={depth + 1}
+                // 閉じているときは l でそのフォルダへ移る（移ると開く）ため、開いているときだけ付ける
+                data-vim-expanded={open ? "true" : undefined}
+                data-vim-selected={selected || undefined}
               >
-                <Folder
-                  size={16}
-                  className="shrink-0"
-                />
-
-                <span
-                  className="min-w-0 flex-1 truncate"
-                  title={node.name}
-                >
-                  {node.name}
-                </span>
+                <Icon size={15} className={twMerge("shrink-0", selected ? "text-brand" : "text-muted-foreground")} />
+                <span className="truncate">{node.name}</span>
               </button>
             </div>
 
             {open && (
-              <div className="ml-5">
-                <Tree
-                  path={node.path}
-                  currentPath={currentPath}
-                  onNavigate={onNavigate}
-                />
-              </div>
+              <Tree
+                path={node.path}
+                depth={depth + 1}
+                currentPath={currentPath}
+                onNavigate={onNavigate}
+                version={version}
+              />
             )}
-          </div>
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 }
 
-function Sidebar({
-  currentPath,
-  onNavigate,
-}: Props) {
+function Sidebar({ currentPath, onNavigate, trashOpen, onOpenTrash, version }: Props) {
+  // ゴミ箱を表示している間は、ツリーのフォルダを強調しない
+  const shownPath = trashOpen ? null : currentPath;
   return (
-    <aside className="w-72 bg-slate-100 p-2 pr-11">
-      <Tree
-        path=""
-        currentPath={currentPath}
-        onNavigate={onNavigate}
-      />
-    </aside>
+    <PageSidebar title="フォルダ" className="w-72">
+      <div className="flex h-full flex-col">
+        <div className="min-h-0 flex-1">
+          <button
+            type="button"
+            onClick={() => onNavigate("")}
+            data-vim-item
+            data-vim-depth={0}
+            data-vim-selected={shownPath === "" || undefined}
+            className={twMerge(
+              "mb-0.5 flex h-7 w-full items-center gap-1.5 rounded-md px-1.5 text-left text-sm",
+              shownPath === "" ? "bg-accent font-medium" : "hover:bg-accent/60",
+            )}
+          >
+            <HardDrive size={15} className={shownPath === "" ? "text-brand" : "text-muted-foreground"} />
+            folder
+          </button>
+          <Tree path="" depth={0} currentPath={shownPath ?? "\u0000"} onNavigate={onNavigate} version={version} />
+        </div>
+        <button
+          type="button"
+          onClick={onOpenTrash}
+          data-vim-item
+          data-vim-depth={0}
+          data-vim-selected={trashOpen || undefined}
+          className={twMerge(
+            "sticky bottom-0 mt-2 flex h-8 w-full shrink-0 items-center gap-1.5 rounded-md bg-sidebar px-1.5 text-left text-sm",
+            trashOpen ? "bg-accent font-medium" : "hover:bg-accent/60",
+          )}
+        >
+          <Trash2 size={15} className={trashOpen ? "text-brand" : "text-muted-foreground"} />
+          ゴミ箱
+        </button>
+      </div>
+    </PageSidebar>
   );
 }
 

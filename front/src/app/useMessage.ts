@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export function useMessage(
   loading: boolean,
@@ -7,18 +7,24 @@ export function useMessage(
   const [text, setText] = useState("");
   const [type, setType] =
     useState<"info" | "error">("info");
+  // 同じ文言を続けて出したときも表示し直すための番号
+  const [id, setId] = useState(0);
 
-  const showMessage = (
-    type: "info" | "error",
-    text: string,
-  ) => {
-    setType(type);
-    setText(text);
-  };
+  const showMessage = useCallback(
+    (
+      type: "info" | "error",
+      text: string,
+    ) => {
+      setType(type);
+      setText(text);
+      setId((current) => current + 1);
+    },
+    [],
+  );
 
-  const closeMessage = () => {
+  const closeMessage = useCallback(() => {
     setText("");
-  };
+  }, []);
 
   useEffect(() => {
     if (loading) {
@@ -36,11 +42,12 @@ export function useMessage(
         storedMessage,
       );
     }
-  }, [loading, user]);
+  }, [loading, user, showMessage]);
 
   return {
     text,
     type,
+    id,
     showMessage,
     closeMessage,
   };

@@ -20,4 +20,13 @@ pub struct Node {
     pub updated_by: String,
     pub updated_at: String,
     pub favorite_id: String,
+    // ファイルのサイズ（バイト）。フォルダは 0
+    pub size: u64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CopyNodesResponse {
+    // コピーしてできた名前（同じ名前があれば「 - コピー」を付ける）
+    pub names: Vec<String>,
 }

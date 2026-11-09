@@ -1,6 +1,8 @@
 use crate::{
-    api::setting::response::SettingResponse, repository::setting as setting_repository,
-    service::auth::hash_password,
+    api::setting::response::{DocsRootResponse, SettingResponse},
+    config::app::AppMode,
+    repository::setting as setting_repository,
+    service::docs,
 };
 use rusqlite::Connection;
 
@@ -16,19 +18,48 @@ pub fn update_display_name(
     Ok(SettingResponse {})
 }
 
-pub fn update_password(
+pub enum DocsRootError {
+    // 共有モードでは設定できない
+    Forbidden,
+    // 存在しない、またはフォルダではない
+    Invalid(String),
+    Db(rusqlite::Error),
+}
+
+pub fn get_docs_root(
     conn: &Connection,
     user_id: &str,
-    current_password: &str,
-    new_password: &str,
-    new_password_confirm: &str,
-) -> rusqlite::Result<SettingResponse> {
-    println!("{}", current_password);
-    println!("{}", new_password_confirm);
-    let password = hash_password(&new_password);
-    let result = setting_repository::update_password(conn, user_id, &password)?;
-    if result == 0 {
-        return Err(rusqlite::Error::QueryReturnedNoRows);
+    default_root: &str,
+) -> rusqlite::Result<DocsRootResponse> {
+    Ok(DocsRootResponse {
+        docs_root: setting_repository::find_docs_root(conn, user_id)?,
+        default_root: docs::absolute_default_root(default_root),
+    })
+}
+
+// 空文字なら解除する。それ以外は存在するフォルダかを確かめ、絶対パスで保存する
+pub fn update_docs_root(
+    conn: &Connection,
+    mode: &AppMode,
+    user_id: &str,
+    docs_root: &str,
+    default_root: &str,
+) -> Result<DocsRootResponse, DocsRootError> {
+    if !mode.is_local() {
+        return Err(DocsRootError::Forbidden);
     }
-    Ok(SettingResponse {})
+    let docs_root = docs_root.trim();
+    let saved = if docs_root.is_empty() {
+        String::new()
+    } else {
+        docs::canonical_dir(docs_root)
+            .map_err(|_| DocsRootError::Invalid(docs_root.to_string()))?
+            .to_string_lossy()
+            .to_string()
+    };
+    setting_repository::upsert_docs_root(conn, user_id, &saved).map_err(DocsRootError::Db)?;
+    Ok(DocsRootResponse {
+        docs_root: saved,
+        default_root: docs::absolute_default_root(default_root),
+    })
 }

@@ -1,56 +1,79 @@
-import { Search } from "lucide-react";
-import { useEffect,useRef, useState } from "react";
+import { LoaderCircle, Search, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 
-import { search } from "@/api/home";
-import type { SearchItem } from "@/types/searchItem";
-
 type Props = {
-  onSearch: (items: SearchItem[]) => void;
+  searching: boolean;
+  onSearch: (keyword: string) => void;
+  onClear: () => void;
 };
 
-function SearchBar({
-  onSearch,
-}: Props) {
-
+function SearchBar({ searching, onSearch, onClear }: Props) {
   const location = useLocation();
   const searchRef = useRef<HTMLInputElement>(null);
   const [keyword, setKeyword] = useState("");
 
+  // Alt+1 で来たとき・初めて開いたときは検索欄にフォーカスする
   useEffect(() => {
-    if (location.state?.focus === "search") {
-      searchRef.current?.focus();
-    }
-  }, []);
+    searchRef.current?.focus();
+  }, [location.key]);
 
-  const handleSearch = async (
-    event: React.KeyboardEvent<HTMLInputElement>,
-  ) => {
-    if (event.key !== "Enter") {
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
+      setKeyword("");
+      onClear();
       return;
     }
-
-    const response = await search(keyword);
-
-    onSearch(response.searchItems);
+    // 変換を確定する Enter では検索しない（FN0201-BR04）
+    if (event.key !== "Enter" || event.nativeEvent.isComposing) {
+      return;
+    }
+    const trimmed = keyword.trim();
+    if (trimmed) {
+      onSearch(trimmed);
+    }
   };
 
   return (
-    <div className="relative w-full max-w-2xl">
+    <div className="relative w-full">
       <Search
-        size={20}
-        className="absolute top-1/2 left-4 -translate-y-1/2 text-slate-400"
+        size={18}
+        className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-muted-foreground"
       />
 
       <input
-        ref={searchRef }
+        ref={searchRef}
         type="text"
         value={keyword}
         onChange={(event) => setKeyword(event.target.value)}
-        onKeyDown={handleSearch}
-        placeholder="ファイル、Wiki、個人メモを検索"
-        className="w-full rounded-full border border-slate-300 bg-white py-3 pr-4 pl-12 text-base transition outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+        onKeyDown={handleKeyDown}
+        // Vim モードの / で移る（FN0702）
+        data-vim-filter
+        placeholder="ファイル、Wiki、Noteを検索（Enter）"
+        className="h-12 w-full rounded-full border border-input bg-background pr-12 pl-11 text-base shadow-sm transition outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-4 focus:ring-ring/20"
       />
+
+      <div className="absolute top-1/2 right-3 -translate-y-1/2">
+        {searching ? (
+          <LoaderCircle size={18} className="animate-spin text-muted-foreground" />
+        ) : (
+          keyword && (
+            <button
+              type="button"
+              aria-label="クリア"
+              title="クリア（Esc）"
+              onClick={() => {
+                setKeyword("");
+                onClear();
+                searchRef.current?.focus();
+              }}
+              className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-accent"
+            >
+              <X size={16} />
+            </button>
+          )
+        )}
+      </div>
     </div>
   );
 }

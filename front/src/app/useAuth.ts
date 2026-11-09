@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { getMe, logout as logoutApi } from "@/api/auth";
 import type { LoginUser } from "@/app/AppContext";
 
 export function useAuth() {
@@ -7,44 +8,21 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   const logout = async () => {
-    const response = await fetch(
-      "http://localhost:8080/api/logout",
-      {
-        method: "POST",
-        credentials: "include",
-      },
-    );
-
-    if (response.ok) {
-      setUser(null);
+    try {
+      await logoutApi();
+    } catch (error) {
+      console.error("ログアウトに失敗しました", error);
     }
+    setUser(null);
   };
 
   useEffect(() => {
     const checkLogin = async () => {
       try {
-        const response = await fetch(
-          "http://localhost:8080/api/me",
-          {
-            credentials: "include",
-          },
-        );
-
-        if (!response.ok) {
-          setUser(null);
-          return;
-        }
-
-        const loginUser: LoginUser =
-          await response.json();
-
-        setUser(loginUser);
+        setUser(await getMe());
       } catch (error) {
-        console.error(
-          "ログイン確認に失敗しました",
-          error,
-        );
-
+        // 未ログイン、またはサーバーに接続できない（ログイン画面で接続を確かめる）
+        console.error("ログイン確認に失敗しました", error);
         setUser(null);
       } finally {
         setLoading(false);

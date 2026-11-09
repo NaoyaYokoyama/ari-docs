@@ -12,6 +12,15 @@ pub struct ApiError {
     message: String,
 }
 
+impl ApiError {
+    pub fn new(status: StatusCode, message: impl Into<String>) -> Self {
+        Self {
+            status,
+            message: message.into(),
+        }
+    }
+}
+
 impl From<ValidationErrors> for ApiError {
     fn from(error: ValidationErrors) -> Self {
         let message = error
@@ -24,6 +33,23 @@ impl From<ValidationErrors> for ApiError {
         Self {
             status: StatusCode::BAD_REQUEST,
             message,
+        }
+    }
+}
+
+impl From<crate::service::content::SaveError> for ApiError {
+    fn from(error: crate::service::content::SaveError) -> Self {
+        use crate::service::content::SaveError;
+        match error {
+            SaveError::NotFound => Self::new(
+                StatusCode::NOT_FOUND,
+                "見つかりません。削除された可能性があります",
+            ),
+            SaveError::Conflict(message) => Self::new(StatusCode::CONFLICT, message),
+            SaveError::Db(e) => {
+                eprintln!("save error: {:?}", e);
+                StatusCode::INTERNAL_SERVER_ERROR.into()
+            }
         }
     }
 }

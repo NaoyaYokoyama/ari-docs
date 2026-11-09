@@ -10,6 +10,8 @@ export interface WikiDetail {
   content: string;
   updatedAt: string;
   favoriteId: string;
+  // 最後に更新した人（まだ誰も更新していなければ作成者）の表示名
+  updatedBy: string;
 }
 
 export interface WikiList {

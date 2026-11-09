@@ -1,12 +1,12 @@
-import {
-  CircleAlert,
-  CircleCheck,
-} from "lucide-react";
-import { useEffect, useState } from "react";
+import { CircleAlert, CircleCheck } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { twMerge } from "tailwind-merge";
 
 type Props = {
   type: "info" | "error";
   message: string;
+  // 同じ文言を続けて出したときも表示し直すための番号
+  id: number;
   duration?: number;
   onClose: () => void;
 };
@@ -14,10 +14,16 @@ type Props = {
 export default function Toast({
   type,
   message,
+  id,
   duration = 3000,
   onClose,
 }: Props) {
   const [visible, setVisible] = useState(false);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  // エラーは読み終わるまで少し長めに出す
+  const shown = type === "error" ? duration * 2 : duration;
 
   useEffect(() => {
     if (!message) {
@@ -28,17 +34,17 @@ export default function Toast({
 
     const hideTimer = setTimeout(() => {
       setVisible(false);
-    }, duration - 300);
+    }, shown - 300);
 
     const closeTimer = setTimeout(() => {
-      onClose();
-    }, duration);
+      onCloseRef.current();
+    }, shown);
 
     return () => {
       clearTimeout(hideTimer);
       clearTimeout(closeTimer);
     };
-  }, [message, duration, onClose]);
+  }, [message, id, shown]);
 
   if (!message) {
     return null;
@@ -46,45 +52,18 @@ export default function Toast({
 
   return (
     <div
-      className={`
-        fixed
-        top-20
-        left-1/2
-        -translate-x-1/2
-        z-50
-        flex
-        items-center
-        gap-2
-        rounded-md
-        bg-slate-800
-        px-7
-        py-4
-        font-semibold
-        text-base
-        text-white
-        shadow-2xl
-        shadow-black/70
-        transition-all
-        duration-300
-        ${
-          visible
-            ? "translate-y-0 opacity-100"
-            : "-translate-y-4 opacity-0"
-        }
-      `}
+      role={type === "error" ? "alert" : "status"}
+      onClick={() => onCloseRef.current()}
+      className={twMerge(
+        "fixed bottom-6 left-1/2 z-[60] flex max-w-[90vw] -translate-x-1/2 cursor-pointer items-center gap-2.5 rounded-lg border border-border bg-popover px-4 py-3 text-sm font-medium text-popover-foreground shadow-lg transition-all duration-300",
+        type === "error" && "border-destructive/40",
+        visible ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0",
+      )}
     >
       {type === "error" ? (
-        <CircleAlert
-          size={22}
-          strokeWidth={2}
-          className="text-red-400"
-        />
+        <CircleAlert size={18} className="shrink-0 text-destructive" />
       ) : (
-        <CircleCheck
-          size={22}
-          strokeWidth={2}
-          className="text-slate-200"
-        />
+        <CircleCheck size={18} className="shrink-0 text-success" />
       )}
 
       <span>{message}</span>

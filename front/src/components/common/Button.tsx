@@ -21,26 +21,22 @@ import { cva } from "class-variance-authority";
 import type { ButtonHTMLAttributes } from "react";
 import { twMerge } from "tailwind-merge";
 
-
 const buttonVariants = cva(
-  "inline-flex items-center justify-center rounded-md whitespace-nowrap font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 gap-2",
+  "inline-flex items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
   {
     variants: {
       variant: {
-        primary:
-          "bg-slate-800 text-white hover:bg-slate-700",
+        primary: "bg-primary text-primary-foreground hover:bg-primary/85",
         secondary:
-          "border border-slate-300 bg-white hover:bg-slate-50",
-        danger:
-          "bg-red-600 text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-300",
-        ghost:
-          "hover:bg-slate-100",
+          "border border-border bg-background text-foreground hover:bg-accent",
+        danger: "bg-destructive text-white hover:bg-destructive/85",
+        ghost: "text-foreground hover:bg-accent",
       },
 
       size: {
-        sm: "px-2 py-1 text-sm",
-        md: "px-4 py-2",
-        lg: "px-6 py-3",
+        sm: "h-8 px-2.5 text-sm",
+        md: "h-9 px-4 text-sm",
+        lg: "h-11 px-6",
       },
     },
 
@@ -51,27 +47,16 @@ const buttonVariants = cva(
   },
 );
 
-
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "danger" | "ghost";
   size?: "sm" | "md" | "lg";
 };
 
-function Button({
-  variant,
-  size,
-  className,
-  ...props
-}: Props) {
+function Button({ variant, size, className, type = "button", ...props }: Props) {
   return (
     <button
-      className={twMerge(
-        buttonVariants({
-          variant,
-          size,
-        }),
-        className,
-      )}
+      type={type}
+      className={twMerge(buttonVariants({ variant, size }), className)}
       {...props}
     />
   );

@@ -13,7 +13,6 @@ pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Favorite>
         FROM
           favorite
         WHERE user_id = ?1
-        LIMIT 30
         ";
     let mut stmt = conn.prepare(sql)?;
     let favorites = stmt
@@ -46,7 +45,6 @@ pub fn find_by_wiki_id(
         WHERE
           user_id = ?1
           AND wiki_id = ?2
-        LIMIT 30
         ";
     let mut stmt = conn.prepare(sql)?;
     let favorite = stmt
@@ -79,7 +77,6 @@ pub fn find_by_note_id(
         WHERE
           user_id = ?1
           AND note_id = ?2
-        LIMIT 30
         ";
     let mut stmt = conn.prepare(sql)?;
     let favorite = stmt
@@ -94,6 +91,32 @@ pub fn find_by_note_id(
         })
         .optional()?;
     Ok(favorite)
+}
+
+// 同じ対象のお気に入りが既にあればその favorite_id を返す（二重登録を防ぐため）
+pub fn find_favorite_id(
+    conn: &Connection,
+    user_id: &str,
+    node_id: &str,
+    note_id: &str,
+    wiki_id: &str,
+) -> Result<Option<String>> {
+    let sql = "
+        SELECT
+          favorite_id
+        FROM
+          favorite
+        WHERE
+          user_id = ?1
+          AND node_id = ?2
+          AND note_id = ?3
+          AND wiki_id = ?4
+        LIMIT 1
+        ";
+    conn.query_row(sql, params![user_id, node_id, note_id, wiki_id], |row| {
+        row.get(0)
+    })
+    .optional()
 }
 
 pub fn create_favorite(
@@ -135,15 +158,15 @@ pub fn delete_favorite(conn: &Connection, user_id: &str, favorite_id: &str) -> R
     conn.execute(sql, params![user_id, favorite_id])
 }
 
-pub fn delete_favorite_wiki(conn: &Connection, user_id: &str, wiki_id: &str) -> Result<usize> {
+// Wikiは共有のため、全ユーザーのお気に入りを削除する
+pub fn delete_favorite_wiki(conn: &Connection, wiki_id: &str) -> Result<usize> {
     let sql = "
-        DELETE FROM 
+        DELETE FROM
           favorite
         WHERE
-          user_id = ?1
-          AND wiki_id = ?2
+          wiki_id = ?1
         ";
-    conn.execute(sql, params![user_id, wiki_id])
+    conn.execute(sql, params![wiki_id])
 }
 
 pub fn delete_favorite_note(conn: &Connection, user_id: &str, note_id: &str) -> Result<usize> {

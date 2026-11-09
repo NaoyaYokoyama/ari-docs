@@ -1,5 +1,4 @@
 use serde::Deserialize;
-use validator::Validate;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]

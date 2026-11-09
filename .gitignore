@@ -12,17 +12,11 @@ dist
 dist-ssr
 *.local
 
-# 設計書
-00_ari_docs/*
-00_ari-docs/*
-
 # ari-docsのフォルダ
 folder/*
 
 # back
-back/data/ari.db
 back/target/*
-back/Cargo.lock
 
 ## SQLite関連
 back/data/*.db
@@ -31,7 +25,6 @@ back/data/*.db-wal
 
 # Editor directories and files
 .vscode/*
-.folder/*
 !.vscode/extensions.json
 .idea
 .DS_Store
@@ -40,3 +33,13 @@ back/data/*.db-wal
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code
+.claude/.verify-cache
+.claude/settings.local.json
+
+# 文字認識のモデル（ビルド時に back/build_models.rs が取得する）
+back/models/
+
+# ゴミ箱（削除したファイルの置き場。開発用）
+back/data/trash/

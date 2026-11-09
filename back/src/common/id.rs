@@ -20,3 +20,19 @@ pub fn generate_wiki_id() -> String {
 pub fn generate_favorite_id() -> String {
     generate_id("fv")
 }
+
+pub fn generate_trash_id() -> String {
+    generate_id("tr")
+}
+
+pub fn generate_image_id() -> String {
+    generate_id("im")
+}
+
+pub fn generate_backup_id() -> String {
+    generate_id("bk")
+}
+
+pub fn generate_content_folder_id() -> String {
+    generate_id("cf")
+}

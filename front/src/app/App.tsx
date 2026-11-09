@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { AppContext } from "@/app/AppContext";
 import { useAuth } from "@/app/useAuth";
 import { useConfirmDialog } from "@/app/useConfirmDialog";
 import { useMessage } from "@/app/useMessage";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
+import Spinner from "@/components/common/Spinner";
 import Toast from "@/components/common/Toast";
+import { startEditSync } from "@/lib/editSync";
 import Login from "@/pages/common/Login";
 import MainLayout from "@/pages/common/MainLayout";
 import AppRoutes from "@/routes";
@@ -22,6 +24,7 @@ export default function App() {
   const {
     text,
     type,
+    id: messageId,
     showMessage,
     closeMessage,
   } = useMessage(loading, user);
@@ -37,26 +40,53 @@ export default function App() {
 
   const [isDirty, setIsDirty] = useState(false);
 
+  // 共有サーバーから開いたファイルの変更を、保存されたら自動でサーバーに戻す（FN0301-BR28）
+  const callbacks = useRef({ showMessage, showConfirm });
+  callbacks.current = { showMessage, showConfirm };
+  const shared = user?.mode === "shared";
+  useEffect(() => {
+    if (!shared) {
+      return;
+    }
+    let stop: (() => void) | undefined;
+    let cancelled = false;
+    void startEditSync({
+      showMessage: (type, text) => callbacks.current.showMessage(type, text),
+      showConfirm: (message) => callbacks.current.showConfirm(message),
+    }).then((unlisten) => {
+      if (cancelled) {
+        unlisten();
+      } else {
+        stop = unlisten;
+      }
+    });
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
+  }, [shared]);
+
   if (loading) {
-    return <div>Loading...</div>;
+    return <Spinner className="h-screen" />;
   }
 
   if (!user) {
     return <Login />;
   }
 
+  // ShortcutProvider は未保存の確認（AppContext）を使うため、その内側に置く
   return (
-    <ShortcutProvider>
-      <AppContext.Provider
-        value={{
-          user,
-          setUser,
-          showMessage,
-          showConfirm,
-          isDirty,
-          setIsDirty,
-        }}
-      >
+    <AppContext.Provider
+      value={{
+        user,
+        setUser,
+        showMessage,
+        showConfirm,
+        isDirty,
+        setIsDirty,
+      }}
+    >
+      <ShortcutProvider>
         <MainLayout
           displayName={user.displayName}
           onLogout={logout}
@@ -67,6 +97,7 @@ export default function App() {
         <Toast
           type={type}
           message={text}
+          id={messageId}
           onClose={closeMessage}
         />
 
@@ -76,7 +107,7 @@ export default function App() {
           onConfirm={confirm}
           onCancel={cancel}
         />
-      </AppContext.Provider>
-    </ShortcutProvider>
+      </ShortcutProvider>
+    </AppContext.Provider>
   );
 }

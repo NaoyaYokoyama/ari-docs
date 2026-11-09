@@ -3,7 +3,7 @@
 -- Description : ログインユーザーを管理する
 -- ============================================
 
-DROP TABLE user;
+DROP TABLE IF EXISTS user;
 CREATE TABLE IF NOT EXISTS user (
     user_id TEXT PRIMARY KEY,
 

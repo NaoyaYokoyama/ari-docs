@@ -1,45 +1,23 @@
-mod api;
-mod batch;
-mod common;
-mod config;
-mod database;
-mod model;
-mod repository;
-mod router;
-mod service;
+// 起動。設定は引数の設定ファイル（共有サーバーとして動かすとき。例: back /opt/ari-docs/config.toml）、
+// 無ければ back/config.toml（開発時の cargo run）から読む
+use std::path::Path;
 
-use batch::scheduler::start;
-use config::{app_state::AppState, loader};
-
-use std::net::SocketAddr;
+use ari_back::{load_config_file, load_dev_config, server};
 
 #[tokio::main]
 async fn main() {
-    tokio::spawn(async {
-        start().await;
-    });
-
-    let config = loader::load();
-    // 設定ファイルは起動時に1回だけ読み込む
-    let sessions = Default::default();
-    let state = AppState { sessions, config };
-    println!("config");
-
-    // TODO
-    // println!("{}", service::auth::hash_password("password"));
-    // データベースの接続
-    let conn = database::connection::connect();
-    database::migration::migrate(&conn);
-    println!("Database connected");
-
-    let app = router::create_router().with_state(state);
-    let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
-
-    println!("Server running: http://{}", addr);
-
-    let listener = tokio::net::TcpListener::bind(addr)
-        .await
-        .expect("Failed to bind");
-
-    axum::serve(listener, app).await.expect("Server error");
+    let config = match std::env::args().nth(1) {
+        Some(path) => load_config_file(Path::new(&path)).unwrap_or_else(|e| {
+            eprintln!("{e}");
+            std::process::exit(1);
+        }),
+        None => load_dev_config(),
+    };
+    let port = config.port;
+    if let Err(e) = server::start(config, port).await {
+        eprintln!("{e}");
+        std::process::exit(1);
+    }
+    // API とバッチは裏で動いているので、Ctrl+C まで待つ
+    let _ = tokio::signal::ctrl_c().await;
 }

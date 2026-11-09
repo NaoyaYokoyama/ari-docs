@@ -8,4 +8,6 @@ export interface Node {
   updatedBy: string;
   updatedAt: string;
   favoriteId: string;
+  // ファイルのサイズ（バイト）。フォルダは 0
+  size: number;
 }
