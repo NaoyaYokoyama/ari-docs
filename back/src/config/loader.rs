@@ -52,7 +52,11 @@ mod tests {
         let config = load();
         let back = fs::canonicalize(env!("CARGO_MANIFEST_DIR")).unwrap();
         assert!(Path::new(&config.folder_root).is_absolute());
-        assert!(Path::new(&config.database_path).starts_with(&back));
+        // DB のフォルダ（back/data）はまだ無いことがあり、そのときは正式な形に直せない。
+        // Windows は正式な形が \\?\ で始まり書き方が変わるので、先頭ではなく末尾で比べる
+        let database = Path::new(&config.database_path);
+        assert!(database.is_absolute());
+        assert!(database.ends_with("back/data/ari.db"));
         assert_eq!(
             Path::new(&config.docs_default_root),
             back.parent().unwrap().join("docs")
