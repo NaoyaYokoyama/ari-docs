@@ -1,5 +1,5 @@
 use crate::api::node::{response::Node, response::NodeResponse};
-use crate::common::fs_util::{copy_recursive, split_extension};
+use crate::common::fs_util::{copy_recursive, relative_slash_path, split_extension};
 use crate::model::node_type::NodeType;
 use crate::repository::{favorite as favorite_repo, node as node_repo};
 use rusqlite::Connection;
@@ -105,10 +105,7 @@ pub fn create_node(
 
 // ノードのルートからの相対パス（一覧取得と同じ作り方。node テーブルのパスと一致させるため）
 fn relative_path(folder_root: &str, full_path: &Path) -> String {
-    full_path
-        .strip_prefix(folder_root)
-        .map(|path| path.to_string_lossy().to_string())
-        .unwrap_or_default()
+    relative_slash_path(Path::new(folder_root), full_path).unwrap_or_default()
 }
 
 fn file_name(path: &Path) -> String {

@@ -5,7 +5,7 @@ use rusqlite::Connection;
 
 use crate::{
     common::{
-        fs_util::{move_path, remove_path, size_of, unique_name},
+        fs_util::{move_path, relative_slash_path, remove_path, size_of, unique_name},
         id::generate_trash_id,
     },
     config::app::AppConfig,
@@ -45,10 +45,8 @@ pub fn move_to_trash(
     if std::fs::symlink_metadata(&full_path).is_err() {
         return Err(not_found("ファイル・フォルダが見つかりません"));
     }
-    let relative_path = full_path
-        .strip_prefix(&config.folder_root)
-        .map(|path| path.to_string_lossy().to_string())
-        .unwrap_or_default();
+    let relative_path =
+        relative_slash_path(Path::new(&config.folder_root), &full_path).unwrap_or_default();
     let trash_id = generate_trash_id();
     let size = size_of(&full_path) as i64;
     let node_type = if full_path.is_dir() {

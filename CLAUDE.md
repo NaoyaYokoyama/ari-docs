@@ -76,7 +76,7 @@
 - 受け取る大きさの上限は 1 GB（`router.rs` の `DefaultBodyLimit`。axum の既定 2 MB のままにしない）
 - `node` テーブルはファイルの見張り（`batch/node_watch.rs`、数秒で反映）と 10 分ごとの全体の同期（`batch/node_sync.rs`。消えたものの行も消す）で合わせる
 - 実体はノードのルート以下のファイルシステム。ルートは `back/config.toml` の `folder_root`（既定 `../folder`）で、アプリの初期設定でだけ決め、運用中は変えない（お気に入り等が相対パスで記録されるため）。`node` テーブルは同期バッチ（`batch/node_sync.rs`）で登録する
-- パスは `folder/` からの相対パスで、先頭に `/` を付けない（例: `a/b/memo.txt`）
+- パスは `folder/` からの相対パスで、先頭に `/` を付けない（例: `a/b/memo.txt`）。OS によらず `/` 区切り。`Path` から作るときは `common/fs_util.rs` の `relative_slash_path`（`to_string_lossy` だと Windows で `\` 区切りになる）
 - 削除 API は `parentPath` + `name` で対象を特定する。`name` が空・`.`・`..`・`/` を含む場合は 400
 - ノードの API はパスに `..`・絶対パスを含むものを 400 にする（`service/node.rs` の `resolve`。`folder/` の外を操作させない）。作成は同名があれば 409 で、上書きしない
 - 削除したら `node` の行と全ユーザーのお気に入りも消す（フォルダなら配下も。`repository/node.rs` の `delete_with_descendants`）

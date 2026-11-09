@@ -2,6 +2,19 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
+// root からの相対パスを、OS によらず / 区切りの文字にする（node テーブル・画面のパスの形。Windows の Path は \ 区切りになるため）。
+// root の外は None、root 自身は空の文字
+pub fn relative_slash_path(root: &Path, path: &Path) -> Option<String> {
+    let relative = path.strip_prefix(root).ok()?;
+    Some(
+        relative
+            .components()
+            .map(|part| part.as_os_str().to_string_lossy())
+            .collect::<Vec<_>>()
+            .join("/"),
+    )
+}
+
 // 移す。別のディスク（ドライブ）へは rename できないため、コピーしてから消す
 pub fn move_path(from: &Path, to: &Path) -> io::Result<()> {
     if let Some(parent) = to.parent() {
@@ -71,6 +84,19 @@ pub fn unique_name(dir: &Path, name: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // node テーブルのパスは OS によらず / 区切り（Windows の Path::join は \ で区切るため）
+    #[test]
+    fn relative_slash_path_uses_slash() {
+        let root = Path::new("root");
+        let path = root.join("a").join("b").join("メモ.txt");
+        assert_eq!(
+            relative_slash_path(root, &path).as_deref(),
+            Some("a/b/メモ.txt")
+        );
+        assert_eq!(relative_slash_path(root, root).as_deref(), Some(""));
+        assert_eq!(relative_slash_path(root, Path::new("other/a")), None);
+    }
 
     #[test]
     fn unique_name_and_size() {

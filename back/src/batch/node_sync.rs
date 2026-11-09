@@ -1,4 +1,8 @@
-use crate::{common::id::generate_node_id, database::connection, repository::node as node_repo};
+use crate::{
+    common::{fs_util::relative_slash_path, id::generate_node_id},
+    database::connection,
+    repository::node as node_repo,
+};
 use rusqlite::Connection;
 use std::fs;
 use std::io;
@@ -91,11 +95,7 @@ fn register(conn: &Connection, path: &Path, relative: &str) -> io::Result<()> {
 
 // 画面側と合わせてルートからの相対パスにする（ルート自身・ルートの外は None）
 fn relative_path(root_path: &Path, path: &Path) -> Option<String> {
-    let relative = path
-        .strip_prefix(root_path)
-        .ok()?
-        .to_string_lossy()
-        .to_string();
+    let relative = relative_slash_path(root_path, path)?;
     (!relative.is_empty()).then_some(relative)
 }
 

@@ -1,4 +1,5 @@
 use crate::api::docs::response::{DocEntry, DocFileResponse, DocsIndexResponse};
+use crate::common::fs_util::relative_slash_path;
 use crate::config::app::AppMode;
 use std::collections::BTreeMap;
 use std::fs;
@@ -25,11 +26,8 @@ pub fn get_docs(
     for file in files {
         let content = fs::read_to_string(&file)?;
         let (front_matter, _) = parse_front_matter(&content);
-        let path = file
-            .strip_prefix(root)
-            .map_err(io::Error::other)?
-            .to_string_lossy()
-            .to_string();
+        let path = relative_slash_path(root, &file)
+            .ok_or_else(|| io::Error::other("Docs のフォルダの外のファイルです"))?;
         let name = file
             .file_name()
             .map(|name| name.to_string_lossy().to_string())

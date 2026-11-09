@@ -508,6 +508,8 @@ mod tests {
 
         delete_backup(&conn, &backup.backup_id).unwrap();
         assert_eq!(backup_repo::find_all(&conn).unwrap().len(), 1);
+        // Windows は開いている DB のファイルを消せないので、閉じてから消す
+        drop(conn);
         fs::remove_dir_all(&dir).unwrap();
     }
 }
