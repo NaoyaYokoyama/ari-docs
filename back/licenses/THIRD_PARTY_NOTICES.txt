@@ -31,6 +31,11 @@ Third-party software and models used by ari-docs (OCR and PDF rendering)
    License: MIT OR Apache-2.0
    https://github.com/LaurenzV/hayro
 
+6. Microsoft Visual C++ 再頒布可能ファイル（Windows 版のみ: msvcp140.dll・msvcp140_1.dll・vcruntime140.dll・vcruntime140_1.dll）
+   Copyright (c) Microsoft Corporation
+   Visual Studio のライセンス条項の「再頒布可能コード」として同梱する（ONNX Runtime が使う C++ のランタイム）
+   https://learn.microsoft.com/cpp/windows/redistributing-visual-cpp-files
+
 ========================================================================
 MIT License
 

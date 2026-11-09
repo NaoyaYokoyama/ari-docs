@@ -14,6 +14,7 @@
 - `desktop/src-tauri/` : デスクトップアプリ（Tauri 2）。バックエンドを同じプロセスで起動する。exe と同じフォルダの `config.toml` に作業フォルダ（既定 `"."` = exe のフォルダ）を書き、`<作業フォルダ>/folder`・`<作業フォルダ>/.ari-docs/ari.db` を使う。作業フォルダは設定画面から変えられ、変えると再起動する。デバッグビルドは `back/config.toml` で動く（docs の FN0002）
   - Tauri 本体（crate）と `@tauri-apps/api`（npm）はマイナーバージョンを揃える（揃っていないと `cargo tauri build` が止まる）
   - 配布は Windows が NSIS（ユーザー単位）、Linux が AppImage（`tauri.conf.json` の `bundle.targets`）。Linux では `NO_STRIP=true cargo tauri build`（docs の OP0002）
+  - Windows の配布物には C++ のランタイムの DLL（ONNX Runtime が使う `msvcp140.dll` など 4 つ）を exe の横に同梱する（`desktop/src-tauri/vcruntime/` に置いて `--config tauri.vcruntime.conf.json`。GitHub Actions は自動で用意。docs の OP0002）
 - `folder/` : 開発時のノード（ファイル・フォルダ）の実体。バックエンドは `../folder` として参照
 - `docs/` : 設計書（書き方は `docs/00_概要/0090_ドキュメントルール.md`。全文書レビュー中）。git 管理を楽にするため当面はリポジトリ内に置き、固まったら別管理に移す
 

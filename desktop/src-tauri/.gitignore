@@ -2,3 +2,5 @@
 # will have compiled files and executables
 /target/
 /gen/schemas
+# C++ のランタイムの DLL（Windows のインストーラーに同梱する。tauri.vcruntime.conf.json。docs の OP0002）
+/vcruntime/

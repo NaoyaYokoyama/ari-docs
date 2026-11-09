@@ -60,13 +60,38 @@ jobs:
         working-directory: desktop/src-tauri
         run: cargo test
 
+      # 文字認識の部品（ONNX Runtime）が使う C++ のランタイムの DLL を、Visual Studio の配布用のフォルダから取り、
+      # インストーラーで exe の横に置く（tauri.vcruntime.conf.json を配布物のビルドのときだけ足す）。入っていない PC でも起動できるように（docs の OP0002）
+      - name: C++ のランタイムの DLL（Windows）
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath
+          $version = Get-ChildItem "$vs\VC\Redist\MSVC" -Directory |
+            Where-Object { $_.Name -match '^\d+(\.\d+)+$' } |
+            Sort-Object { [version]$_.Name } | Select-Object -Last 1
+          $crt = Get-ChildItem "$($version.FullName)\x64" -Directory -Filter 'Microsoft.VC*.CRT' | Select-Object -First 1
+          if (-not $crt) { throw "C++ のランタイムの配布用のフォルダが見つかりません" }
+          $dest = "desktop/src-tauri/vcruntime"
+          New-Item -ItemType Directory -Force $dest | Out-Null
+          foreach ($name in 'msvcp140.dll', 'msvcp140_1.dll', 'vcruntime140.dll', 'vcruntime140_1.dll') {
+            Copy-Item (Join-Path $crt.FullName $name) $dest -ErrorAction Stop
+          }
+          Get-ChildItem $dest | Format-Table Name, Length
+
       - name: 配布物のビルド
         working-directory: desktop/src-tauri
         env:
           NO_STRIP: "true"
-        run: cargo tauri build --bundles ${{ matrix.bundle }}
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            cargo tauri build --bundles nsis --config tauri.vcruntime.conf.json
+          else
+            cargo tauri build --bundles ${{ matrix.bundle }}
+          fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ari-docs-${{ matrix.bundle }}
           path: |
