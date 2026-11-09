@@ -584,10 +584,14 @@ mod tests {
 
   #[test]
   fn backend_config_uses_workspace_layout() {
-    let config = backend_config(Path::new("/w"), Path::new("/app/models"));
-    assert_eq!(config.folder_root, "/w/folder");
-    assert_eq!(config.database_path, "/w/.ari-docs/ari.db");
-    assert_eq!(config.docs_default_root, "/w/folder");
+    // OS のパスなので、区切りは OS に合わせる（Windows は \）
+    let workspace = Path::new("/w");
+    let config = backend_config(workspace, Path::new("/app/models"));
+    let folder = workspace.join("folder").to_string_lossy().to_string();
+    let database = workspace.join(".ari-docs").join("ari.db");
+    assert_eq!(config.folder_root, folder);
+    assert_eq!(config.database_path, database.to_string_lossy());
+    assert_eq!(config.docs_default_root, folder);
   }
 
   #[test]
@@ -613,10 +617,12 @@ mod tests {
     assert!(status.error.is_empty());
     assert!(status.can_change_mode);
 
+    // 作業フォルダの絶対パス（Windows では / で始まるだけでは絶対パスにならないので、一時フォルダから作る）
+    let shared = dir.join("shared").join("ari");
     save_config(
       &dir,
       &DesktopConfig {
-        workspace: "/shared/ari".to_string(),
+        workspace: shared.to_string_lossy().to_string(),
         ..Default::default()
       },
     )
@@ -628,7 +634,7 @@ mod tests {
     assert_eq!(config.mode, UseMode::Local);
     assert_eq!(
       resolve_workspace(&dir, &config.workspace),
-      PathBuf::from("/shared/ari")
+      shared
     );
     fs::remove_dir_all(&dir).unwrap();
   }
