@@ -7,7 +7,12 @@ import { useTheme } from "@/app/theme";
 import Spinner from "@/components/common/Spinner";
 import { extensionOf } from "@/lib/fileType";
 import { errorMessage } from "@/lib/format";
-import { MAX_PREVIEW_BYTES, PREVIEW_FORMATS, type PreviewKind } from "@/lib/previewFormats";
+import {
+  MAX_PREVIEW_BYTES,
+  MAX_TEXT_PREVIEW_BYTES,
+  PREVIEW_FORMATS,
+  type PreviewKind,
+} from "@/lib/previewFormats";
 import type { Node } from "@/types/node";
 
 const MAX_CSV_ROWS = 500;
@@ -19,14 +24,19 @@ export function previewKind(name: string): Kind {
   return PREVIEW_FORMATS.find((format) => format.extensions.includes(extension))?.kind ?? "none";
 }
 
-// UTF-8 として読めなければ Shift_JIS（日本の Windows で多い）として読む
-async function readText(blob: Blob) {
-  const bytes = await blob.arrayBuffer();
-  try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-  } catch {
-    return new TextDecoder("shift_jis").decode(bytes);
+// UTF-8 として読めなければ Shift_JIS（日本の Windows で多い）として読む。
+// 先頭だけを切り出したときは、末尾で切れた文字（UTF-8 は 3 バイトまで）を除いてから確かめる
+async function readText(blob: Blob, truncated: boolean) {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  for (let cut = 0; cut <= (truncated ? 3 : 0); cut += 1) {
+    try {
+      return decoder.decode(bytes.subarray(0, bytes.length - cut));
+    } catch {
+      // 次は 1 バイト短くして試す
+    }
   }
+  return new TextDecoder("shift_jis").decode(bytes);
 }
 
 // CSV・TSV を表にする（"..." で囲んだ値と、その中の改行・区切りに対応する）
@@ -86,6 +96,8 @@ export default function FilePreview({ node, fill = false }: Props) {
   const [text, setText] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  // テキストの先頭だけを出している（MAX_TEXT_PREVIEW_BYTES）
+  const truncated = node.size > MAX_TEXT_PREVIEW_BYTES;
   const kind = previewKind(node.name);
   const tooLarge = node.size > MAX_PREVIEW_BYTES;
   const box = fill ? "h-full" : "max-h-[70vh]";
@@ -116,7 +128,8 @@ export default function FilePreview({ node, fill = false }: Props) {
               objectUrl = URL.createObjectURL(typed);
               setUrl(objectUrl);
             } else {
-              const decoded = await readText(blob);
+              const head = truncated ? blob.slice(0, MAX_TEXT_PREVIEW_BYTES) : blob;
+              const decoded = await readText(head, truncated);
               if (!cancelled) {
                 setText(decoded);
               }
@@ -135,7 +148,7 @@ export default function FilePreview({ node, fill = false }: Props) {
       }
     };
     // 同じファイルでも更新されたら読み直す
-  }, [node.path, node.updatedAt, node.size, kind, tooLarge, fill]);
+  }, [node.path, node.updatedAt, node.size, kind, tooLarge, truncated, fill]);
 
   const body = () => {
     if (kind === "none") {
@@ -154,6 +167,21 @@ export default function FilePreview({ node, fill = false }: Props) {
     if (loading) {
       return <Spinner />;
     }
+    const headNote = truncated && (
+      <p className="mt-2 text-xs text-muted-foreground">
+        大きいため、先頭の 1 MB だけを表示しています。全体は「開く」で PC のアプリで開いてください。
+      </p>
+    );
+    const textView = (
+      <div className={fill ? "flex h-full flex-col" : undefined}>
+        <pre
+          className={`${fill ? "min-h-0 flex-1" : "max-h-[70vh]"} overflow-auto rounded border border-border bg-muted/40 p-3 font-mono text-xs whitespace-pre-wrap`}
+        >
+          {text}
+        </pre>
+        {headNote}
+      </div>
+    );
     switch (kind) {
       case "image":
         return url ? <img src={url} alt={node.name} className={`mx-auto ${fill ? "max-h-full" : "max-h-[70vh]"} max-w-full object-contain`} /> : null;
@@ -165,6 +193,10 @@ export default function FilePreview({ node, fill = false }: Props) {
           </div>
         ) : null;
       case "markdown":
+        // 大きな Markdown は整えると固まるので、テキストのまま出す
+        if (truncated) {
+          return textView;
+        }
         return (
           <div data-color-mode={resolved} className={`${box} overflow-y-auto`}>
             <MDEditor.Markdown source={text ?? ""} remarkPlugins={[remarkBreaks]} />
@@ -187,18 +219,16 @@ export default function FilePreview({ node, fill = false }: Props) {
                 ))}
               </tbody>
             </table>
-            {rows.length >= MAX_CSV_ROWS && (
+            {rows.length >= MAX_CSV_ROWS ? (
               <p className="p-2 text-xs text-muted-foreground">最初の {MAX_CSV_ROWS} 行だけを表示しています</p>
+            ) : (
+              truncated && <p className="p-2 text-xs text-muted-foreground">大きいため、先頭の 1 MB だけを表示しています</p>
             )}
           </div>
         );
       }
       default:
-        return (
-          <pre className={`${box} overflow-auto rounded border border-border bg-muted/40 p-3 font-mono text-xs whitespace-pre-wrap`}>
-            {text}
-          </pre>
-        );
+        return textView;
     }
   };
 

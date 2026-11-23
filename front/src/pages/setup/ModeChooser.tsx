@@ -2,29 +2,21 @@ import { Laptop, Server } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
-import { changeMode } from "@/api/setup";
+import { completeFirstRun } from "@/api/setup";
 import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
 import { checkServer } from "@/pages/setup/serverCheck";
 
 type Mode = "local" | "server";
 
-type Props = {
-  // 今の使い方と接続先（初回起動では空文字）
-  currentMode: string;
-  currentServerUrl: string;
-};
-
-// 使い方（個人用 / 共有サーバーに接続）を選ぶ。決めると config.toml に保存してアプリを再起動する
-// （初回起動の画面・起動エラーの画面・設定画面・ログイン画面で使う）
-export default function ModeChooser({ currentMode, currentServerUrl }: Props) {
-  const [mode, setMode] = useState<Mode>(currentMode === "server" ? "server" : "local");
-  const [url, setUrl] = useState(currentServerUrl || "http://");
+// 初回起動の使い方（自分の PC だけ / 共有サーバーにも接続）を選ぶ。決めると config.toml に保存してアプリを再起動する。
+// どちらでも自分の PC は使える。共有サーバーはあとから設定の「場所」で足せる（FN0002-BR20）
+export default function ModeChooser() {
+  const [mode, setMode] = useState<Mode>("local");
+  const [url, setUrl] = useState("http://");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const normalized = url.trim().replace(/\/+$/, "");
-  const unchanged =
-    mode === currentMode && (mode === "local" || normalized === currentServerUrl);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -34,7 +26,7 @@ export default function ModeChooser({ currentMode, currentServerUrl }: Props) {
       if (mode === "server") {
         await checkServer(normalized);
       }
-      await changeMode(mode, mode === "server" ? normalized : "");
+      await completeFirstRun(mode === "server" ? normalized : "");
       // 成功するとアプリが再起動する
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -49,15 +41,15 @@ export default function ModeChooser({ currentMode, currentServerUrl }: Props) {
           checked={mode === "local"}
           onSelect={() => setMode("local")}
           icon={<Laptop size={18} />}
-          title="個人用"
+          title="自分の PC だけ"
           description="この PC だけで使います。ログインは不要です。ほかの PC からは接続できません"
         />
         <ModeOption
           checked={mode === "server"}
           onSelect={() => setMode("server")}
           icon={<Server size={18} />}
-          title="共有サーバーに接続"
-          description="複数人で使う ari-docs のサーバーに接続します。ユーザー ID とパスワードでログインします"
+          title="共有サーバーにも接続"
+          description="複数人で使う ari-docs のサーバーに接続し、そこで始めます。ユーザー ID とパスワードでログインします。自分の PC にもいつでも切り替えられます"
         />
       </div>
 
@@ -83,8 +75,8 @@ export default function ModeChooser({ currentMode, currentServerUrl }: Props) {
       )}
 
       <div className="flex justify-end">
-        <Button type="submit" disabled={saving || unchanged || (mode === "server" && !normalized)}>
-          {saving ? "確認中..." : "保存して再起動"}
+        <Button type="submit" disabled={saving || (mode === "server" && !normalized)}>
+          {saving ? "確認中..." : "始める"}
         </Button>
       </div>
     </form>

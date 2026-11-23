@@ -3,8 +3,19 @@ use crate::{
     api::response::ApiResponse,
     config::app_state::AppState,
     database::connection,
-    service::{auth, favorite},
+    service::{auth, favorite, node},
 };
+
+// お気に入りにする対象が無いときは 404（API0602〜API0604）
+fn not_found(message: &str) -> StatusCode {
+    eprintln!("create_favorite: {message}");
+    StatusCode::NOT_FOUND
+}
+
+fn db_error(e: rusqlite::Error) -> StatusCode {
+    crate::elog!("create_favorite error: {:?}", e);
+    StatusCode::INTERNAL_SERVER_ERROR
+}
 use axum::{
     Json,
     extract::State,
@@ -20,11 +31,17 @@ pub async fn create_favorite_node(
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
     let note_id = "".to_string();
     let wiki_id = "".to_string();
+    // folder/ の外（..・絶対パス）は 400、実体が無いものは 404
+    let path = node::resolve(&state.config.folder_root, &request.path)
+        .map_err(|_| StatusCode::BAD_REQUEST)?;
+    if request.path.trim().is_empty() || !path.exists() {
+        return Err(not_found("node"));
+    }
 
     let favorite_id =
         favorite::create_favorite(&conn, &user.user_id, &request.path, &note_id, &wiki_id)
             .map_err(|e| {
-                eprintln!("create_favorite_node error: {:?}", e);
+                crate::elog!("create_favorite_node error: {:?}", e);
                 StatusCode::INTERNAL_SERVER_ERROR
             })?;
 
@@ -46,10 +63,14 @@ pub async fn create_favorite_note(
     let node_path = "".to_string();
     let wiki_id = "".to_string();
 
+    if !favorite::note_exists(&conn, &user.user_id, &request.id).map_err(db_error)? {
+        return Err(not_found("note"));
+    }
+
     let favorite_id =
         favorite::create_favorite(&conn, &user.user_id, &node_path, &request.id, &wiki_id)
             .map_err(|e| {
-                eprintln!("create_favorite_note error: {:?}", e);
+                crate::elog!("create_favorite_note error: {:?}", e);
                 StatusCode::INTERNAL_SERVER_ERROR
             })?;
 
@@ -71,10 +92,14 @@ pub async fn create_favorite_wiki(
     let node_path = "".to_string();
     let note_id = "".to_string();
 
+    if !favorite::wiki_exists(&conn, &request.id).map_err(db_error)? {
+        return Err(not_found("wiki"));
+    }
+
     let favorite_id =
         favorite::create_favorite(&conn, &user.user_id, &node_path, &note_id, &request.id)
             .map_err(|e| {
-                eprintln!("create_favorite_wiki error: {:?}", e);
+                crate::elog!("create_favorite_wiki error: {:?}", e);
                 StatusCode::INTERNAL_SERVER_ERROR
             })?;
 
@@ -94,7 +119,7 @@ pub async fn delete_favorite(
     let conn = connection::connect();
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
     favorite::delete_favorite(&conn, &user.user_id, &request.favorite_id).map_err(|e| {
-        eprintln!("delete_favorite error: {:?}", e);
+        crate::elog!("delete_favorite error: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
@@ -104,4 +129,23 @@ pub async fn delete_favorite(
     };
 
     Ok(Json(response))
+}
+
+// お気に入りを並べ替える（API0606。FN0601-BR08）。本人のお気に入りだけ
+pub async fn update_favorite_order(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<FavoriteOrderRequest>,
+) -> Result<Json<ApiResponse<()>>, StatusCode> {
+    let conn = connection::connect();
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    crate::repository::favorite::update_order(&conn, &user.user_id, &request.favorite_ids)
+        .map_err(|e| {
+            crate::elog!("update_favorite_order error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    Ok(Json(ApiResponse {
+        message: None,
+        data: None,
+    }))
 }

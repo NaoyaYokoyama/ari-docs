@@ -4,8 +4,13 @@ export type PreviewKind = "image" | "pdf" | "markdown" | "csv" | "text";
 export const PREVIEW_FORMATS: { kind: PreviewKind; name: string; extensions: string[]; note?: string }[] = [
   { kind: "image", name: "画像", extensions: ["png", "jpg", "jpeg", "gif", "bmp", "webp", "svg"] },
   { kind: "pdf", name: "PDF", extensions: ["pdf"] },
-  { kind: "markdown", name: "Markdown", extensions: ["md", "markdown"], note: "見出し・表などを整えて表示" },
-  { kind: "csv", name: "CSV・TSV", extensions: ["csv", "tsv"], note: "表で表示（先頭 500 行まで）" },
+  {
+    kind: "markdown",
+    name: "Markdown",
+    extensions: ["md", "markdown"],
+    note: "見出し・表などを整えて表示（1 MB を超えると整えずに先頭だけ）",
+  },
+  { kind: "csv", name: "CSV・TSV", extensions: ["csv", "tsv"], note: "表で表示（先頭 1 MB・500 行まで）" },
   {
     kind: "text",
     name: "テキスト",
@@ -14,9 +19,11 @@ export const PREVIEW_FORMATS: { kind: PreviewKind; name: string; extensions: str
       "sql", "sh", "bat", "cmd", "ps1", "js", "jsx", "ts", "tsx", "py", "java", "kt", "c", "h", "cpp", "hpp",
       "cs", "vb", "go", "rs", "rb", "php", "css", "scss", "vue",
     ],
-    note: "UTF-8・Shift_JIS",
+    note: "UTF-8・Shift_JIS（先頭 1 MB まで）",
   },
 ];
 
-// プレビューする大きさの上限（大きなファイルを読み込んで画面が固まらないように）
+// プレビューする大きさの上限（大きなファイルを読み込んで画面が固まらないように。FN0301-BR30）。これより大きいものは読まない
 export const MAX_PREVIEW_BYTES = 30 * 1024 * 1024;
+// テキスト・CSV・Markdown は、表示すると重くなるため先頭のこの大きさだけを出す（Markdown はこれを超えたら整えない）
+export const MAX_TEXT_PREVIEW_BYTES = 1024 * 1024;

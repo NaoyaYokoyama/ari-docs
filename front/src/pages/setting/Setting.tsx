@@ -9,15 +9,19 @@ import {
 } from "@/api/setting";
 import { getSetupStatus } from "@/api/setup";
 import { useApp } from "@/app/AppContext";
-import { useDesktopStatus } from "@/app/DesktopContext";
+import { useDesktop } from "@/app/DesktopContext";
 import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
 import Spinner from "@/components/common/Spinner";
 import { errorMessage } from "@/lib/format";
 import { AboutSetting, TransferSetting } from "@/pages/setting/AboutSetting";
+import AdminDeviceSetting from "@/pages/setting/AdminDeviceSetting";
 import BackupSetting from "@/pages/setting/BackupSetting";
+import HostSetting from "@/pages/setting/HostSetting";
+import PlacesSetting from "@/pages/setting/PlacesSetting";
 import { AppearanceSetting, BehaviorSetting } from "@/pages/setting/PreferenceSetting";
 import SearchDictionary from "@/pages/setting/SearchDictionary";
+import SearchExclusions from "@/pages/setting/SearchExclusions";
 import ServerSetting from "@/pages/setting/ServerSetting";
 import SessionSetting from "@/pages/setting/SessionSetting";
 import { Field, SettingPanel } from "@/pages/setting/SettingPanel";
@@ -27,7 +31,6 @@ import Sidebar from "@/pages/setting/Sidebar";
 import SupportedFiles from "@/pages/setting/SupportedFiles";
 import UserManagement from "@/pages/setting/UserManagement";
 import VimSetting from "@/pages/setting/VimSetting";
-import ModeChooser from "@/pages/setup/ModeChooser";
 import WorkspacePicker from "@/pages/setup/WorkspacePicker";
 import type { SetupStatus } from "@/types/setup";
 
@@ -35,7 +38,7 @@ export default function Setting() {
   const location = useLocation();
   const [params, setParams] = useSearchParams();
   const { user } = useApp();
-  const desktop = useDesktopStatus();
+  const desktop = useDesktop();
   // 開いているメニューは URL（?section=）に持つ（再読み込み・戻るでも同じメニューを出す）。
   // 他の画面から開くときは state でも指定できる（例: Docs 画面からの「初期フォルダを変更」）
   const requested = params.get("section") ?? location.state?.section ?? "username";
@@ -64,11 +67,14 @@ export default function Setting() {
           {section === "vim" && <VimSetting />}
           {section === "docs" && <DocsRootSetting />}
           {section === "dictionary" && <SearchDictionary />}
+          {section === "exclusions" && <SearchExclusions />}
           {section === "formats" && <SupportedFiles />}
           {section === "users" && <UserManagement />}
+          {section === "adminDevices" && <AdminDeviceSetting />}
           {section === "server" && <ServerSetting />}
           {section === "backup" && <BackupSetting />}
-          {section === "mode" && <ModeSetting />}
+          {section === "places" && <PlacesSetting />}
+          {section === "host" && <HostSetting />}
           {section === "workspace" && <WorkspaceSetting />}
           {section === "transfer" && <TransferSetting />}
           {section === "about" && <AboutSetting />}
@@ -275,42 +281,7 @@ export function DocsRootSetting() {
   );
 }
 
-// デスクトップアプリの使い方（個人用 / 共有サーバーに接続）。変えると再起動する
-export function ModeSetting() {
-  const desktop = useDesktopStatus();
-  if (!desktop) {
-    return null;
-  }
-  return (
-    <SettingPanel
-      title="使い方"
-      description="個人用はこの PC だけで使います（ほかの PC からは接続できません）。共有サーバーに接続すると、複数人で同じファイル・Wiki を使えます。個人用のデータと共有サーバーのデータは別で、変えてもデータは移りません。"
-    >
-      {desktop.canChangeMode ? (
-        <>
-          <p className="mb-4 text-sm">
-            現在:{" "}
-            {desktop.mode === "server" ? (
-              <>
-                共有サーバーに接続（
-                <span className="font-mono text-[0.8125rem]">{desktop.serverUrl}</span>）
-              </>
-            ) : (
-              "個人用"
-            )}
-          </p>
-          <ModeChooser currentMode={desktop.mode} currentServerUrl={desktop.serverUrl} />
-        </>
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          開発用のビルドでは back/config.toml の設定（または環境変数 ARI_DOCS_SERVER_URL）で動くため、変えられません。
-        </p>
-      )}
-    </SettingPanel>
-  );
-}
-
-// デスクトップアプリの作業フォルダ。変えると再起動して、そのフォルダのデータに切り替わる
+// デスクトップアプリの自分の PC の作業フォルダ。変えると再起動して、そのフォルダのデータに切り替わる
 export function WorkspaceSetting() {
   const [status, setStatus] = useState<SetupStatus | null>(null);
 
@@ -321,7 +292,7 @@ export function WorkspaceSetting() {
   return (
     <SettingPanel
       title="作業フォルダ"
-      description="ファイル（folder/）と ari-docs のデータ（.ari-docs/）を置くフォルダです。変えるとアプリを再起動し、選んだフォルダのファイル・Note・Wiki・お気に入りに切り替わります。今のフォルダのデータはそのまま残ります。"
+      description="自分の PC のファイル（folder/）と ari-docs のデータ（.ari-docs/）を置くフォルダです（共有サーバーには関わりません）。変えるとアプリを再起動し、選んだフォルダのファイル・Note・Wiki・お気に入りに切り替わります。今のフォルダのデータはそのまま残ります。"
     >
       {!status ? (
         <Spinner />

@@ -19,7 +19,7 @@ pub async fn get_notes(
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     let response = note::get_notes(&conn, &user.user_id).map_err(|e| {
-        eprintln!("get_notes error: {:?}", e);
+        crate::elog!("get_notes error: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
@@ -36,7 +36,7 @@ pub async fn get_note(
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     let response = note::get_note(&conn, &note_id, &user.user_id).map_err(|e| {
-        eprintln!("get_notes error: {:?}", e);
+        crate::elog!("get_notes error: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 

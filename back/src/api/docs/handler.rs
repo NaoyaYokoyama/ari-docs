@@ -8,7 +8,11 @@ use crate::{
 use axum::{
     Json,
     extract::{Query, State},
-    http::{HeaderMap, StatusCode},
+    http::{
+        HeaderMap, StatusCode,
+        header::{CACHE_CONTROL, CONTENT_SECURITY_POLICY, CONTENT_TYPE, X_CONTENT_TYPE_OPTIONS},
+    },
+    response::{IntoResponse, Response},
 };
 
 // 指定フォルダの Markdown 一覧を取得
@@ -29,7 +33,7 @@ pub async fn get_docs(
         &state.config.docs_default_root,
     )
     .map_err(|e| {
-        eprintln!("get_docs error: {:?}", e);
+        crate::elog!("get_docs error: {:?}", e);
         to_status(&e)
     })?;
 
@@ -55,11 +59,47 @@ pub async fn get_doc(
         &query.path,
     )
     .map_err(|e| {
-        eprintln!("get_doc error: {:?}", e);
+        crate::elog!("get_doc error: {:?}", e);
         to_status(&e)
     })?;
 
     Ok(Json(response))
+}
+
+// 本文の画像（FN0801-BR16）。path は指定フォルダからの相対パス
+pub async fn get_doc_image(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<DocQuery>,
+) -> Result<Response, StatusCode> {
+    let conn = connection::connect();
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    require_enabled(&conn)?;
+    let saved_root = find_saved_root(&conn, &user.user_id)?;
+
+    let (bytes, mime) = docs::get_doc_image(
+        &state.config.mode,
+        query.root.as_deref(),
+        &saved_root,
+        &state.config.docs_default_root,
+        &query.path,
+    )
+    .map_err(|e| to_status(&e))?;
+
+    // SVG の中のスクリプトを動かさない（画面は img で出すが、直接開かれたときのため）
+    Ok((
+        [
+            (CONTENT_TYPE, mime),
+            (X_CONTENT_TYPE_OPTIONS, "nosniff"),
+            (
+                CONTENT_SECURITY_POLICY,
+                "sandbox; default-src 'none'; style-src 'unsafe-inline'",
+            ),
+            (CACHE_CONTROL, "private, no-cache"),
+        ],
+        bytes,
+    )
+        .into_response())
 }
 
 // Docs を使わない設定（サーバーの設定。既定）なら、画面から隠すだけでなく API も使わせない
@@ -73,7 +113,7 @@ fn require_enabled(conn: &rusqlite::Connection) -> Result<(), StatusCode> {
 
 fn find_saved_root(conn: &rusqlite::Connection, user_id: &str) -> Result<String, StatusCode> {
     setting_repo::find_docs_root(conn, user_id).map_err(|e| {
-        eprintln!("find_docs_root error: {:?}", e);
+        crate::elog!("find_docs_root error: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })
 }

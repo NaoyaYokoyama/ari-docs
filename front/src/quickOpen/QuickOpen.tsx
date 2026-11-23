@@ -21,7 +21,7 @@ import { twMerge } from "tailwind-merge";
 
 import { quickOpen, type QuickOpenItem } from "@/api/quickOpen";
 import { useApp } from "@/app/AppContext";
-import { useDesktopStatus } from "@/app/DesktopContext";
+import { useDesktop } from "@/app/DesktopContext";
 import { usePreferences } from "@/app/preferences";
 import { type ThemePreference, useTheme } from "@/app/theme";
 import { useOpenAriLink } from "@/app/useAriLink";
@@ -185,7 +185,7 @@ const PAGE_ENTRIES: Record<NavigationPage, { name: string; icon: LucideIcon; key
 
 export default function QuickOpen({ initialQuery, onClose, onHelp }: Props) {
   const { user, showMessage } = useApp();
-  const desktop = useDesktopStatus();
+  const desktop = useDesktop();
   const navigate = useGuardedNavigate();
   const { showHidden } = usePreferences();
   const { preference, setPreference } = useTheme();

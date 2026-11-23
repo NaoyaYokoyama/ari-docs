@@ -25,14 +25,15 @@ pub async fn update_display_name(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(request): Json<UpdateDisplayNameRequest>,
-) -> Result<Json<ApiResponse<SettingResponse>>, StatusCode> {
+) -> Result<Json<ApiResponse<SettingResponse>>, ApiError> {
     let conn = connection::connect();
 
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    request.validate()?;
 
-    let data =
-        setting::update_display_name(&conn, &user.user_id, &request.display_name).map_err(|e| {
-            eprintln!("update_display_name error: {:?}", e);
+    let data = setting::update_display_name(&conn, &user.user_id, request.display_name.trim())
+        .map_err(|e| {
+            crate::elog!("update_display_name error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
@@ -90,7 +91,7 @@ pub async fn get_docs_root(
 
     let response = setting::get_docs_root(&conn, &user.user_id, &state.config.docs_default_root)
         .map_err(|e| {
-            eprintln!("get_docs_root error: {:?}", e);
+            crate::elog!("get_docs_root error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
@@ -123,7 +124,7 @@ pub async fn update_docs_root(
             format!("フォルダが見つかりません: {}", path),
         ),
         DocsRootError::Db(e) => {
-            eprintln!("update_docs_root error: {:?}", e);
+            crate::elog!("update_docs_root error: {:?}", e);
             ApiError::from(StatusCode::INTERNAL_SERVER_ERROR)
         }
     })?;

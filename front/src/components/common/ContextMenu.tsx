@@ -32,7 +32,8 @@ export default function ContextMenu({ position, items, onClose }: Props) {
       setPlace(position);
       return;
     }
-    const { width, height } = ref.current.getBoundingClientRect();
+    // 開くときの拡大のアニメーション（zoom-in-95）の途中でも正しい大きさを使う（getBoundingClientRect は縮んだ大きさになる）
+    const { offsetWidth: width, offsetHeight: height } = ref.current;
     setPlace({
       x: Math.max(4, Math.min(position.x, window.innerWidth - width - 4)),
       y: Math.max(4, Math.min(position.y, window.innerHeight - height - 4)),
@@ -88,7 +89,8 @@ export default function ContextMenu({ position, items, onClose }: Props) {
     <div
       ref={ref}
       role="menu"
-      className="fixed z-50 min-w-52 rounded-lg border border-border bg-card py-1 text-sm text-card-foreground shadow-xl animate-in fade-in-0 zoom-in-95"
+      // 幅は中身に合わせる（画面の右端で開いても縮めずに測り、左へずらして収めるため）
+      className="fixed z-50 w-max max-w-[calc(100vw-8px)] min-w-52 rounded-lg border border-border bg-card py-1 text-sm text-card-foreground shadow-xl animate-in fade-in-0 zoom-in-95"
       style={{ left: place?.x ?? position.x, top: place?.y ?? position.y }}
       onContextMenu={(event) => event.preventDefault()}
     >

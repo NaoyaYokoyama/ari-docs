@@ -66,7 +66,7 @@ pub fn purge_unused(conn: &Connection) {
     match image_repo::delete_unused(conn) {
         Ok(0) => {}
         Ok(count) => println!("content image: removed {count} unused images"),
-        Err(e) => eprintln!("content image purge: {e}"),
+        Err(e) => crate::elog!("content image purge: {e}"),
     }
 }
 

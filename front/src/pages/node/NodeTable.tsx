@@ -20,7 +20,6 @@ import { MAX_PREVIEW_BYTES } from "@/lib/previewFormats";
 import { previewKind } from "@/pages/node/FilePreview";
 import { canDropInto, draggedPaths, filesFromDrop, isFileDrag, isNodeDrag, NODE_DRAG_TYPE, wantsCopy } from "@/pages/node/nodeDrag";
 import RenameInput from "@/pages/node/RenameInput";
-import { FolderStatus, FolderStatusInfo } from "@/types/folderStatus";
 import type { Node } from "@/types/node";
 import { NodeType } from "@/types/nodeType";
 import type { UploadFile } from "@/types/uploadFile";
@@ -53,6 +52,13 @@ type Props = {
   // Vim モードの範囲選択（V）の間は、j・k などで選ぶ範囲を広げる
   visual: boolean;
   emptyTitle: string;
+};
+
+// 一覧が狭いとき（右のプレビューを出したとき・ウィンドウが狭いとき）に出さない列。名前の幅を残すため。
+// 説明はプレビュー・詳細でも見られる。幅は一覧（@container）の幅で決める
+const NARROW_HIDDEN: Record<string, string> = {
+  description: "hidden @4xl:table-cell",
+  updatedBy: "hidden @2xl:table-cell",
 };
 
 function NodeTable({
@@ -150,24 +156,28 @@ function NodeTable({
           );
         },
       },
+      // 説明（FN0301-BR33）。詳細の画面で書く
+      {
+        accessorKey: "description",
+        header: "説明",
+        size: 180,
+        cell: ({ getValue }) => (
+          <span className="block truncate text-muted-foreground" title={getValue<string>()}>
+            {getValue<string>()}
+          </span>
+        ),
+      },
       ...(user?.mode !== "local"
         ? ([
             {
-              accessorKey: "status",
-              header: "状態",
-              cell: ({ getValue }) => {
-                const info = FolderStatusInfo[getValue<FolderStatus>()];
-                return info ? (
-                  <span className="flex items-center gap-2">
-                    <span className={info.color}>●</span>
-                    <span>{info.label}</span>
-                  </span>
-                ) : null;
-              },
-            },
-            {
               accessorKey: "updatedBy",
               header: "更新者",
+              size: 120,
+              cell: ({ getValue }) => (
+                <span className="block truncate" title={getValue<string>()}>
+                  {getValue<string>()}
+                </span>
+              ),
             },
           ] as ColumnDef<Node>[])
         : []),
@@ -353,7 +363,8 @@ function NodeTable({
 
   return (
     <div
-      className="relative min-h-0 flex-1 overflow-y-auto"
+      // 一覧の幅で、出す列を変える（NARROW_HIDDEN）
+      className="@container relative min-h-0 flex-1 overflow-y-auto"
       onClick={(event) => {
         // 空いているところのクリックで選択を外す
         if (event.target === event.currentTarget) {
@@ -409,6 +420,7 @@ function NodeTable({
                         "h-9 px-3 text-left text-xs font-medium text-muted-foreground",
                         header.column.id === "size" && "text-right",
                         header.column.id === "actions" && "pr-0 pl-1.5",
+                        NARROW_HIDDEN[header.column.id],
                         // 並べ替えられる列は、見出しのセル全体をボタンにする（文字の外も押せるように）
                         header.column.getCanSort() && "p-0",
                       )}
@@ -502,7 +514,14 @@ function NodeTable({
                   }}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className={twMerge("h-10 px-3", cell.column.id === "actions" && "pr-0 pl-1.5")}>
+                    <td
+                      key={cell.id}
+                      className={twMerge(
+                        "h-10 px-3",
+                        cell.column.id === "actions" && "pr-0 pl-1.5",
+                        NARROW_HIDDEN[cell.column.id],
+                      )}
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}

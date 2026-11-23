@@ -1,11 +1,12 @@
 import { getVersion } from "@tauri-apps/api/app";
 import { isTauri } from "@tauri-apps/api/core";
-import { Copy, Download, RotateCcw, Upload } from "lucide-react";
+import { Copy, Download, RefreshCw, RotateCcw, Upload } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { getSystemInfo } from "@/api/system";
 import { useApp } from "@/app/AppContext";
-import { useDesktopStatus } from "@/app/DesktopContext";
+import { checkUpdate, useInstallUpdate, useUpdateState } from "@/app/appUpdate";
+import { useDesktop } from "@/app/DesktopContext";
 import { exportSettings, importSettings, resetSettings } from "@/app/preferences";
 import { useTheme } from "@/app/theme";
 import Button from "@/components/common/Button";
@@ -35,7 +36,7 @@ const MODES: Record<string, string> = { local: "個人用（ローカル）", sh
 // アプリの情報（FN0903）。困ったときに管理者・開発者へ伝える内容をまとめて写せる
 export function AboutSetting() {
   const { showMessage } = useApp();
-  const desktop = useDesktopStatus();
+  const desktop = useDesktop();
   const [info, setInfo] = useState<SystemInfo | null>(null);
   const [appVersion, setAppVersion] = useState("");
 
@@ -62,7 +63,9 @@ export function AboutSetting() {
   const mono = (value: string) => <span className="font-mono text-[0.8125rem]">{value}</span>;
   const general: [string, ReactNode][] = [
     ["使い方", MODES[info.mode] ?? info.mode],
-    ...(desktop?.mode === "server" ? [["接続先", mono(desktop.serverUrl)] as [string, ReactNode]] : []),
+    ...(desktop
+      ? [["場所", desktop.place.url ? <>{desktop.place.name}（{mono(desktop.place.url)}）</> : desktop.place.name] as [string, ReactNode]]
+      : []),
     ["この端末", clientName()],
     ...(appVersion ? [["アプリのバージョン", appVersion] as [string, ReactNode]] : []),
     ["サーバーのバージョン", info.version],
@@ -83,7 +86,9 @@ export function AboutSetting() {
         ["ファイルの置き場所", mono(info.paths.folderRoot)],
         ["データの置き場所", mono(info.paths.dataDir)],
         ["DB", mono(info.paths.databasePath)],
+        ["エラーのログ", mono(info.paths.logDir ? `${info.paths.logDir}（error.log。1 MB×5 個まで）` : "-")],
         ["DB の大きさ", formatSize(info.paths.databaseBytes)],
+        ["Note・Wiki の画像", `${info.paths.images} 枚（${formatSize(info.paths.imageBytes)}。DB の中）`],
       ]
     : [];
 
@@ -109,6 +114,7 @@ export function AboutSetting() {
       <SettingCard title="アプリ">
         <Rows rows={general} />
       </SettingCard>
+      {desktop && <UpdateCard serverUrl={desktop.place.local ? "" : desktop.place.url} />}
       <SettingCard title="データの量">
         <Rows rows={counts} />
       </SettingCard>
@@ -127,6 +133,74 @@ export function AboutSetting() {
         </Button>
       </div>
     </SettingPanel>
+  );
+}
+
+// アプリの更新（FN0904）。共有サーバーならそのサーバー、自分の PC なら GitHub を、押したときに調べる
+function UpdateCard({ serverUrl }: { serverUrl: string }) {
+  const state = useUpdateState();
+  const install = useInstallUpdate();
+  const busy = state.kind === "checking" || state.kind === "installing";
+
+  const status = (() => {
+    switch (state.kind) {
+      case "checking":
+        return "確認しています…";
+      case "latest":
+        return "今の版が最新です";
+      case "available":
+        return `新しい版（${state.version}）があります`;
+      case "installing":
+        return `新しい版を取ってきています${state.percent !== null ? `（${state.percent}%）` : ""}`;
+      case "error":
+        return state.message;
+      default:
+        return "";
+    }
+  })();
+
+  return (
+    <SettingCard
+      title="更新"
+      description={
+        serverUrl
+          ? "接続している共有サーバーに置かれた新しい版を調べます"
+          : "GitHub で新しい版を調べます（押したときだけインターネットにつなぎます）"
+      }
+    >
+      <div className="flex flex-wrap items-center gap-3 text-sm">
+        <span
+          className={`min-w-0 flex-1 ${state.kind === "error" ? "text-destructive" : "text-muted-foreground"}`}
+          role="status"
+        >
+          {status}
+        </span>
+        {state.kind === "available" ? (
+          <Button size="sm" onClick={() => void install()}>
+            <Download size={16} />
+            更新して再起動
+          </Button>
+        ) : (
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={busy}
+            onClick={() => void checkUpdate(serverUrl)}
+          >
+            <RefreshCw size={16} />
+            更新を確認
+          </Button>
+        )}
+      </div>
+      {state.kind === "available" && state.notes && (
+        <details className="mt-3 text-sm" open>
+          <summary className="cursor-pointer text-xs text-muted-foreground">変更点</summary>
+          <pre className="mt-2 max-h-60 overflow-auto rounded-md bg-muted p-3 font-sans text-[0.8125rem] whitespace-pre-wrap">
+            {state.notes}
+          </pre>
+        </details>
+      )}
+    </SettingCard>
   );
 }
 

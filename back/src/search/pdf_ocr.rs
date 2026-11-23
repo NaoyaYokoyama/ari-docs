@@ -174,7 +174,7 @@ mod tests {
     #[test]
     fn recognizes_scanned_pdf() {
         if !ocr::available() {
-            eprintln!("文字認識のモデルが無いので飛ばす");
+            crate::elog!("文字認識のモデルが無いので飛ばす");
             return;
         }
         let bytes = std::fs::read("src/search/testdata/scan_ccitt.pdf").unwrap();
@@ -199,7 +199,7 @@ mod tests {
         assert!(has_text(&pages[0]));
         assert!(has_large_image(&doc, page_id));
         if !ocr::available() {
-            eprintln!("文字認識のモデルが無いので飛ばす");
+            crate::elog!("文字認識のモデルが無いので飛ばす");
             return;
         }
         let text = recognize(&bytes, Some(&pages), &mut Engine::new()).unwrap();

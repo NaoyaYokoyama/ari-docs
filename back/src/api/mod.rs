@@ -1,11 +1,13 @@
+pub mod admin_device;
+pub mod app_update;
 pub mod auth;
 pub mod backup;
+pub mod compare;
 pub mod content_folder;
 pub mod content_image;
 pub mod docs;
 pub mod error;
 pub mod favorite;
-pub mod folder;
 pub mod history;
 pub mod home;
 pub mod node;

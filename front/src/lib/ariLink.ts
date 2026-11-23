@@ -8,10 +8,28 @@
 //   ari://note/{noteId}   （本人しか開けない）
 //
 // パスは読めるように日本語はそのまま書き、空白・括弧など、チャットや Markdown のリンクで切れる文字だけを %xx にする
+//
+// 末尾の ?server= は作った場所（FN0004-BR07）。共有サーバーはそのサーバーの ID（/api/server-info の serverId）、
+// 自分の PC は local。無いもの（前の版で作ったリンク）は今の場所で開く。パスの ? は %3F にするので、最初の ? が区切り
 
-export type AriLink =
+export type AriLink = (
   | { kind: "folder" | "file"; path: string }
-  | { kind: "wiki" | "note"; id: string };
+  | { kind: "wiki" | "note"; id: string }
+) & {
+  // 作った場所（共有サーバーの ID か "local"）。無ければ今の場所
+  server?: string;
+};
+
+// リンクを作るときに入れる、今の場所（app/useAriLink.ts が起動したときに決める）
+let currentServer: string | undefined;
+
+export function setLinkServer(server: string | undefined) {
+  currentServer = server;
+}
+
+export function getLinkServer() {
+  return currentServer;
+}
 
 export const ARI_LINK_PREFIX = "ari://";
 
@@ -31,11 +49,14 @@ function encodePath(path: string) {
     .join("/");
 }
 
+// server が無ければ今の場所を入れる
 export function toAriLink(link: AriLink) {
+  const server = link.server ?? currentServer;
+  const query = server ? `?server=${server}` : "";
   if ("path" in link) {
-    return `${ARI_LINK_PREFIX}${link.kind}/${encodePath(link.path)}`;
+    return `${ARI_LINK_PREFIX}${link.kind}/${encodePath(link.path)}${query}`;
   }
-  return `${ARI_LINK_PREFIX}${link.kind}/${link.id}`;
+  return `${ARI_LINK_PREFIX}${link.kind}/${link.id}${query}`;
 }
 
 // 1 つのリンクだけが書かれていれば、その中身。前後の空白・<> は除く
@@ -46,9 +67,18 @@ export function parseAriLink(text: string): AriLink | null {
     return null;
   }
   const kind = match[1].toLowerCase() as AriLink["kind"];
+  const [body, query = ""] = match[2].split(/\?(.*)/s);
+  let server: string | undefined;
+  if (query) {
+    const found = /^server=([A-Za-z0-9_-]{1,64})$/.exec(query);
+    if (!found) {
+      return null;
+    }
+    server = found[1];
+  }
   let rest: string;
   try {
-    rest = decodeURIComponent(match[2]);
+    rest = decodeURIComponent(body);
   } catch {
     return null;
   }
@@ -58,10 +88,10 @@ export function parseAriLink(text: string): AriLink | null {
     if (path.split("/").some((segment) => segment === "..") || (kind === "file" && !path)) {
       return null;
     }
-    return { kind, path };
+    return { kind, path, server };
   }
   const id = rest.replace(/\/+$/, "");
-  return /^[A-Za-z0-9_-]+$/.test(id) ? { kind, id } : null;
+  return /^[A-Za-z0-9_-]+$/.test(id) ? { kind, id, server } : null;
 }
 
 // 画面の中で見せる名前（ノードは最後の名前、Wiki・Note は種類）

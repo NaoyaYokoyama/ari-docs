@@ -96,6 +96,11 @@ pub struct Paths {
     pub data_dir: String,
     pub database_path: String,
     pub database_bytes: u64,
+    // Note・Wiki に貼り付けた画像（DB の中。FN0404-BR06）の数と合計の大きさ
+    pub images: i64,
+    pub image_bytes: i64,
+    // エラーのログのフォルダ（error.log。1 MB×5 個まで）
+    pub log_dir: String,
 }
 
 fn count(conn: &Connection, table: &str) -> i64 {
@@ -119,6 +124,17 @@ pub async fn get_info(
         database_path: config.database_path.clone(),
         database_bytes: std::fs::metadata(&config.database_path)
             .map(|meta| meta.len())
+            .unwrap_or(0),
+        log_dir: crate::common::error_log::dir()
+            .map(|dir| dir.display().to_string())
+            .unwrap_or_default(),
+        images: count(&conn, "content_image"),
+        image_bytes: conn
+            .query_row(
+                "SELECT COALESCE(SUM(size), 0) FROM content_image",
+                [],
+                |row| row.get(0),
+            )
             .unwrap_or(0),
     });
     Ok(Json(SystemInfo {

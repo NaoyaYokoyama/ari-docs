@@ -6,6 +6,8 @@ export interface ServerSettings {
   historyKeep: number;
   // Docs（Markdown ビューア）を使う。既定は使わない
   docsEnabled: boolean;
+  // 1 回にアップロードできる合計の大きさ（MB。既定 1024、10240 まで。FN0902-BR07）
+  uploadMaxMb: number;
 }
 
 // アプリの情報（FN0903）
@@ -29,5 +31,10 @@ export interface SystemInfo {
     dataDir: string;
     databasePath: string;
     databaseBytes: number;
+    // Note・Wiki に貼り付けた画像の数と合計の大きさ（FN0404-BR06）
+    images: number;
+    imageBytes: number;
+    // エラーのログのフォルダ（error.log。1 MB×5 個まで）
+    logDir: string;
   } | null;
 }

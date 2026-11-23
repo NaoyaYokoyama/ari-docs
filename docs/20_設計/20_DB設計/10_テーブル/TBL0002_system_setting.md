@@ -3,8 +3,8 @@ id: TBL0002
 title: システム設定
 type: テーブル
 status: レビュー中
-related: [FN0902, FN0901, FN0302]
-updated: 2026-11-08
+related: [FN0902, FN0901, FN0302, FN0004, API0104]
+updated: 2026-11-23
 ---
 
 # TBL0002 システム設定
@@ -28,7 +28,8 @@ updated: 2026-11-08
 | key | value | 内容 |
 |---|---|---|
 | `backup_settings` | JSON（`interval`・`hour`・`retentionDays`・`dir`・`trashRetentionDays`） | バックアップとゴミ箱の設定（FN0901-BR02） |
-| `server_settings` | JSON（`sessionDays`・`maxFailures`・`lockMinutes`・`historyKeep`・`docsEnabled`） | ログインと保存の設定と Docs を使うか（FN0902-BR02、FN0902-BR06）。無い項目は既定値 |
+| `server_settings` | JSON（`sessionDays`・`maxFailures`・`lockMinutes`・`historyKeep`・`docsEnabled`・`uploadMaxMb`） | ログインと保存の設定・Docs を使うか・アップロードの上限（FN0902-BR02、FN0902-BR06、FN0902-BR07）。無い項目は既定値 |
+| `server_id` | 文字（32 文字の英数字） | このサーバーの ID（FN0004-BR07）。API0104 を初めて呼んだときに作り、変えない。復元しても残る（この表は復元で今のものを残すため） |
 
 ## 3. キー・インデックス
 

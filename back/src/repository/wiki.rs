@@ -100,14 +100,16 @@ pub fn find_by_search(conn: &Connection, keyword: &str) -> Result<Vec<Wiki>> {
         FROM
           wiki
         WHERE
-          title Like '%' || ?1 || '%'
-          OR content Like '%' || ?1 || '%'
+          title LIKE '%' || ?1 || '%' ESCAPE '\\'
+          OR content LIKE '%' || ?1 || '%' ESCAPE '\\'
+        -- タイトルに合うものを先に、同じなら新しい順（FN0201-BR03）
+        ORDER BY (title LIKE '%' || ?1 || '%' ESCAPE '\\') DESC, updated_at DESC
         ";
 
     let mut stmt = conn.prepare(sql)?;
 
     let wiki = stmt
-        .query_map(params![keyword], |row| {
+        .query_map(params![super::search::escape_like(keyword)], |row| {
             Ok(Wiki {
                 wiki_id: row.get(0)?,
                 user_id: String::new(),

@@ -13,6 +13,7 @@ pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Favorite>
         FROM
           favorite
         WHERE user_id = ?1
+        ORDER BY sort_order, rowid DESC
         ";
     let mut stmt = conn.prepare(sql)?;
     let favorites = stmt
@@ -133,18 +134,37 @@ pub fn create_favorite(
           user_id,
           node_id,
           note_id,
-          wiki_id
+          wiki_id,
+          sort_order
         )
         VALUES (
           ?1,
           ?2,
           ?3,
           ?4,
-          ?5
+          ?5,
+          (SELECT COALESCE(MIN(sort_order), 0) - 1 FROM favorite WHERE user_id = ?2)
         )
         ";
     conn.execute(sql, [favorite_id, user_id, node_id, note_id, wiki_id])?;
     Ok(conn.last_insert_rowid())
+}
+
+// 並べ替え（FN0601-BR08）。favorite_ids の順に 0, 1, 2… を振る。ほかの人のお気に入り・無い ID は無視する。
+// 渡されなかったものは後ろに回す（並びはそのまま）
+pub fn update_order(conn: &Connection, user_id: &str, favorite_ids: &[String]) -> Result<()> {
+    let tx = conn.unchecked_transaction()?;
+    tx.execute(
+        "UPDATE favorite SET sort_order = sort_order + ?2 WHERE user_id = ?1",
+        params![user_id, favorite_ids.len() as i64 + 1_000_000],
+    )?;
+    for (index, favorite_id) in favorite_ids.iter().enumerate() {
+        tx.execute(
+            "UPDATE favorite SET sort_order = ?3 WHERE user_id = ?1 AND favorite_id = ?2",
+            params![user_id, favorite_id, index as i64],
+        )?;
+    }
+    tx.commit()
 }
 
 pub fn delete_favorite(conn: &Connection, user_id: &str, favorite_id: &str) -> Result<usize> {
@@ -212,4 +232,35 @@ pub fn find_node_favorite_ids_by_paths(
         Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
     })?
     .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn ids(conn: &Connection, user_id: &str) -> Vec<String> {
+        find_by_user_id(conn, user_id)
+            .unwrap()
+            .into_iter()
+            .map(|favorite| favorite.favorite_id)
+            .collect()
+    }
+
+    // 新しく登録したものは一番上。並べ替えはその順に、ほかの人のものは変えない（FN0601-BR08）
+    #[test]
+    fn new_favorites_go_on_top_and_order_can_change() {
+        let conn = Connection::open_in_memory().unwrap();
+        crate::database::migration::migrate(&conn);
+        crate::repository::user::ensure_local_user(&conn).unwrap();
+        for id in ["fv_1", "fv_2", "fv_3"] {
+            create_favorite(&conn, "local", id, "", id, "").unwrap();
+        }
+        assert_eq!(ids(&conn, "local"), ["fv_3", "fv_2", "fv_1"]);
+        update_order(&conn, "local", &["fv_1".into(), "fv_3".into()]).unwrap();
+        assert_eq!(ids(&conn, "local"), ["fv_1", "fv_3", "fv_2"]);
+        create_favorite(&conn, "local", "fv_4", "", "fv_4", "").unwrap();
+        assert_eq!(ids(&conn, "local"), ["fv_4", "fv_1", "fv_3", "fv_2"]);
+        update_order(&conn, "other", &["fv_2".into()]).unwrap();
+        assert_eq!(ids(&conn, "local"), ["fv_4", "fv_1", "fv_3", "fv_2"]);
+    }
 }

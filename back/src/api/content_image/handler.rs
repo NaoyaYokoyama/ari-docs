@@ -59,7 +59,7 @@ pub async fn upload_content_image(
                 "画像が大きすぎます（10 MB まで）",
             ),
             SaveError::Db(message) => {
-                eprintln!("upload_content_image error: {message}");
+                crate::elog!("upload_content_image error: {message}");
                 StatusCode::INTERNAL_SERVER_ERROR.into()
             }
         })?;

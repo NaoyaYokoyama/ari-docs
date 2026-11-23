@@ -11,16 +11,32 @@ export function getBaseUrl() {
 }
 
 // ログインのトークン。デスクトップアプリは画面とサーバーのオリジンが違い Cookie が届かないため、
-// Authorization ヘッダーで送る。この PC（localStorage）に保存して、次の起動でもログインしたままにする
+// Authorization ヘッダーで送る。この PC（localStorage）に保存して、次の起動でもログインしたままにする。
+// デスクトップアプリは場所（共有サーバー）ごとに分けて持つ（FN0002-BR20）
 const TOKEN_KEY = "ari-docs-token";
 let memoryToken: string | null = null;
+// 今の場所（共有サーバーの URL）。自分の PC・ブラウザは空文字
+let placeScope = "";
+
+// 場所を決める（DesktopGate が起動したときに 1 回だけ呼ぶ）。localStorage の鍵を場所ごとに分けるのにも使う
+export function setPlaceScope(scope: string) {
+  placeScope = scope;
+}
+
+export function getPlaceScope() {
+  return placeScope;
+}
+
+function tokenKey() {
+  return placeScope ? `${TOKEN_KEY}:${placeScope}` : TOKEN_KEY;
+}
 
 export function setToken(token: string | null) {
   try {
     if (token) {
-      localStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem(tokenKey(), token);
     } else {
-      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(tokenKey());
     }
   } catch {
     // 保存できなくても、この起動の間はログインできるようにする
@@ -30,15 +46,55 @@ export function setToken(token: string | null) {
 
 function getToken() {
   try {
-    return localStorage.getItem(TOKEN_KEY) ?? memoryToken;
+    const token = localStorage.getItem(tokenKey());
+    // 以前の版は共有サーバーのトークンを場所で分けずに保存していた。初めて使う共有サーバーに移す
+    if (token === null && placeScope) {
+      const legacy = localStorage.getItem(TOKEN_KEY);
+      if (legacy) {
+        localStorage.setItem(tokenKey(), legacy);
+        localStorage.removeItem(TOKEN_KEY);
+        return legacy;
+      }
+    }
+    return token ?? memoryToken;
   } catch {
     return memoryToken;
   }
 }
 
+// この PC の鍵（管理者の PC。FN0102-BR12）。場所ごとに作ってこの PC に保存し、いつも送る。
+// サーバーは鍵の SHA-256 だけを残し、管理者の操作は登録した PC の鍵が届いたときだけ許す
+const DEVICE_KEY = "ari-docs-device";
+let memoryDeviceKey = "";
+
+function deviceKey() {
+  const key = placeScope ? `${DEVICE_KEY}:${placeScope}` : DEVICE_KEY;
+  try {
+    let value = localStorage.getItem(key);
+    if (!value) {
+      value = randomKey();
+      localStorage.setItem(key, value);
+    }
+    return value;
+  } catch {
+    memoryDeviceKey ||= randomKey();
+    return memoryDeviceKey;
+  }
+}
+
+function randomKey() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 function authHeaders(): Record<string, string> {
   const token = getToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  const headers: Record<string, string> = { "X-Ari-Device": deviceKey() };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  return headers;
 }
 
 // API のエラー。status で見分ける（409 の保存の食い違いなど）
@@ -154,11 +210,15 @@ export async function getBlob(url: string): Promise<Blob> {
 }
 
 // 送った割合（0〜1）を onProgress で知らせるアップロード。fetch では送信の進み具合が取れないため XMLHttpRequest を使う
-export function postFormWithProgress(
+export async function postFormWithProgress(
   url: string,
   body: FormData,
   onProgress: (ratio: number) => void,
 ): Promise<void> {
+  await sendWithProgress(url, body, onProgress);
+}
+
+function sendWithProgress(url: string, body: FormData | Blob, onProgress: (ratio: number) => void): Promise<string> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", baseUrl + url);
@@ -173,7 +233,7 @@ export function postFormWithProgress(
     };
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
-        resolve();
+        resolve(xhr.responseText);
         return;
       }
       let message = "Request failed";

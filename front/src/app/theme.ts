@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from "react";
 
+import { personalSettingsChanged } from "@/app/personalSettings";
+
 // 画面の配色。system は OS の設定に合わせる。選んだ値はこのブラウザ（PC）の localStorage に保存する
 export type ThemePreference = "system" | "light" | "dark";
 
@@ -50,6 +52,7 @@ export function setThemePreference(value: ThemePreference) {
   } catch {
     // 保存できなくても、開いている間は切り替える
   }
+  personalSettingsChanged();
   apply();
 }
 

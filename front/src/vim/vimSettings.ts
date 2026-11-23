@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 
+import { personalSettingsChanged } from "@/app/personalSettings";
 import { DEFAULT_VIM_KEYS, VIM_ACTIONS, type VimActionId } from "@/vim/actions";
 
 // Vim モードの設定（FN0702）。この PC（localStorage）だけに保存する（ほかの画面の設定と同じ。FN0701）
@@ -87,6 +88,7 @@ function save() {
   } catch {
     // 保存できなくても、開いている間は使う
   }
+  personalSettingsChanged();
   listeners.forEach((listener) => listener());
 }
 

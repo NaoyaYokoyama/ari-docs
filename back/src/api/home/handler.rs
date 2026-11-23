@@ -52,7 +52,7 @@ pub async fn get_recent(
 
     let response =
         home::get_recent(&conn, &user.user_id, &state.config.folder_root).map_err(|e| {
-            eprintln!("get_recent error: {:?}", e);
+            crate::elog!("get_recent error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
@@ -76,7 +76,7 @@ pub async fn quick_open(
         request.show_hidden,
     )
     .map_err(|e| {
-        eprintln!("quick_open error: {:?}", e);
+        crate::elog!("quick_open error: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
     Ok(Json(response))

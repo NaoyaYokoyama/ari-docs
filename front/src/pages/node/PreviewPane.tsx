@@ -33,7 +33,14 @@ export default function PreviewPane({ selected, onOpen, onDownload, onClose }: P
               </p>
               <p className="text-xs text-muted-foreground tabular-nums">
                 {formatSize(file.size)}・{file.updatedAt}
+                {/* 更新者（FN0301-BR34）。一覧が狭いと更新者の列を出さないため、ここにも出す */}
+                {file.updatedBy && `・${file.updatedBy}`}
               </p>
+              {file.description && (
+                <p className="mt-1 text-xs break-all whitespace-pre-wrap" title="説明">
+                  {file.description}
+                </p>
+              )}
             </div>
             <IconButton label="ダウンロード" onClick={() => onDownload(file)}>
               <Download size={16} />
@@ -60,6 +67,9 @@ export default function PreviewPane({ selected, onOpen, onDownload, onClose }: P
               : node
                 ? "フォルダは中身を表示しません"
                 : "ファイルを選ぶと、ここに中身を表示します"}
+            {node && !file && node.description && (
+              <p className="max-w-full px-4 text-xs break-all whitespace-pre-wrap text-foreground">{node.description}</p>
+            )}
           </div>
         )}
       </div>

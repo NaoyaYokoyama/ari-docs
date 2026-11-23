@@ -2,7 +2,7 @@ import MDEditor from "@uiw/react-md-editor";
 import { TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { getDoc } from "@/api/docs";
+import { getDoc, getDocImage } from "@/api/docs";
 import { useTheme } from "@/app/theme";
 import {
   baseId,
@@ -38,6 +38,47 @@ function mermaidCode(pre: HastNode | undefined) {
   return Array.isArray(className) && className.includes("language-mermaid")
     ? code
     : undefined;
+}
+
+// 本文の画像（FN0801-BR16）。相対パスの画像は、表示しているフォルダから読み込む（ログインが要るため img の src に直接書かない）。
+// http などの URL・data: はそのまま
+function DocImage({ root, docPath, src, alt }: { root: string; docPath: string; src?: string; alt?: string }) {
+  const relative = !!src && !/^[a-z][a-z0-9+.-]*:/i.test(src) && !src.startsWith("/");
+  const [url, setUrl] = useState<string | undefined>(relative ? undefined : src);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!relative || !src) {
+      setUrl(src);
+      return;
+    }
+    let alive = true;
+    let objectUrl: string | undefined;
+    setFailed(false);
+    setUrl(undefined);
+    getDocImage(root, resolveRelativePath(docPath, src.split("?")[0]))
+      .then((blob) => {
+        objectUrl = URL.createObjectURL(blob);
+        if (alive) {
+          setUrl(objectUrl);
+        }
+      })
+      .catch(() => alive && setFailed(true));
+    return () => {
+      alive = false;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [root, docPath, src, relative]);
+
+  if (failed) {
+    return <span className="text-xs text-muted-foreground">［画像を表示できません: {alt || src}］</span>;
+  }
+  if (!url) {
+    return <span className="inline-block h-24 w-40 animate-pulse rounded bg-muted align-middle" aria-label={alt} />;
+  }
+  return <img src={url} alt={alt ?? ""} loading="lazy" className="max-w-full" />;
 }
 
 type Props = {
@@ -165,6 +206,9 @@ function DocViewer({ root, doc, warnings, idIndex, onSelect }: Props) {
           <MDEditor.Markdown
             source={body}
             components={{
+              img: ({ src, alt }) => (
+                <DocImage root={root} docPath={doc.path} src={typeof src === "string" ? src : undefined} alt={alt} />
+              ),
               pre: ({ node, children, ...props }) => {
                 const code = mermaidCode(node as HastNode | undefined);
                 if (code) {

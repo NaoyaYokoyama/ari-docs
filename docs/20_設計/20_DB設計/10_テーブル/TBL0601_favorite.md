@@ -4,7 +4,7 @@ title: お気に入り
 type: テーブル
 status: レビュー中
 related: [FN0601, TBL0101, TBL0301, TBL0401, TBL0501]
-updated: 2026-10-30
+updated: 2026-11-23
 ---
 
 # TBL0601 お気に入り
@@ -15,7 +15,7 @@ updated: 2026-10-30
 |---|---|
 | 物理名 | `favorite` |
 | 概要 | お気に入り。1 行がノード・Note・Wiki のいずれか 1 つを指す（FN0601-BR01）。 |
-| 定義（正） | `back/src/data/migration/T005_create_favorite.sql` |
+| 定義（正） | `back/src/data/migration/T005_create_favorite.sql`・`T021_add_favorite_sort_order.sql` |
 
 ## 2. カラム
 
@@ -26,6 +26,7 @@ updated: 2026-10-30
 | `node_id` | ノード ID | TEXT | 不可 | - | ノードのお気に入りのとき `node.node_id`。それ以外は空文字 |
 | `note_id` | Note ID | TEXT | 不可 | - | Note のお気に入りのとき `note.note_id`。それ以外は空文字 |
 | `wiki_id` | Wiki ID | TEXT | 不可 | - | Wiki のお気に入りのとき `wiki.wiki_id`。それ以外は空文字 |
+| `sort_order` | 並び順 | INTEGER | 不可 | 0 | 小さいものほど上（FN0601-BR08）。登録のときは、その人の最小より 1 小さい値（一番上）。T021 で、今あったものに登録の新しい順で 0, 1, 2… を振った |
 
 ## 3. キー・インデックス
 
@@ -47,7 +48,7 @@ updated: 2026-10-30
 | タイミング | きっかけ（API・バッチの ID） | 内容 |
 |---|---|---|
 | 作成 | API0602、API0603、API0604 | お気に入り登録 |
-| 更新 | - | 更新しない |
+| 更新 | API0606 | 並べ替えで `sort_order` を変える |
 | 削除 | API0605 | お気に入り解除 |
 | 削除 | API0404 | Note 削除時に、その Note のお気に入りを削除 |
 | 削除 | API0504 | Wiki 削除時に、その Wiki のお気に入りを削除 |

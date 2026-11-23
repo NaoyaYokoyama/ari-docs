@@ -14,11 +14,7 @@ pub struct WikiQuery {
 pub struct CreateWikiRequest {
     #[validate(
         custom(function = "not_blank"),
-        length(
-            min = 1,
-            max = 20,
-            message = "Wiki名は1文字以上20文字以内で入力してください。"
-        )
+        length(max = 25, message = "タイトルは25文字以内で入力してください。")
     )]
     pub title: String,
 }
@@ -39,4 +35,12 @@ pub struct UpdateWikiRequest {
     // 食い違っていても上書きする
     #[serde(default)]
     pub force: bool,
+}
+
+// 書いている・やめたを知らせる（API0507。同時編集のお知らせ）
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditingRequest {
+    pub wiki_id: String,
+    pub editing: bool,
 }

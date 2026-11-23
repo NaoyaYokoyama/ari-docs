@@ -1,3 +1,4 @@
+pub mod admin_device;
 pub mod backup;
 pub mod content_folder;
 pub mod content_image;
@@ -6,9 +7,11 @@ pub mod history;
 pub mod node;
 pub mod note;
 pub mod search;
+pub mod search_exclusion;
 pub mod session;
 pub mod setting;
 pub mod system_setting;
 pub mod trash;
 pub mod user;
+pub mod user_permission;
 pub mod wiki;

@@ -96,8 +96,8 @@ pub fn extension(path: &Path) -> String {
 pub const FORMAT_GROUPS: &[(&str, &[&str])] = &[
     ("Excel", &["xlsx", "xlsm", "xlsb", "xls"]),
     ("OpenDocument の表計算", &["ods"]),
-    ("Word", &["docx", "docm"]),
-    ("PowerPoint", &["pptx", "pptm"]),
+    ("Word", &["docx", "docm", "doc"]),
+    ("PowerPoint", &["pptx", "pptm", "ppt"]),
     ("PDF", &["pdf"]),
     ("テキスト", TEXT_EXTENSIONS),
 ];
@@ -152,6 +152,9 @@ pub fn extract(path: &Path, engine: &mut Engine) -> Result<Extracted, String> {
         match ext.as_str() {
             "docx" | "docm" => extract_office_xml(path, DOCX_PARTS)?,
             "pptx" | "pptm" => extract_office_xml(path, PPTX_PARTS)?,
+            // 古い形式は文字だけ（貼り付けた画像は読まない。FN0202-BR18）
+            "doc" => super::legacy_office::extract_doc(path)?,
+            "ppt" => super::legacy_office::extract_ppt(path)?,
             "pdf" => extract_pdf_with_ocr(path, engine)?,
             _ if ocr::is_image(&ext) && ocr::available() => engine.recognize_file(path)?,
             _ => return Ok(Extracted::Unsupported),
@@ -199,6 +202,29 @@ fn truncate(mut text: String) -> String {
         text.truncate(index);
     }
     text
+}
+
+// 比べる（FN0304）ための文字。文字認識はせず、ファイルにある文字だけを読む（すぐ結果を出すため）。
+// 表計算は compare.rs がセルのまま読むので、ここでは扱わない。対象外の形式は None
+pub fn extract_for_compare(path: &Path) -> Result<Option<String>, String> {
+    let ext = extension(path);
+    let text = if TEXT_EXTENSIONS.contains(&ext.as_str()) {
+        decode_text(&fs::read(path).map_err(|e| e.to_string())?)
+    } else {
+        match ext.as_str() {
+            "docx" | "docm" => extract_office_xml(path, DOCX_PARTS)?,
+            "pptx" | "pptm" => extract_office_xml(path, PPTX_PARTS)?,
+            "doc" => super::legacy_office::extract_doc(path)?,
+            "ppt" => super::legacy_office::extract_ppt(path)?,
+            "pdf" => extract_pdf(path)?,
+            _ => return Ok(None),
+        }
+    };
+    Ok(Some(truncate(text)))
+}
+
+pub fn is_spreadsheet(path: &Path) -> bool {
+    SPREADSHEET_EXTENSIONS.contains(&extension(path).as_str())
 }
 
 // テキストの文字コード。BOM があればそれに従い、UTF-8 として読めなければ Shift_JIS（日本の Windows で多い）とする
@@ -334,7 +360,7 @@ fn extract_pdf_with_ocr(path: &Path, engine: &mut Engine) -> Result<String, Stri
     match (text, ocr) {
         (Ok(text), Ok(ocr)) => Ok(text + "\n" + &ocr),
         (Ok(text), Err(message)) => {
-            eprintln!("pdf ocr: {} {message}", path.display());
+            crate::elog!("pdf ocr: {} {message}", path.display());
             Ok(text)
         }
         (Err(_), Ok(ocr)) => Ok(ocr),
@@ -365,7 +391,7 @@ mod tests {
             .iter()
             .chain(SPREADSHEET_EXTENSIONS)
             .copied()
-            .chain(["docx", "docm", "pptx", "pptm", "pdf"])
+            .chain(["docx", "docm", "doc", "pptx", "pptm", "ppt", "pdf"])
             .collect();
         for ext in &listed {
             assert!(extractable.contains(ext), "{ext} を取り出せない");
@@ -406,12 +432,12 @@ mod tests {
     #[test]
     fn supported_extensions() {
         for name in [
-            "a.xlsx", "a.XLS", "a.pdf", "a.docx", "a.pptx", "a.txt", "a.csv",
+            "a.xlsx", "a.XLS", "a.pdf", "a.docx", "a.pptx", "a.doc", "a.PPT", "a.txt", "a.csv",
         ] {
             assert!(is_supported(Path::new(name)), "{name}");
         }
         // 画像（a.png）は文字認識のモデルがあるときだけなので、ここでは見ない
-        for name in ["a.zip", "a.exe", "a.doc", "noext"] {
+        for name in ["a.zip", "a.exe", "a.jtd", "noext"] {
             assert!(!is_supported(Path::new(name)), "{name}");
         }
     }

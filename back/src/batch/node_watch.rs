@@ -22,12 +22,12 @@ pub fn start(folder_root: String) {
         let mut watcher = match notify::recommended_watcher(tx) {
             Ok(watcher) => watcher,
             Err(e) => {
-                eprintln!("node_watch: 見張れません: {e}");
+                crate::elog!("node_watch: 見張れません: {e}");
                 return;
             }
         };
         if let Err(e) = watcher.watch(&root, RecursiveMode::Recursive) {
-            eprintln!("node_watch: 見張れません（{}）: {e}", root.display());
+            crate::elog!("node_watch: 見張れません（{}）: {e}", root.display());
             return;
         }
         for event in rx {
@@ -57,7 +57,7 @@ pub fn start(folder_root: String) {
             let result =
                 tokio::task::spawn_blocking(move || node_sync::sync_paths(&root, &paths)).await;
             if let Ok(Err(e)) = result {
-                eprintln!("node_watch: {e}");
+                crate::elog!("node_watch: {e}");
             }
         }
     });

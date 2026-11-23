@@ -43,3 +43,4 @@ back/models/
 
 # ゴミ箱（削除したファイルの置き場。開発用）
 back/data/trash/
+back/data/desktop.toml

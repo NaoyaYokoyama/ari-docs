@@ -17,9 +17,10 @@ pub fn create_favorite(
         node_id = match node_repo::find_node_id_by_node_path(conn, node_path)? {
             Some(node_id) => node_id,
             None => {
-                let node_id = generate_node_id();
-                node_repo::create_node(conn, &node_id, node_path)?;
-                node_id
+                // 同時にほかから登録されていれば、そちらの node_id を使う
+                node_repo::create_node(conn, &generate_node_id(), node_path)?;
+                node_repo::find_node_id_by_node_path(conn, node_path)?
+                    .ok_or(rusqlite::Error::QueryReturnedNoRows)?
             }
         };
     }
@@ -42,6 +43,25 @@ pub fn delete_favorite(
     Ok(result)
 }
 
+// お気に入りにする Note・Wiki があるか（Note は本人のものだけ。API0603・API0604）
+pub fn note_exists(conn: &Connection, user_id: &str, note_id: &str) -> rusqlite::Result<bool> {
+    exists(crate::repository::note::find_by_note_id(
+        conn, user_id, note_id,
+    ))
+}
+
+pub fn wiki_exists(conn: &Connection, wiki_id: &str) -> rusqlite::Result<bool> {
+    exists(crate::repository::wiki::find_by_wiki_id(conn, wiki_id))
+}
+
+fn exists<T>(result: rusqlite::Result<T>) -> rusqlite::Result<bool> {
+    match result {
+        Ok(_) => Ok(true),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(false),
+        Err(e) => Err(e),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -52,6 +72,10 @@ mod tests {
             .unwrap();
         conn.execute_batch(include_str!("../data/migration/T005_create_favorite.sql"))
             .unwrap();
+        conn.execute_batch(include_str!(
+            "../data/migration/T021_add_favorite_sort_order.sql"
+        ))
+        .unwrap();
         conn
     }
 

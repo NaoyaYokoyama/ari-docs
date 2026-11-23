@@ -36,3 +36,11 @@ pub fn generate_backup_id() -> String {
 pub fn generate_content_folder_id() -> String {
     generate_id("cf")
 }
+
+pub fn generate_search_exclusion_id() -> String {
+    generate_id("sx")
+}
+
+pub fn generate_admin_device_id() -> String {
+    generate_id("ad")
+}

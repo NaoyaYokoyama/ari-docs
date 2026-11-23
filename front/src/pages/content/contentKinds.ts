@@ -78,8 +78,8 @@ export const WIKI: ContentKind = {
   description: "全員で共有するページです",
   stateKey: "wikiId",
   titleMaxLength: 25,
-  // サーバーは 1〜20 文字までしか作成できない（FN0501-BR02）
-  createMaxLength: 20,
+  // 作成も更新と同じ 25 文字まで（FN0501-BR02）
+  createMaxLength: 25,
   list: async () =>
     (await getWikis()).wikis.map((wiki) => ({
       id: wiki.wikiId,

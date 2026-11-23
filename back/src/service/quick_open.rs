@@ -9,6 +9,7 @@ use crate::{
         content_folder as folder_repo, node as node_repo, note as note_repo, wiki as wiki_repo,
     },
     search::fuzzy::Query,
+    service::search_exclusion,
 };
 
 // 返す最大の件数（画面は最近開いたもの・画面の操作と合わせて並べ直す）
@@ -70,9 +71,14 @@ pub fn search(
         }
     }
 
+    // 検索の対象外（全員の分と本人の分。FN0202-BR16・BR17）
+    let exclusions = search_exclusion::load(conn, Some(user_id))?;
     for (node_id, path) in node_repo::find_all(conn)? {
         // 隠しファイル（「.」で始まる名前）と、その中のものは、出す設定のときだけ（FN0701）
-        if path.is_empty() || (!show_hidden && path.split('/').any(|part| part.starts_with('.'))) {
+        if path.is_empty()
+            || (!show_hidden && path.split('/').any(|part| part.starts_with('.')))
+            || exclusions.excludes(&path)
+        {
             continue;
         }
         let (location, name) = path.rsplit_once('/').unwrap_or(("", &path));
@@ -161,11 +167,13 @@ mod tests {
     fn connect() -> Connection {
         let conn = Connection::open_in_memory().unwrap();
         for sql in [
+            include_str!("../data/migration/T002_create_user.sql"),
             include_str!("../data/migration/T004_create_node.sql"),
             include_str!("../data/migration/T006_create_note.sql"),
             include_str!("../data/migration/T007_create_wiki.sql"),
             include_str!("../data/migration/T013_add_wiki_updated_by.sql"),
             include_str!("../data/migration/T016_create_content_folder.sql"),
+            include_str!("../data/migration/T018_create_search_exclusion.sql"),
         ] {
             conn.execute_batch(sql).unwrap();
         }

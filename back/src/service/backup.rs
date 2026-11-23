@@ -23,6 +23,37 @@ pub fn is_busy() -> bool {
     BUSY.try_lock().is_err()
 }
 
+// 自動のバックアップに失敗したとき（保存先が無いなど）の記録。失敗したらその期間は取り直さず、次の予定まで待つ
+// （BAT0901 が毎分失敗を繰り返さないように）。設定画面に出して管理者に知らせる（FN0901-BR11）。
+// 設定を保存したら消す（保存先を直したらすぐ取り直す）。サーバーを起動し直しても消える
+pub struct ScheduledFailure {
+    pub at: chrono::DateTime<Local>,
+    // 失敗した期間（period_key）
+    pub period: String,
+    pub message: String,
+}
+
+static LAST_FAILURE: Mutex<Option<ScheduledFailure>> = Mutex::new(None);
+
+// 画面に出す最後の失敗（日時 "YYYY/MM/DD HH:MM" と理由）。成功したら消える
+pub fn last_failure() -> Option<(String, String)> {
+    LAST_FAILURE.lock().unwrap().as_ref().map(|failure| {
+        (
+            failure.at.format("%Y/%m/%d %H:%M").to_string(),
+            failure.message.clone(),
+        )
+    })
+}
+
+// その期間に失敗していなければ取る
+fn should_try(period: &str) -> bool {
+    LAST_FAILURE
+        .lock()
+        .unwrap()
+        .as_ref()
+        .is_none_or(|failure| failure.period != period)
+}
+
 // 管理者が決める設定（FN0901-BR02）
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -37,6 +68,9 @@ pub struct BackupSettings {
     pub dir: String,
     // ゴミ箱に残す日数（FN0302-BR05）
     pub trash_retention_days: i64,
+    // ゴミ箱の容量の上限（MB）。0 は上限なし。超えたら古いものから完全に削除する（FN0302-BR09）
+    #[serde(default)]
+    pub trash_max_mb: i64,
 }
 
 impl Default for BackupSettings {
@@ -47,11 +81,14 @@ impl Default for BackupSettings {
             retention_days: 30,
             dir: String::new(),
             trash_retention_days: 30,
+            trash_max_mb: 0,
         }
     }
 }
 
 const SETTINGS_KEY: &str = "backup_settings";
+// ゴミ箱の上限の最大（10 TB）
+const TRASH_MAX_MB_LIMIT: i64 = 10_000_000;
 
 pub fn settings(conn: &Connection) -> rusqlite::Result<BackupSettings> {
     Ok(system_setting::find(conn, SETTINGS_KEY)?
@@ -74,6 +111,11 @@ pub fn save_settings(conn: &Connection, settings: &BackupSettings) -> Result<(),
     {
         return Err("保存期間は 1〜3650 日で指定してください".to_string());
     }
+    if !(0..=TRASH_MAX_MB_LIMIT).contains(&settings.trash_max_mb) {
+        return Err(format!(
+            "ゴミ箱の上限は 0（上限なし）〜{TRASH_MAX_MB_LIMIT} MB で指定してください"
+        ));
+    }
     let dir = settings.dir.trim();
     if !dir.is_empty() {
         let path = Path::new(dir);
@@ -87,6 +129,8 @@ pub fn save_settings(conn: &Connection, settings: &BackupSettings) -> Result<(),
     saved.dir = dir.to_string();
     system_setting::upsert(conn, SETTINGS_KEY, &serde_json::to_string(&saved).unwrap())
         .map_err(|e| e.to_string())?;
+    // 保存先などを直したら、次の確認ですぐ取り直す（FN0901-BR11）
+    *LAST_FAILURE.lock().unwrap() = None;
     Ok(())
 }
 
@@ -221,7 +265,14 @@ pub fn backup_file(conn: &Connection, backup_id: &str) -> Result<(PathBuf, Strin
 
 // 復元しても今のものを残す表（バックアップの記録・設定・ゴミ箱はバックアップの外にある実体と結びつくため。
 // セッションは復元した人がログインしたままでいられるように）
-const KEEP_TABLES: [&str; 4] = ["backup", "system_setting", "trash", "session"];
+const KEEP_TABLES: [&str; 6] = [
+    "backup",
+    "system_setting",
+    "trash",
+    "trash_favorite",
+    "trash_description",
+    "session",
+];
 
 // 復元（FN0901-BR05）。先に今の状態をバックアップし（before_restore）、folder/ の中身と DB を入れ替える
 pub fn restore_backup(
@@ -280,8 +331,13 @@ pub fn restore_backup(
         return Err(format!("復元の前のバックアップを作れませんでした: {e}"));
     }
 
-    // 3. 残す表の今の中身を控える
+    // 3. 残す表の今の中身を控える。共有モードでは、復元する管理者の今のアカウントも控える（FN0901-BR10）
     let kept = keep_tables(conn).map_err(|e| e.to_string())?;
+    let restorer = if config.mode.is_local() {
+        None
+    } else {
+        user_row(conn, user_id).map_err(|e| e.to_string())?
+    };
 
     // 4. folder/ の中身を入れ替える（失敗したら戻す）
     let old = work.join("old");
@@ -323,6 +379,13 @@ pub fn restore_backup(
     .map_err(|e| format!("DB を復元できませんでした: {e}"))?;
     migration::migrate(conn);
     restore_tables(conn, &kept).map_err(|e| e.to_string())?;
+    if let Some(row) = &restorer {
+        keep_restorer(conn, user_id, row).map_err(|e| e.to_string())?;
+    }
+    // ローカルモードでは、共有モードで作ったバックアップを戻しても使えるよう、ユーザー local を作る（起動し直さなくてよい）
+    if config.mode.is_local() {
+        crate::repository::user::ensure_local_user(conn).map_err(|e| e.to_string())?;
+    }
     // 中身の検索は、復元したファイルで取り込み直す
     let _ = conn.execute("DELETE FROM node_content", []);
     cleanup(&work);
@@ -330,6 +393,42 @@ pub fn restore_backup(
 }
 
 type TableRows = Vec<(String, Vec<Vec<rusqlite::types::Value>>)>;
+
+fn user_row(
+    conn: &Connection,
+    user_id: &str,
+) -> rusqlite::Result<Option<Vec<rusqlite::types::Value>>> {
+    let mut stmt = conn.prepare("SELECT * FROM user WHERE user_id = ?1")?;
+    let columns = stmt.column_count();
+    let mut rows = stmt.query([user_id])?;
+    match rows.next()? {
+        Some(row) => Ok(Some(
+            (0..columns)
+                .map(|i| row.get(i))
+                .collect::<rusqlite::Result<Vec<_>>>()?,
+        )),
+        None => Ok(None),
+    }
+}
+
+// 共有モードで復元したとき、復元した管理者を今のアカウント（パスワード・管理者）のまま残す。
+// 公開する前（ローカルモード。FN0005）のバックアップなら、ユーザー local のデータをその管理者に移す。
+// 管理者のいない DB に戻ると、最初につないだ人が管理者になれてしまうため（FN0901-BR10）
+fn keep_restorer(
+    conn: &Connection,
+    user_id: &str,
+    row: &[rusqlite::types::Value],
+) -> rusqlite::Result<()> {
+    let tx = conn.unchecked_transaction()?;
+    tx.execute("DELETE FROM user WHERE user_id = ?1", [user_id])?;
+    let placeholders = vec!["?"; row.len()].join(",");
+    tx.execute(
+        &format!("INSERT INTO user VALUES ({placeholders})"),
+        rusqlite::params_from_iter(row.iter()),
+    )?;
+    crate::service::host::move_local_user(&tx, user_id)?;
+    tx.commit()
+}
 
 fn keep_tables(conn: &Connection) -> rusqlite::Result<TableRows> {
     let mut tables = Vec::new();
@@ -391,16 +490,27 @@ pub fn run_scheduled(config: &AppConfig) {
     if let Some(period) = period_key(&settings.interval, now)
         && now.hour() >= settings.hour
         && !backup_repo::exists_period(&conn, &period).unwrap_or(true)
+        && should_try(&period)
     {
         match create_backup(&conn, config, "auto", &period, "system") {
-            Ok(backup) => println!("backup: created {}", backup.file_name),
-            Err(e) => eprintln!("backup: {e}"),
+            Ok(backup) => {
+                println!("backup: created {}", backup.file_name);
+                *LAST_FAILURE.lock().unwrap() = None;
+            }
+            Err(e) => {
+                crate::elog!("backup: {e}");
+                *LAST_FAILURE.lock().unwrap() = Some(ScheduledFailure {
+                    at: now,
+                    period: period.clone(),
+                    message: e,
+                });
+            }
         }
     }
     if let Ok(expired) = backup_repo::find_expired(&conn, settings.retention_days) {
         for backup in expired {
             if let Err(e) = delete_backup(&conn, &backup.backup_id) {
-                eprintln!("backup: {e}");
+                crate::elog!("backup: {e}");
             }
         }
     }
@@ -408,8 +518,13 @@ pub fn run_scheduled(config: &AppConfig) {
         &conn,
         crate::service::server_settings::get(&conn).session_days,
     );
-    if let Err(e) = crate::service::trash::purge(&conn, config, settings.trash_retention_days) {
-        eprintln!("trash purge: {e}");
+    if let Err(e) = crate::service::trash::purge(
+        &conn,
+        config,
+        settings.trash_retention_days,
+        settings.trash_max_mb,
+    ) {
+        crate::elog!("trash purge: {e}");
     }
 }
 
@@ -418,6 +533,9 @@ mod tests {
     use super::*;
     use crate::config::app::AppMode;
     use chrono::TimeZone;
+
+    // バックアップ・復元は同時に 1 つだけ（BUSY）なので、それを使うテストは順に動かす
+    static SERIAL: Mutex<()> = Mutex::new(());
 
     #[test]
     fn period_key_by_interval() {
@@ -450,11 +568,18 @@ mod tests {
         s.hour = 3;
         s.dir = "relative/dir".into();
         assert!(save_settings(&conn, &s).is_err());
+        s.dir = String::new();
+        s.trash_max_mb = -1;
+        assert!(save_settings(&conn, &s).is_err());
+        s.trash_max_mb = 500;
+        save_settings(&conn, &s).unwrap();
+        assert_eq!(settings(&conn).unwrap().trash_max_mb, 500);
     }
 
     // バックアップ → 変更 → 復元で、folder/ と DB が戻り、バックアップの記録は残る
     #[test]
     fn backup_and_restore_round_trip() {
+        let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
         let dir = std::env::temp_dir().join(format!("ari-backup-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(dir.join("folder/資料")).unwrap();
@@ -509,6 +634,58 @@ mod tests {
         delete_backup(&conn, &backup.backup_id).unwrap();
         assert_eq!(backup_repo::find_all(&conn).unwrap().len(), 1);
         // Windows は開いている DB のファイルを消せないので、閉じてから消す
+        drop(conn);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    // 公開（FN0005）したあとに、公開する前のバックアップを復元しても、管理者が残り local のデータが管理者に移る
+    #[test]
+    fn restoring_a_local_backup_keeps_the_admin() {
+        let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = std::env::temp_dir().join(format!("ari-backup-host-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("folder")).unwrap();
+        fs::create_dir_all(dir.join("data")).unwrap();
+        let mut config = AppConfig {
+            mode: AppMode::Local,
+            folder_root: dir.join("folder").to_string_lossy().to_string(),
+            database_path: dir.join("data/ari.db").to_string_lossy().to_string(),
+            docs_default_root: String::new(),
+            bind_address: String::new(),
+            port: 0,
+            tls_cert: String::new(),
+            tls_key: String::new(),
+            ocr_models_dir: String::new(),
+        };
+        let mut conn = Connection::open(&config.database_path).unwrap();
+        migration::migrate(&conn);
+        crate::repository::user::ensure_local_user(&conn).unwrap();
+        conn.execute(
+            "INSERT INTO note (note_id, user_id, title) VALUES ('nt_1', 'local', 'メモ')",
+            [],
+        )
+        .unwrap();
+        let backup = create_backup(&conn, &config, "manual", "", "local").unwrap();
+
+        crate::service::host::take_over_local_user(&conn, "admin", "管理者", "password1")
+            .ok()
+            .unwrap();
+        config.mode = AppMode::Shared;
+        restore_backup(&mut conn, &config, &backup.backup_id, "admin").unwrap();
+
+        let count = |sql: &str| -> i64 { conn.query_row(sql, [], |row| row.get(0)).unwrap() };
+        assert_eq!(
+            count("SELECT COUNT(*) FROM user WHERE user_id = 'admin' AND role_id = 'admin'"),
+            1
+        );
+        assert_eq!(
+            count("SELECT COUNT(*) FROM user WHERE user_id = 'local'"),
+            0
+        );
+        assert_eq!(
+            count("SELECT COUNT(*) FROM note WHERE user_id = 'admin'"),
+            1
+        );
         drop(conn);
         fs::remove_dir_all(&dir).unwrap();
     }

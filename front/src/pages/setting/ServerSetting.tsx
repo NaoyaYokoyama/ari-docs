@@ -15,6 +15,7 @@ const DEFAULTS: ServerSettings = {
   lockMinutes: 15,
   historyKeep: 100,
   docsEnabled: false,
+  uploadMaxMb: 1024,
 };
 
 // 数で指定する設定（入力欄に出す）
@@ -70,6 +71,14 @@ const STORAGE_ITEMS: Item[] = [
     unit: "件",
     min: 1,
     max: 1000,
+  },
+  {
+    key: "uploadMaxMb",
+    label: "アップロードの上限",
+    description: "Folder で 1 回にアップロードできる合計の大きさです",
+    unit: "MB",
+    min: 1,
+    max: 10240,
   },
 ];
 
@@ -149,7 +158,8 @@ export default function ServerSetting() {
           onChange={(e) => setForm({ ...form, [item.key]: e.target.value })}
           className="w-24 text-right"
         />
-        {item.unit}
+        {/* 単位の幅をそろえ、入力欄の右端を行ごとにそろえる */}
+        <span className="w-6">{item.unit}</span>
       </span>
     </SettingRow>
   );
@@ -166,7 +176,20 @@ export default function ServerSetting() {
     >
       <form onSubmit={submit} className="space-y-6">
         {shared && <SettingCard title="ログイン">{LOGIN_ITEMS.map(row)}</SettingCard>}
-        <SettingCard title="保存">{STORAGE_ITEMS.map(row)}</SettingCard>
+        <SettingCard title="保存">
+          {STORAGE_ITEMS.map(row)}
+          {values.uploadMaxMb > DEFAULTS.uploadMaxMb && (
+            <div className="mt-2 rounded-md border border-border bg-muted p-3 text-xs text-muted-foreground">
+              <p>初期値（1024 MB）より大きくすると、次のことに気を付けてください。</p>
+              <ul className="mt-1 list-disc space-y-0.5 pl-5">
+                <li>大きなファイルは送るのに時間がかかり、その間ネットワークが混みます</li>
+                <li>届いたファイルはサーバーのディスクを使い、バックアップ（ZIP）も大きく・遅くなります</li>
+                <li>送っている間は、サーバーのデータのフォルダにも同じ大きさの一時ファイルを作ります</li>
+                <li>Excel・Word・PDF などの中身の検索は、100 MB を超えるファイルを読みません</li>
+              </ul>
+            </div>
+          )}
+        </SettingCard>
         <SettingCard title="機能">
           <SettingRow
             label="Docs（Markdown ビューア）を使う"
@@ -212,5 +235,6 @@ function toForm(settings: ServerSettings): NumberForm {
     maxFailures: String(settings.maxFailures),
     lockMinutes: String(settings.lockMinutes),
     historyKeep: String(settings.historyKeep),
+    uploadMaxMb: String(settings.uploadMaxMb),
   };
 }

@@ -42,3 +42,27 @@ export interface FormatsResponse {
   // 文字認識する画像ファイルの拡張子
   ocrImageExtensions: string[];
 }
+
+// 検索の対象外（FN0202-BR16・BR17）。path: Folder の一番上からのパス（そのフォルダ・ファイルと中のもの）。
+// name: 名前の型（* と ? を使える。どこにあっても）
+export type ExclusionKind = "path" | "name";
+
+export interface Exclusion {
+  exclusionId: string;
+  kind: ExclusionKind;
+  value: string;
+  // 登録したユーザーの表示名
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface ExclusionsResponse {
+  // 全員の対象外（中身の取り込みもしない）
+  all: Exclusion[];
+  // 本人だけの対象外
+  mine: Exclusion[];
+  // 全員の対象外を変えられる（ローカルモード、または共有モードの管理者）
+  canEditAll: boolean;
+  // 本人だけの対象外を使う（共有モード）
+  personal: boolean;
+}

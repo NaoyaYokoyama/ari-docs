@@ -63,3 +63,29 @@ pub struct FormatsResponse {
     // 文字認識する画像ファイルの拡張子（使えるときだけ中身の検索の対象になる）
     pub ocr_image_extensions: Vec<&'static str>,
 }
+
+// 検索の対象外（API0209。FN0202-BR16）
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExclusionItem {
+    pub exclusion_id: String,
+    // 'path'（folder/ からのパス） / 'name'（名前の型）
+    pub kind: String,
+    pub value: String,
+    // 登録したユーザーの表示名
+    pub created_by: String,
+    pub created_at: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExclusionsResponse {
+    // 全員の対象外（中身の取り込みもしない）
+    pub all: Vec<ExclusionItem>,
+    // 本人だけの対象外
+    pub mine: Vec<ExclusionItem>,
+    // 全員の対象外を変えられる（ローカルモード、または共有モードの管理者）
+    pub can_edit_all: bool,
+    // 本人だけの対象外を使う（共有モード）
+    pub personal: bool,
+}

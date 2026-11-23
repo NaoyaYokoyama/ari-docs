@@ -11,7 +11,7 @@ use crate::{
     config::app::AppMode,
     config::app_state::AppState,
     model::user::User,
-    repository::{session as session_repo, user},
+    repository::{session as session_repo, user, user_permission},
     service::server_settings,
 };
 
@@ -99,7 +99,10 @@ pub fn get_login_user(conn: &Connection, state: &AppState, headers: &HeaderMap) 
                 server_settings::get(conn).session_days,
             )
             .ok()??;
-            user::find_by_user_id(conn, &user_id).ok()
+            let mut user = user::find_by_user_id(conn, &user_id).ok()?;
+            // 管理者でも、登録していない PC からは利用者として扱う（FN0102-BR12）
+            crate::service::admin_device::apply(conn, &mut user, headers);
+            Some(user)
         }
     }
 }
@@ -137,6 +140,30 @@ pub fn can_manage(mode: &AppMode, user: &User) -> bool {
 
 pub const ROLE_ADMIN: &str = "admin";
 pub const ROLE_USER: &str = "user";
+
+// 管理者が利用者に付けられる許可（FN0102-BR11）
+pub const PERMISSION_DICTIONARY: &str = "dictionary";
+pub const PERMISSION_EXCLUSION: &str = "exclusion";
+pub const PERMISSION_BACKUP: &str = "backup";
+pub const PERMISSIONS: [&str; 3] = [
+    PERMISSION_DICTIONARY,
+    PERMISSION_EXCLUSION,
+    PERMISSION_BACKUP,
+];
+
+// 許可の要る操作をしてよいか。ローカルモード・管理者はいつも可、利用者は許可を付けられていれば可
+pub fn has_permission(conn: &Connection, mode: &AppMode, user: &User, permission: &str) -> bool {
+    can_manage(mode, user)
+        || user_permission::exists(conn, &user.user_id, permission).unwrap_or(false)
+}
+
+// 使える許可（画面がボタンを出すかを決める）。ローカルモード・管理者はすべて
+pub fn permissions(conn: &Connection, mode: &AppMode, user: &User) -> Vec<String> {
+    if can_manage(mode, user) {
+        return PERMISSIONS.iter().map(|p| p.to_string()).collect();
+    }
+    user_permission::find_by_user(conn, &user.user_id).unwrap_or_default()
+}
 
 #[cfg(test)]
 mod tests {

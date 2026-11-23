@@ -10,6 +10,7 @@ use crate::repository::{node as node_repo, search as search_repo};
 use crate::search::extract::{self, Extracted};
 use crate::search::ocr::{self, Engine};
 use crate::search::tokenizer::{self, Tokenizer};
+use crate::service::search_exclusion;
 
 // 取り込むファイルの大きさの上限（FN0202-BR04）
 pub const MAX_FILE_BYTES: u64 = 100 * 1024 * 1024;
@@ -75,6 +76,8 @@ fn run(conn: &Connection, folder_root: &str, budget: Duration) -> Result<RunSumm
     let version = tokenizer.version;
     let nodes = node_repo::find_all(conn).map_err(|e| e.to_string())?;
     let states = search_repo::find_all_content_states(conn).map_err(|e| e.to_string())?;
+    // 全員の検索の対象外は取り込まない（FN0202-BR16）
+    let exclusions = search_exclusion::load(conn, None).map_err(|e| e.to_string())?;
 
     // node に無いノードの状態・単語の対応を消す（毎回すべてを見る。FN0202-BR08）
     let mut removed = search_repo::delete_orphans(conn).map_err(|e| e.to_string())?;
@@ -82,8 +85,10 @@ fn run(conn: &Connection, folder_root: &str, budget: Duration) -> Result<RunSumm
     for (node_id, relative_path) in nodes {
         let path = Path::new(folder_root).join(&relative_path);
         let metadata = std::fs::metadata(&path).ok().filter(|m| m.is_file());
-        let Some(metadata) = metadata.filter(|_| extract::is_supported(&path)) else {
-            // 消えた・フォルダ・対象外の形式
+        let Some(metadata) = metadata
+            .filter(|_| extract::is_supported(&path) && !exclusions.excludes(&relative_path))
+        else {
+            // 消えた・フォルダ・対象外の形式・検索の対象外
             if states.contains_key(&node_id) {
                 search_repo::delete_node_index(conn, &node_id).map_err(|e| e.to_string())?;
                 removed += 1;
@@ -199,7 +204,7 @@ fn index_file(
         }
         Ok(Extracted::Unsupported) => search_repo::delete_node_index(conn, &target.node_id),
         Err(message) => {
-            eprintln!("content index error: {} {message}", target.path.display());
+            crate::elog!("content index error: {} {message}", target.path.display());
             skip("error", &message)
         }
     }
@@ -216,6 +221,7 @@ mod tests {
             include_str!("../data/migration/T002_create_user.sql"),
             include_str!("../data/migration/T004_create_node.sql"),
             include_str!("../data/migration/T009_create_search_index.sql"),
+            include_str!("../data/migration/T018_create_search_exclusion.sql"),
         ] {
             conn.execute_batch(sql).unwrap();
         }
@@ -280,6 +286,31 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM node_content", [], |row| row.get(0))
             .unwrap();
         assert_eq!(states, 1);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn excluded_files_are_not_indexed_and_removed() {
+        let dir = std::env::temp_dir().join(format!("ari-index-ex-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("backup_1122")).unwrap();
+        fs::write(dir.join("a.txt"), "空港の見積書").unwrap();
+        fs::write(dir.join("backup_1122/a.txt"), "空港の見積書").unwrap();
+        let root = dir.to_str().unwrap();
+        let conn = connect();
+        node_repo::create_node(&conn, "n1", "a.txt").unwrap();
+        node_repo::create_node(&conn, "n2", "backup_1122/a.txt").unwrap();
+        run(&conn, root, TIME_BUDGET).unwrap();
+        assert_eq!(search(&conn, "空港"), ["a.txt", "backup_1122/a.txt"]);
+
+        // 全員の対象外にすると、次の取り込みで単語と状態を消す
+        search_exclusion::create(&conn, "u1", true, "name", "backup*", true).unwrap();
+        run(&conn, root, TIME_BUDGET).unwrap();
+        assert_eq!(search(&conn, "空港"), ["a.txt"]);
+        // 本人だけの対象外は取り込みに関わらない
+        search_exclusion::create(&conn, "u1", false, "path", "a.txt", false).unwrap();
+        run(&conn, root, TIME_BUDGET).unwrap();
+        assert_eq!(search(&conn, "空港"), ["a.txt"]);
         fs::remove_dir_all(&dir).unwrap();
     }
 

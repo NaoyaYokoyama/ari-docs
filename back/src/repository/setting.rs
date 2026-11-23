@@ -5,7 +5,8 @@ pub fn update_display_name(conn: &Connection, user_id: &str, display_name: &str)
         UPDATE
           user
         SET
-          display_name = ?2
+          display_name = ?2,
+          updated_at = CURRENT_TIMESTAMP
         WHERE user_id = ?1
         ";
     conn.execute(sql, [user_id, display_name])

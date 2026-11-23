@@ -1,5 +1,5 @@
 import MDEditor from "@uiw/react-md-editor";
-import { CircleCheck, History, Link2, Plus, Save, Star, Trash2 } from "lucide-react";
+import { CircleCheck, History, Link2, Plus, Save, Star, Trash2, Users } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { twMerge } from "tailwind-merge";
@@ -25,7 +25,7 @@ import { formatSize } from "@/lib/fileType";
 import { errorMessage, formatDateTime } from "@/lib/format";
 import { compressImage } from "@/lib/imageCompress";
 import type { ContentDetail, ContentItem, ContentKind } from "@/pages/content/contentKinds";
-import ContentMarkdown, { contentMarkdownOptions } from "@/pages/content/ContentMarkdown";
+import ContentMarkdown, { contentMarkdownOptions, ImageResizeContext } from "@/pages/content/ContentMarkdown";
 import ContentSidebar, { type MoveTarget } from "@/pages/content/ContentSidebar";
 import { folderPath } from "@/pages/content/contentTree";
 import CreateContentDialog from "@/pages/content/CreateContentDialog";
@@ -33,9 +33,11 @@ import FolderNameDialog from "@/pages/content/FolderNameDialog";
 import HistoryDialog from "@/pages/content/HistoryDialog";
 import { insertImages, type MarkdownCommandId, runMarkdownCommand } from "@/pages/content/markdown/commands";
 import { type MarkdownEditorHandle, textareaHandle } from "@/pages/content/markdown/editorHandle";
+import { resizeImage } from "@/pages/content/markdown/imageSize";
 import MarkdownToolbar from "@/pages/content/MarkdownToolbar";
 import MoveDialog from "@/pages/content/MoveDialog";
 import { useContentFolders } from "@/pages/content/useContentFolders";
+import { useEditingNotice } from "@/pages/content/useEditingNotice";
 import { rememberOpened, syncRecent } from "@/quickOpen/recent";
 import { isShortcut, SHORTCUT, type Shortcut, shortcutLabel } from "@/shortcut/shortcut";
 import { useFocusNavigation } from "@/shortcut/useFocusNavigation";
@@ -224,12 +226,27 @@ export default function ContentPage({ kind }: Props) {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isDirty]);
 
+  // 同時編集のお知らせ（Wiki だけ。FN0501-BR11）
+  const editingNotice = useEditingNotice(
+    // 個人用（ローカルモード）はほかの人がいないので知らせない
+    kind.kind === "wiki" && user?.mode === "shared" ? (selected?.id ?? null) : null,
+    selected?.updatedAt,
+    isDirty,
+  );
+
   const edit = (changes: Partial<ContentDetail>) => {
     if (!selected) {
       return;
     }
     setSelected({ ...selected, ...changes });
     setIsDirty(true);
+  };
+
+  // 画像の右クリックで大きさを変える（FN0404-BR07）。本文の `|幅` を書き換え、保存すると残る
+  const resizeImageTo = (src: string, width: number | null) => {
+    if (selected) {
+      edit({ content: resizeImage(selected.content, src, width) });
+    }
   };
 
   const create = async (title: string) => {
@@ -625,6 +642,19 @@ export default function ContentPage({ kind }: Props) {
               </div>
             </div>
 
+            {(editingNotice.editors.length > 0 || editingNotice.savedBy) && (
+              <p role="status" className="flex items-center gap-2 border-b border-border bg-warning/10 px-5 py-1.5 text-xs">
+                <Users size={14} className="shrink-0 text-warning" />
+                {[
+                  editingNotice.editors.length > 0 && `${editingNotice.editors.join("・")} さんもこの Wiki を書いています`,
+                  editingNotice.savedBy && `${editingNotice.savedBy} さんが保存しました`,
+                ]
+                  .filter(Boolean)
+                  .join("。")}
+                。保存すると、上書きするか確かめます
+              </p>
+            )}
+
             {mode !== "preview" && <MarkdownToolbar onCommand={runCommand} onImages={(files) => void addImages(files)} />}
 
             <div
@@ -686,6 +716,7 @@ export default function ContentPage({ kind }: Props) {
                 void addImages(files);
               }}
             >
+              <ImageResizeContext.Provider value={resizeImageTo}>
               {vimEditor && mode !== "preview" ? (
                 <div className="flex h-full min-h-0">
                   <div className={twMerge("min-w-0 flex-1", mode === "live" && "border-r border-border")}>
@@ -726,6 +757,7 @@ export default function ContentPage({ kind }: Props) {
                 extraCommands={[]}
               />
               )}
+              </ImageResizeContext.Provider>
             </div>
           </>
         ) : loadingId ? (

@@ -158,7 +158,7 @@ impl Engine {
             match build(models_dir()) {
                 Ok(ocr) => self.ocr = Some(ocr),
                 Err(message) => {
-                    eprintln!("ocr: {message}");
+                    crate::elog!("ocr: {message}");
                     self.failed = Some(message.clone());
                     return Err(message);
                 }
@@ -185,7 +185,7 @@ impl Engine {
             }
             Err(message) if self.broken() => Err(message),
             Err(message) => {
-                eprintln!("ocr: {message}");
+                crate::elog!("ocr: {message}");
                 Ok(())
             }
         }
@@ -354,7 +354,7 @@ mod tests {
     #[test]
     fn recognizes_japanese_image() {
         if !available() {
-            eprintln!("文字認識のモデルが無いので飛ばす");
+            crate::elog!("文字認識のモデルが無いので飛ばす");
             return;
         }
         let mut engine = Engine::new();

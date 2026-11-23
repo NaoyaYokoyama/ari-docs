@@ -3,13 +3,16 @@ import {
   DatabaseBackup,
   FileCheck,
   FolderCog,
+  FolderX,
   Info,
   Keyboard,
   KeyRound,
   Laptop,
   type LucideIcon,
+  MonitorCheck,
   MousePointerClick,
   Palette,
+  Radio,
   ScrollText,
   Server,
   SlidersHorizontal,
@@ -18,8 +21,8 @@ import {
   Users,
 } from "lucide-react";
 
-import type { LoginUser } from "@/app/AppContext";
-import type { SetupStatus } from "@/types/setup";
+import { hasPermission, type LoginUser, type Permission } from "@/app/AppContext";
+import type { DesktopInfo } from "@/app/DesktopContext";
 
 type Section = {
   id: string;
@@ -36,12 +39,16 @@ type Section = {
   adminOnly?: boolean;
   // ローカルモード、または共有モードの管理者だけ（全員のデータに効く管理の操作）
   manageOnly?: boolean;
+  // その許可のある人だけ（ローカルモード・管理者・許可を付けた利用者。FN0102-BR11）
+  permission?: Permission;
+  // 共有モードの管理者（この PC を登録していない管理者も。管理者の PC。FN0102-BR12）
+  adminDeviceOnly?: boolean;
   // Docs を使う設定（サーバーの設定）のときだけ
   docsOnly?: boolean;
   // デスクトップアプリだけのもの
   desktopOnly?: boolean;
-  // デスクトップアプリの個人用だけ（作業フォルダ。FN0002）
-  desktopLocalOnly?: boolean;
+  // デスクトップアプリの自分の PC で、ローカルモードか共有モードの管理者のときだけ（この PC の公開。FN0005）
+  hostOnly?: boolean;
 };
 
 // メニューのまとまり（この順に表示する）
@@ -94,6 +101,13 @@ export const settingSections = [
     keywords: "辞書 単語 用語 業界 中身 検索 取り込み",
   },
   {
+    id: "exclusions",
+    label: "検索の対象外",
+    icon: FolderX,
+    group: "検索",
+    keywords: "対象外 除外 除く 外す バックアップ 古い フォルダ パス 名前 型 検索 取り込み",
+  },
+  {
     id: "formats",
     label: "対応するファイル",
     icon: FileCheck,
@@ -109,6 +123,14 @@ export const settingSections = [
     adminOnly: true,
   },
   {
+    id: "adminDevices",
+    label: "管理者の PC",
+    icon: MonitorCheck,
+    group: "管理",
+    keywords: "管理者 PC 端末 登録 コード 鍵 セキュリティ 紐づけ",
+    adminDeviceOnly: true,
+  },
+  {
     id: "server",
     label: "サーバーの設定",
     icon: Server,
@@ -122,23 +144,31 @@ export const settingSections = [
     icon: DatabaseBackup,
     group: "管理",
     keywords: "バックアップ 復元 定期 保存 ゴミ箱 期間",
-    manageOnly: true,
+    permission: "backup",
   },
   {
-    id: "mode",
-    label: "使い方",
+    id: "places",
+    label: "場所",
     icon: Laptop,
     group: "このアプリ",
-    keywords: "個人用 共有 サーバー 接続 URL モード",
+    keywords: "場所 切り替え 自分の PC 個人用 共有 サーバー 接続 URL モード 使い方 色 名前 起動",
     desktopOnly: true,
+  },
+  {
+    id: "host",
+    label: "この PC の公開",
+    icon: Radio,
+    group: "このアプリ",
+    keywords: "公開 共有 サーバー 共有 PC ほかの PC つなぐ 接続 チーム 管理者 URL ファイアウォール",
+    hostOnly: true,
   },
   {
     id: "workspace",
     label: "作業フォルダ",
     icon: FolderCog,
     group: "このアプリ",
-    keywords: "フォルダ 場所 データ 保存先",
-    desktopLocalOnly: true,
+    keywords: "フォルダ 場所 データ 保存先 自分の PC",
+    desktopOnly: true,
   },
   {
     id: "docs",
@@ -170,7 +200,7 @@ export type SettingSection = (typeof settingSections)[number]["id"];
 // 動作モード・権限・デスクトップアプリの使い方に応じて表示するメニュー
 export function visibleSettingSections(
   user: LoginUser | null,
-  desktop: SetupStatus | null,
+  desktop: DesktopInfo | null,
 ) {
   const shared = user?.mode === "shared";
   return settingSections.filter(
@@ -179,16 +209,18 @@ export function visibleSettingSections(
       (!section.localOnly || !shared) &&
       (!section.adminOnly || (shared && user?.isAdmin)) &&
       (!section.manageOnly || !shared || user?.isAdmin) &&
+      (!section.permission || hasPermission(user, section.permission)) &&
+      (!section.adminDeviceOnly || (shared && (user?.isAdmin || user?.adminElsewhere))) &&
       (!section.docsOnly || user?.docsEnabled) &&
       (!section.desktopOnly || desktop) &&
-      (!section.desktopLocalOnly || desktop?.mode === "local"),
+      (!section.hostOnly || (desktop?.place.local && (!shared || user?.isAdmin))),
   );
 }
 
 export function isVisibleSection(
   id: string,
   user: LoginUser | null,
-  desktop: SetupStatus | null,
+  desktop: DesktopInfo | null,
 ): id is SettingSection {
   return visibleSettingSections(user, desktop).some((section) => section.id === id);
 }

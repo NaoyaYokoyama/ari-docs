@@ -9,6 +9,6 @@ pub fn execute(folder_root: &str) {
             summary.processed, summary.pending
         ),
         Ok(_) => {}
-        Err(e) => eprintln!("content_index: {e}"),
+        Err(e) => crate::elog!("content_index: {e}"),
     }
 }

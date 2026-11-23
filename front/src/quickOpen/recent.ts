@@ -1,3 +1,5 @@
+import { getPlaceScope } from "@/api/client";
+
 // 最近開いたもの（探して開く。FN0003）。この PC（localStorage）に、利用者ごとに新しい順で残す。サーバーには送らない
 export type RecentKind = "note" | "wiki" | "folder" | "file";
 
@@ -15,8 +17,10 @@ export type RecentEntry = {
 const MAX = 30;
 const KINDS: RecentKind[] = ["note", "wiki", "folder", "file"];
 
+// 共有サーバーの利用者 ID はサーバーごとに重なりうるので、場所でも分ける（FN0002-BR20）
 function storageKey(userId: string) {
-  return `recent-opened:${userId}`;
+  const scope = getPlaceScope();
+  return scope ? `recent-opened:${scope}:${userId}` : `recent-opened:${userId}`;
 }
 
 export function recentKey(entry: Pick<RecentEntry, "kind" | "id" | "path">) {

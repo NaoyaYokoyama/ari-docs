@@ -132,8 +132,7 @@ export default function VimSetting() {
         description={
           <>
             Vim の書き方で入れます（<Kbd>G</Kbd> は Shift+G、<code>&lt;C-d&gt;</code> は Ctrl+D、
-            <code>&lt;Space&gt;</code> は Space）。1 つの操作に複数割り当てるときは「,」で区切り、空にすると割り当てなし。
-            数字を先に打つと回数になります（<Kbd>5</Kbd> <Kbd>j</Kbd> で 5 回）
+            <code>&lt;Space&gt;</code> は Space）。1 つの操作に複数割り当てるときは「,」で区切り、空にすると割り当てなし。数字を先に打つと回数になります（<Kbd>5</Kbd> <Kbd>j</Kbd> で 5 回）
           </>
         }
       >
@@ -246,8 +245,7 @@ export default function VimSetting() {
           label="本文も Vim で編集する"
           description={
             <>
-              <code>:w</code> で保存、<code>:q</code> で一覧へ、<code>:wq</code>・<code>:x</code> で保存して一覧へ。
-              日本語を入力するときは、ノーマルモードに戻る前に IME をオフにしてください（Vim と同じ）
+              <code>:w</code> で保存、<code>:q</code> で一覧へ、<code>:wq</code>・<code>:x</code> で保存して一覧へ。日本語を入力するときは、ノーマルモードに戻る前に IME をオフにしてください（Vim と同じ）
             </>
           }
           htmlFor="vim-editor"

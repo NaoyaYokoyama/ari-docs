@@ -1,16 +1,37 @@
 import MDEditor from "@uiw/react-md-editor";
-import { type ComponentProps, useEffect, useState } from "react";
+import { Check, ImageIcon } from "lucide-react";
+import { type ComponentProps, createContext, useContext, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import remarkBreaks from "remark-breaks";
 
 import { CONTENT_IMAGE_PREFIX, contentImageUrl } from "@/api/contentImage";
 import { useOpenAriLink } from "@/app/useAriLink";
+import ContextMenu from "@/components/common/ContextMenu";
 import { ARI_LINK_PREFIX, parseAriLink } from "@/lib/ariLink";
+import { IMAGE_SIZES } from "@/pages/content/markdown/imageSize";
 
 // Note・Wiki の本文の表示。貼り付けた画像（/api/content-image/…）はログインして読み込む（FN0404）
 
 type ImgProps = ComponentProps<"img"> & { node?: unknown };
 
-function ContentImage({ src, alt, ...props }: ImgProps) {
+// 編集している画面で、画像の右クリックから大きさを変える（FN0404-BR07）。src の画像を width 画素にする（null は元の大きさ）。
+// 履歴など、読むだけの画面では渡さない
+export const ImageResizeContext = createContext<((src: string, width: number | null) => void) | null>(null);
+
+// 画像の幅の指定（FN0404-BR07）。`![名前|300](…)` は幅 300 画素（画面より広ければ画面の幅まで）
+function parseImageAlt(alt: string | undefined): { alt: string; width?: number } {
+  const match = alt?.match(/^(.*?)\s*\|\s*(\d{1,4})$/);
+  if (!match) {
+    return { alt: alt ?? "" };
+  }
+  const width = Number(match[2]);
+  return width > 0 ? { alt: match[1], width } : { alt: match[1] };
+}
+
+function ContentImage({ src, alt: rawAlt, ...props }: ImgProps) {
+  const { alt, width } = parseImageAlt(rawAlt);
+  const resize = useContext(ImageResizeContext);
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   // react-markdown が渡す node は img に付けない
   const rest = { ...props };
   delete rest.node;
@@ -40,7 +61,47 @@ function ContentImage({ src, alt, ...props }: ImgProps) {
     // 読み込むまでは場所だけ取る
     return <span className="inline-block h-24 w-40 animate-pulse rounded bg-muted align-middle" aria-label={alt} />;
   }
-  return <img {...rest} src={url} alt={alt} loading="lazy" />;
+  const image = (
+    <img
+      {...rest}
+      src={url}
+      alt={alt}
+      loading="lazy"
+      style={width ? { ...rest.style, width: `${width}px`, maxWidth: "100%" } : rest.style}
+      onContextMenu={
+        resize && typeof src === "string"
+          ? (event) => {
+              event.preventDefault();
+              setMenu({ x: event.clientX, y: event.clientY });
+            }
+          : undefined
+      }
+    />
+  );
+  if (!resize || typeof src !== "string") {
+    return image;
+  }
+  return (
+    <>
+      {image}
+      {/* 本文の段落の中に div を置かないよう、メニューは body に出す */}
+      {createPortal(
+        <ContextMenu
+          position={menu}
+          onClose={() => setMenu(null)}
+          items={[
+            ...IMAGE_SIZES.map((size) => ({
+              label: `${size.label}（幅 ${size.width} 画素）`,
+              icon: width === size.width ? Check : ImageIcon,
+              onSelect: () => resize(src, size.width),
+            })),
+            { label: "元の大きさ（画面の幅まで）", icon: width ? ImageIcon : Check, onSelect: () => resize(src, null) },
+          ]}
+        />,
+        document.body,
+      )}
+    </>
+  );
 }
 
 type AnchorProps = ComponentProps<"a"> & { node?: unknown };

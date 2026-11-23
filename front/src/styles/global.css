@@ -17,6 +17,12 @@
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
   --color-brand: var(--brand);
+  --color-place-gray: var(--place-gray);
+  --color-place-blue: var(--place-blue);
+  --color-place-green: var(--place-green);
+  --color-place-amber: var(--place-amber);
+  --color-place-red: var(--place-red);
+  --color-place-violet: var(--place-violet);
   --color-brand-foreground: var(--brand-foreground);
   --color-success: var(--success);
   --color-warning: var(--warning);
@@ -89,6 +95,13 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
   /* アプリの差し色（ロゴ・選択中の印・リンク） */
+  /* 場所（自分の PC・共有サーバー）の色の印（FN0002-BR20） */
+  --place-gray: oklch(0.55 0 0);
+  --place-blue: oklch(0.55 0.17 255);
+  --place-green: oklch(0.6 0.15 150);
+  --place-amber: oklch(0.72 0.16 75);
+  --place-red: oklch(0.58 0.2 25);
+  --place-violet: oklch(0.55 0.2 300);
   --brand: oklch(0.55 0.17 255);
   --brand-foreground: oklch(0.985 0 0);
   --success: oklch(0.6 0.15 150);
@@ -128,6 +141,12 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --place-gray: oklch(0.7 0 0);
+  --place-blue: oklch(0.7 0.14 255);
+  --place-green: oklch(0.72 0.14 150);
+  --place-amber: oklch(0.8 0.14 75);
+  --place-red: oklch(0.7 0.17 25);
+  --place-violet: oklch(0.7 0.16 300);
   --brand: oklch(0.7 0.14 255);
   --brand-foreground: oklch(0.145 0 0);
   --success: oklch(0.72 0.15 150);

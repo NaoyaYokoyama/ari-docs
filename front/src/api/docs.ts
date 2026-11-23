@@ -1,4 +1,4 @@
-import { get } from "@/api/client";
+import { get, getBlob } from "@/api/client";
 import type { DocFileResponse, DocsIndexResponse } from "@/types/docs";
 
 // root を省略するとリポジトリの docs/ を表示する
@@ -13,4 +13,13 @@ export function getDoc(root: string, path: string) {
     params.set("root", root);
   }
   return get<DocFileResponse>(`/api/doc?${params}`);
+}
+
+// 本文の画像（FN0801-BR16）。path は表示しているフォルダからの相対パス
+export function getDocImage(root: string, path: string) {
+  const params = new URLSearchParams({ path });
+  if (root) {
+    params.set("root", root);
+  }
+  return getBlob(`/api/doc-image?${params}`);
 }

@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { useApp } from "@/app/AppContext";
+import ComparePage from "@/pages/compare/ComparePage";
 import Docs from "@/pages/docs/Docs";
 import Home from "@/pages/home/Home";
 import Folder from "@/pages/node/Node";
@@ -19,6 +20,8 @@ function AppRoutes() {
       {/* Docs を使わない設定（既定）では開けないので Home へ */}
       <Route path="/docs" element={user?.docsEnabled ? <Docs /> : <Navigate to="/" replace />} />
       <Route path="/setting" element={<Setting />} />
+      {/* 比べる（FN0304）。Folder の右クリックから開く */}
+      <Route path="/compare" element={<ComparePage />} />
     </Routes>
   );
 }

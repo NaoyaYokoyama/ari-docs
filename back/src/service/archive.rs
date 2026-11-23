@@ -8,7 +8,7 @@ use zip::{CompressionMethod, ZipWriter};
 use crate::common::fs_util::size_of;
 use crate::service::node::resolve;
 
-// ZIP でまとめてダウンロードできる大きさの上限（メモリで作るため。FN0301-BR27）
+// ZIP でまとめてダウンロードできる大きさの上限（画面が受け取った ZIP をメモリに持つため。FN0301-BR27）
 pub const MAX_ZIP_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 
 fn options(size: u64) -> SimpleFileOptions {
@@ -44,7 +44,18 @@ pub fn add_path<W: Write + Seek>(
 }
 
 // 選んだファイル・フォルダを 1 つの ZIP にする（FN0301-BR27）。戻り値は (ZIP の中身, ファイル名)
+#[cfg(test)]
 pub fn zip_nodes(folder_root: &str, paths: &[String]) -> io::Result<(Vec<u8>, String)> {
+    let (cursor, name) = zip_nodes_into(folder_root, paths, io::Cursor::new(Vec::new()))?;
+    Ok((cursor.into_inner(), name))
+}
+
+// ZIP を writer（一時ファイルなど）に書く。サーバーのメモリに ZIP 全体を持たないため（API0312）。戻り値は (writer, ファイル名)
+pub fn zip_nodes_into<W: Write + Seek>(
+    folder_root: &str,
+    paths: &[String],
+    writer: W,
+) -> io::Result<(W, String)> {
     if paths.is_empty() {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
@@ -74,11 +85,11 @@ pub fn zip_nodes(folder_root: &str, paths: &[String]) -> io::Result<(Vec<u8>, St
             "大きすぎて ZIP にできません（2 GB まで）。分けてダウンロードしてください",
         ));
     }
-    let mut zip = ZipWriter::new(io::Cursor::new(Vec::new()));
+    let mut zip = ZipWriter::new(writer);
     for (full_path, name) in &targets {
         add_path(&mut zip, full_path, name)?;
     }
-    let data = zip.finish().map_err(io::Error::other)?.into_inner();
+    let data = zip.finish().map_err(io::Error::other)?;
     // 1 件ならその名前、2 件以上なら入っているフォルダの名前
     let file_name = if targets.len() == 1 {
         format!(

@@ -39,3 +39,11 @@ pub struct TransferNodesRequest {
 pub struct PathsRequest {
     pub paths: Vec<String>,
 }
+
+// ファイル・フォルダの説明（FN0301-BR33）。空なら説明を消す
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NodeDescriptionRequest {
+    pub path: String,
+    pub description: String,
+}

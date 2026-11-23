@@ -1,9 +1,11 @@
 use serde::Deserialize;
 use validator::Validate;
 
-#[derive(Deserialize)]
+// 表示名はユーザー登録と同じく、前後の空白を除いて 1〜30 文字（API0701）
+#[derive(Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateDisplayNameRequest {
+    #[validate(custom(function = "crate::api::user::request::validate_display_name"))]
     pub display_name: String,
 }
 

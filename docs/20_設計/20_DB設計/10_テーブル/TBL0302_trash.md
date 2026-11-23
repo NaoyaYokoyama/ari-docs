@@ -3,8 +3,8 @@ id: TBL0302
 title: ゴミ箱
 type: テーブル
 status: レビュー中
-related: [FN0302, TBL0101]
-updated: 2026-10-30
+related: [FN0302, TBL0101, TBL0303]
+updated: 2026-11-23
 ---
 
 # TBL0302 ゴミ箱

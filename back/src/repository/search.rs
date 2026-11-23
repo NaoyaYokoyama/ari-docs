@@ -244,8 +244,8 @@ pub fn find_nodes_by_words(
     .collect()
 }
 
-// LIKE の % _ と、エスケープに使う \ を文字として扱う
-fn escape_like(word: &str) -> String {
+// LIKE の % _ と、エスケープに使う \ を文字として扱う（ESCAPE '\' と一緒に使う）
+pub fn escape_like(word: &str) -> String {
     word.replace('\\', "\\\\")
         .replace('%', "\\%")
         .replace('_', "\\_")

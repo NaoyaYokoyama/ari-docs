@@ -20,6 +20,7 @@ pub fn find_by_user_id(conn: &Connection, user_id: &str) -> Result<User> {
             display_name: row.get(2)?,
             role_id: row.get(3)?,
             updated_at: row.get(4)?,
+            admin_elsewhere: false,
         })
     })
 }
@@ -75,6 +76,7 @@ pub fn find_all(conn: &Connection) -> Result<Vec<User>> {
             display_name: row.get(2)?,
             role_id: row.get(3)?,
             updated_at: row.get(4)?,
+            admin_elsewhere: false,
         })
     })?
     .collect()
@@ -132,7 +134,15 @@ pub fn create_first_user(
     conn.execute(sql, params![user_id, password_hash, display_name, role_id])
 }
 
-// ユーザーと、そのユーザーだけのデータ（Note・お気に入り・設定）を削除する。Wiki は共有のため残す
+// ユーザーと、そのユーザーだけのデータ（Note・お気に入り・設定・検索の対象外）を削除する。Wiki は共有のため残す
+// 管理者・利用者を切り替える（ユーザー local は対象外）
+pub fn update_role(conn: &Connection, user_id: &str, role_id: &str) -> Result<usize> {
+    conn.execute(
+        "UPDATE user SET role_id = ?2, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?1 AND user_id <> 'local'",
+        [user_id, role_id],
+    )
+}
+
 pub fn delete_user(conn: &Connection, user_id: &str) -> Result<usize> {
     let tx = conn.unchecked_transaction()?;
     tx.execute(
@@ -154,6 +164,11 @@ pub fn delete_user(conn: &Connection, user_id: &str) -> Result<usize> {
     )?;
     tx.execute("DELETE FROM note WHERE user_id = ?1", [user_id])?;
     tx.execute("DELETE FROM user_setting WHERE user_id = ?1", [user_id])?;
+    // 本人だけの検索の対象外（FN0202-BR17）
+    tx.execute("DELETE FROM search_exclusion WHERE user_id = ?1", [user_id])?;
+    tx.execute("DELETE FROM trash_favorite WHERE user_id = ?1", [user_id])?;
+    tx.execute("DELETE FROM user_permission WHERE user_id = ?1", [user_id])?;
+    tx.execute("DELETE FROM admin_device WHERE user_id = ?1", [user_id])?;
     let result = tx.execute("DELETE FROM user WHERE user_id = ?1", [user_id])?;
     tx.commit()?;
     Ok(result)

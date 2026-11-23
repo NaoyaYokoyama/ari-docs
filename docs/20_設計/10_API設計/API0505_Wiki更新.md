@@ -4,7 +4,7 @@ title: Wiki 更新
 type: API
 status: レビュー中
 related: [FN0501, TBL0501, FN0402, TBL0402]
-updated: 2026-10-30
+updated: 2026-11-23
 ---
 
 # API0505 Wiki 更新
@@ -91,5 +91,5 @@ Wiki のタイトルと本文を更新する。
 
 ## 7. 未決事項
 
-- 最終更新者の記録（RQ0502）
-- 更新時のタイトル検証
+-
+

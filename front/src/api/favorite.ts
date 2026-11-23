@@ -32,3 +32,8 @@ export function deleteFavorite(
     favoriteId,
   });
 }
+
+// 並べ替え（FN0601-BR08）。上からの順に favoriteId を渡す
+export function updateFavoriteOrder(favoriteIds: string[]) {
+  return post("/api/favorite/order", { favoriteIds });
+}

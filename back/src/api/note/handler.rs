@@ -22,7 +22,7 @@ pub async fn get_notes(
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     let response = note::get_notes(&conn, &user.user_id).map_err(|e| {
-        eprintln!("get_notes error: {:?}", e);
+        crate::elog!("get_notes error: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
@@ -38,9 +38,13 @@ pub async fn get_note(
 
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
-    let response = note::get_note(&conn, &user.user_id, &note_id).map_err(|e| {
-        eprintln!("get_note error: {:?}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+    // 無い（Note はほかの人のものも）ときは 404
+    let response = note::get_note(&conn, &user.user_id, &note_id).map_err(|e| match e {
+        rusqlite::Error::QueryReturnedNoRows => StatusCode::NOT_FOUND,
+        e => {
+            crate::elog!("get_note error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
     })?;
 
     Ok(Json(response))
@@ -58,7 +62,7 @@ pub async fn create_note(
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     let response = note::create_note(&conn, &user.user_id, &request.title).map_err(|e| {
-        eprintln!("create_note error: {:?}", e);
+        crate::elog!("create_note error: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
@@ -74,7 +78,7 @@ pub async fn delete_note(
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
     note::delete_note(&conn, &user.user_id, &request.note_id).map_err(|e| {
-        eprintln!("delete_note error: {:?}", e);
+        crate::elog!("delete_note error: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 

@@ -50,7 +50,6 @@ pub fn get_nodes(
             path: relative_path,
             name: entry.file_name().to_string_lossy().to_string(),
             node_type,
-            status: "working".to_string(),
             description: String::new(),
             updated_by: String::new(),
             updated_at: chrono::DateTime::<chrono::Local>::from(updated_at)
@@ -64,9 +63,19 @@ pub fn get_nodes(
     let paths: Vec<String> = nodes.iter().map(|node| node.path.clone()).collect();
     let favorite_ids = favorite_repo::find_node_favorite_ids_by_paths(conn, user_id, &paths)
         .map_err(std::io::Error::other)?;
+    let descriptions =
+        node_repo::find_descriptions_by_paths(conn, &paths).map_err(std::io::Error::other)?;
+    let updated_by =
+        node_repo::find_updated_by_names(conn, &paths).map_err(std::io::Error::other)?;
     for node in &mut nodes {
         if let Some(favorite_id) = favorite_ids.get(&node.path) {
             node.favorite_id = favorite_id.clone();
+        }
+        if let Some(description) = descriptions.get(&node.path) {
+            node.description = description.clone();
+        }
+        if let Some(name) = updated_by.get(&node.path) {
+            node.updated_by = name.clone();
         }
     }
 
@@ -74,6 +83,43 @@ pub fn get_nodes(
         current_path: current_path.to_string(),
         nodes: nodes,
     })
+}
+
+// ari-docs で作った・書いた・名前を変えた・移した・コピーしたものに、した人を記録する（FN0301-BR34）。
+// 入れた先・元のフォルダも記録する（中身が変わるとフォルダの更新日時も変わるため）。記録できなくても操作は止めない
+pub fn record_updates(conn: &Connection, folder_root: &str, user_id: &str, paths: &[String]) {
+    let mut targets: Vec<String> = Vec::new();
+    for path in paths {
+        let path = path.trim_matches('/');
+        let mut add = |p: &str| {
+            if !p.is_empty() && !targets.iter().any(|t| t == p) {
+                targets.push(p.to_string());
+            }
+        };
+        add(path);
+        add(path
+            .rsplit_once('/')
+            .map(|(parent, _)| parent)
+            .unwrap_or(""));
+    }
+    for relative in targets {
+        let Ok(full_path) = resolve(folder_root, &relative) else {
+            continue;
+        };
+        if fs::symlink_metadata(&full_path).is_err() {
+            continue;
+        }
+        let modified_at = crate::batch::node_sync::modified_at(&full_path);
+        if let Err(e) = node_repo::record_update(
+            conn,
+            &crate::common::id::generate_node_id(),
+            &relative,
+            user_id,
+            modified_at,
+        ) {
+            crate::elog!("record_updates error: {:?}", e);
+        }
+    }
 }
 
 // ノードを作る。同じ名前があればエラーにする（ファイルを空で上書きしないため）
@@ -101,6 +147,37 @@ pub fn create_node(
     } else {
         fs::File::create_new(full_path).map(|_| ())
     }
+}
+
+// 説明の長さの上限（文字数。FN0301-BR33）
+pub const MAX_DESCRIPTION_CHARS: usize = 200;
+
+// ファイル・フォルダの説明を書く（FN0301-BR33）。前後の空白は除き、空なら説明を消す
+pub fn update_description(
+    conn: &Connection,
+    folder_root: &str,
+    path: &str,
+    description: &str,
+) -> std::io::Result<()> {
+    let full_path = resolve(folder_root, path)?;
+    let relative = relative_path(folder_root, &full_path);
+    if relative.is_empty() || std::fs::symlink_metadata(&full_path).is_err() {
+        return Err(not_found("ファイル・フォルダが見つかりません"));
+    }
+    let description = description.trim();
+    if description.chars().count() > MAX_DESCRIPTION_CHARS {
+        return Err(invalid(&format!(
+            "説明は {MAX_DESCRIPTION_CHARS} 文字までにしてください"
+        )));
+    }
+    node_repo::update_description(
+        conn,
+        &crate::common::id::generate_node_id(),
+        &relative,
+        description,
+    )
+    .map_err(std::io::Error::other)?;
+    Ok(())
 }
 
 // ノードのルートからの相対パス（一覧取得と同じ作り方。node テーブルのパスと一致させるため）
@@ -247,7 +324,7 @@ fn update_node_paths(conn: &Connection, folder_root: &str, from: &Path, to: &Pat
         return;
     }
     if let Err(e) = node_repo::move_paths(conn, &old, &new) {
-        eprintln!("update node paths error: {:?}", e);
+        crate::elog!("update node paths error: {:?}", e);
     }
 }
 

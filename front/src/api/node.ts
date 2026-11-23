@@ -61,6 +61,11 @@ export function renameNode(parentPath: string, name: string, newName: string) {
   return post("/api/nodes/rename", { parentPath, name, newName });
 }
 
+// ファイル・フォルダの説明を書く（FN0301-BR33）。空なら消す
+export function updateNodeDescription(path: string, description: string) {
+  return post("/api/nodes/description", { path, description });
+}
+
 // paths を destPath のフォルダへ移す
 export function moveNodes(paths: string[], destPath: string) {
   return post("/api/nodes/move", { paths, destPath });

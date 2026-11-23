@@ -310,6 +310,7 @@ dependencies = [
  "axum",
  "axum-server",
  "calamine",
+ "cfb",
  "chrono",
  "encoding_rs",
  "hayro",
@@ -325,6 +326,7 @@ dependencies = [
  "rusqlite",
  "rust-embed",
  "rustls",
+ "semver",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -535,6 +537,17 @@ dependencies = [
  "jobserver",
  "libc",
  "shlex",
+]
+
+[[package]]
+name = "cfb"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a347dcabdae9c31b0825fd6a8bed285ec9c2acb89c47827126d52fa4f59cece3"
+dependencies = [
+ "fnv",
+ "uuid",
+ "web-time",
 ]
 
 [[package]]
@@ -3763,6 +3776,12 @@ dependencies = [
  "core-foundation-sys",
  "libc",
 ]
+
+[[package]]
+name = "semver"
+version = "1.0.28"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a7852d02fc848982e0c167ef163aaff9cd91dc640ba85e263cb1ce46fae51cd"
 
 [[package]]
 name = "serde"

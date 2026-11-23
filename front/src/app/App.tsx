@@ -1,3 +1,5 @@
+import { isTauri } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useRef, useState } from "react";
 
 import { AppContext } from "@/app/AppContext";
@@ -7,7 +9,7 @@ import { useMessage } from "@/app/useMessage";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import Spinner from "@/components/common/Spinner";
 import Toast from "@/components/common/Toast";
-import { startEditSync } from "@/lib/editSync";
+import { hasOpenedFiles, startEditSync } from "@/lib/editSync";
 import Login from "@/pages/common/Login";
 import MainLayout from "@/pages/common/MainLayout";
 import AppRoutes from "@/routes";
@@ -65,6 +67,41 @@ export default function App() {
       stop?.();
     };
   }, [shared]);
+
+  // アプリを閉じる前に、保存していない変更と、共有サーバーから開いたファイル（閉じると見張りが終わる）を確かめる（FN0001-BR11）
+  const closeState = useRef({ isDirty, showConfirm });
+  closeState.current = { isDirty, showConfirm };
+  useEffect(() => {
+    if (!isTauri()) {
+      return;
+    }
+    let stop: (() => void) | undefined;
+    let cancelled = false;
+    void getCurrentWindow()
+      .onCloseRequested(async (event) => {
+        const { isDirty, showConfirm } = closeState.current;
+        const reasons = [
+          ...(isDirty ? ["保存していない変更があります。"] : []),
+          ...(hasOpenedFiles()
+            ? ["共有サーバーから開いたファイルがあります。閉じたあとに保存しても、サーバーには戻りません。"]
+            : []),
+        ];
+        if (reasons.length > 0 && !(await showConfirm(`${reasons.join("")}アプリを閉じますか？`))) {
+          event.preventDefault();
+        }
+      })
+      .then((unlisten) => {
+        if (cancelled) {
+          unlisten();
+        } else {
+          stop = unlisten;
+        }
+      });
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
+  }, []);
 
   if (loading) {
     return <Spinner className="h-screen" />;

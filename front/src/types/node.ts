@@ -3,7 +3,7 @@ export interface Node {
   path: string;
   name: string;
   nodeType: string;
-  status: number;
+  // 説明（FN0301-BR33。無ければ空）
   description: string;
   updatedBy: string;
   updatedAt: string;

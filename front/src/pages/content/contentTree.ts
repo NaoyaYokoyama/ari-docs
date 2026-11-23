@@ -135,3 +135,6 @@ export function folderOptions(tree: Tree, movingFolderIds: string[] = []) {
   walk("", 0);
   return options;
 }
+
+// まとめて移すものが別々のフォルダに入っているときの「今のフォルダ」（どのフォルダとも同じにならない値。FN0403-BR10）
+export const MIXED_FOLDER = "\u0000";

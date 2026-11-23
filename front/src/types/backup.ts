@@ -9,6 +9,8 @@ export interface BackupSettings {
   dir: string;
   // ゴミ箱に残す日数
   trashRetentionDays: number;
+  // ゴミ箱の容量の上限（MB）。0 は上限なし（FN0302-BR09）
+  trashMaxMb: number;
 }
 
 export interface BackupItem {
@@ -30,4 +32,6 @@ export interface BackupListResponse {
   busy: boolean;
   // 既定の保存先
   defaultDir: string;
+  // 最後に自動のバックアップに失敗した日時と理由（FN0901-BR11）
+  lastFailure: { at: string; message: string } | null;
 }

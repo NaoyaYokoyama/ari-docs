@@ -4,7 +4,7 @@ title: Wiki
 type: テーブル
 status: レビュー中
 related: [FN0501, TBL0101]
-updated: 2026-10-30
+updated: 2026-11-23
 ---
 
 # TBL0501 Wiki
@@ -50,5 +50,4 @@ updated: 2026-10-30
 
 ## 6. 未決事項
 
-- 最終更新者（`updated_by`）の列を追加するか（RQ0502）
 - T007 だけ `DROP TABLE IF EXISTS` が無い（他と書き方が違う）

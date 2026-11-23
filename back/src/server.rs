@@ -19,6 +19,9 @@ pub async fn start(config: AppConfig, port: u16) -> Result<(), String> {
         ));
     }
 
+    // エラーのログ（<データのフォルダ>/logs/error.log。1 MB×5 個まで）
+    crate::common::error_log::init(config.data_dir().join("logs"));
+
     // DB の作成とマイグレーション。ローカルモードではユーザー local も作る
     connection::init(&config.database_path);
     let conn = connection::connect();
@@ -59,6 +62,19 @@ pub async fn start(config: AppConfig, port: u16) -> Result<(), String> {
         addr
     );
 
+    // 前に止まったときのアップロードの書きかけを消す
+    let _ = std::fs::remove_dir_all(config.data_dir().join("tmp").join("upload"));
+
+    // ユーザーがいない・管理者の PC が 1 台も無い共有サーバーは、登録用のコードを画面に出す（FN0102-BR02・BR12）
+    if !config.mode.is_local() {
+        let conn = crate::database::connection::connect();
+        let users = crate::repository::user::count_users(&conn).unwrap_or(0);
+        let devices = crate::repository::admin_device::count_all(&conn).unwrap_or(0);
+        if users == 0 || devices == 0 {
+            crate::service::setup_code::current(&config);
+        }
+    }
+
     let scheduler_config = config.clone();
     tokio::spawn(async move {
         scheduler::start(scheduler_config).await;
@@ -67,7 +83,7 @@ pub async fn start(config: AppConfig, port: u16) -> Result<(), String> {
     let sync_root = config.folder_root.clone();
     tokio::task::spawn_blocking(move || {
         if let Err(e) = crate::batch::node_sync::execute(&sync_root) {
-            eprintln!("node_sync: {e}");
+            crate::elog!("node_sync: {e}");
         }
     });
     crate::batch::node_watch::start(config.folder_root.clone());
@@ -83,15 +99,23 @@ pub async fn start(config: AppConfig, port: u16) -> Result<(), String> {
             let server = axum_server::from_tcp_rustls(listener, tls)
                 .map_err(|e| format!("ポート {port} を使えません: {e}"))?;
             tokio::spawn(async move {
-                if let Err(e) = server.serve(app.into_make_service()).await {
-                    eprintln!("Server error: {e}");
+                if let Err(e) = server
+                    .serve(app.into_make_service_with_connect_info::<SocketAddr>())
+                    .await
+                {
+                    crate::elog!("Server error: {e}");
                 }
             });
         }
         None => {
             tokio::spawn(async move {
-                if let Err(e) = axum::serve(listener, app).await {
-                    eprintln!("Server error: {e}");
+                if let Err(e) = axum::serve(
+                    listener,
+                    app.into_make_service_with_connect_info::<SocketAddr>(),
+                )
+                .await
+                {
+                    crate::elog!("Server error: {e}");
                 }
             });
         }

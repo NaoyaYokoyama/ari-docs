@@ -47,7 +47,7 @@ impl From<crate::service::content::SaveError> for ApiError {
             ),
             SaveError::Conflict(message) => Self::new(StatusCode::CONFLICT, message),
             SaveError::Db(e) => {
-                eprintln!("save error: {:?}", e);
+                crate::elog!("save error: {:?}", e);
                 StatusCode::INTERNAL_SERVER_ERROR.into()
             }
         }

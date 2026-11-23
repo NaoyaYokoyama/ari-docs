@@ -51,7 +51,7 @@ fn login(state: &AppState, headers: &HeaderMap) -> Result<(Connection, User), Ap
 }
 
 fn db_error(e: rusqlite::Error) -> ApiError {
-    eprintln!("trash error: {:?}", e);
+    crate::elog!("trash error: {:?}", e);
     StatusCode::INTERNAL_SERVER_ERROR.into()
 }
 
@@ -60,7 +60,7 @@ fn io_error(e: std::io::Error) -> ApiError {
         std::io::ErrorKind::NotFound => ApiError::new(StatusCode::NOT_FOUND, e.to_string()),
         std::io::ErrorKind::InvalidInput => ApiError::new(StatusCode::BAD_REQUEST, e.to_string()),
         _ => {
-            eprintln!("trash error: {:?}", e);
+            crate::elog!("trash error: {:?}", e);
             ApiError::new(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "ゴミ箱を操作できませんでした",
@@ -69,22 +69,11 @@ fn io_error(e: std::io::Error) -> ApiError {
     }
 }
 
-fn require_manage(state: &AppState, user: &User) -> Result<(), ApiError> {
-    if auth::can_manage(&state.config.mode, user) {
-        Ok(())
-    } else {
-        Err(ApiError::new(
-            StatusCode::FORBIDDEN,
-            "ゴミ箱から完全に削除できるのは管理者だけです",
-        ))
-    }
-}
-
 pub async fn get_trash(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Json<TrashResponse>, ApiError> {
-    let (conn, user) = login(&state, &headers)?;
+    let (conn, _) = login(&state, &headers)?;
     let items = trash_repo::find_all(&conn)
         .map_err(db_error)?
         .into_iter()
@@ -103,7 +92,8 @@ pub async fn get_trash(
         .trash_retention_days;
     Ok(Json(TrashResponse {
         items,
-        can_delete: auth::can_manage(&state.config.mode, &user),
+        // 完全に削除・空にするは全員ができる（FN0302-BR04）
+        can_delete: true,
         retention_days,
     }))
 }
@@ -130,8 +120,7 @@ pub async fn delete(
     headers: HeaderMap,
     Json(request): Json<TrashIdsRequest>,
 ) -> Result<Json<ApiResponse<()>>, ApiError> {
-    let (conn, user) = login(&state, &headers)?;
-    require_manage(&state, &user)?;
+    let (conn, _) = login(&state, &headers)?;
     for trash_id in &request.trash_ids {
         trash::delete_permanently(&conn, &state.config, trash_id).map_err(io_error)?;
     }
@@ -148,8 +137,7 @@ pub async fn empty(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Json<ApiResponse<()>>, ApiError> {
-    let (conn, user) = login(&state, &headers)?;
-    require_manage(&state, &user)?;
+    let (conn, _) = login(&state, &headers)?;
     let count = trash::empty(&conn, &state.config).map_err(io_error)?;
     Ok(Json(ApiResponse {
         message: Some(format!("ゴミ箱を空にしました（{count} 件）")),

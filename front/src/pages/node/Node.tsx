@@ -1,8 +1,9 @@
 import { FolderUp, TriangleAlert, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
-import { useApp } from "@/app/AppContext";
+import { createExclusion } from "@/api/search";
+import { hasPermission, useApp } from "@/app/AppContext";
 import { usePreferences } from "@/app/preferences";
 import { useCopyAriLink } from "@/app/useAriLink";
 import Button from "@/components/common/Button";
@@ -10,6 +11,8 @@ import ContextMenu from "@/components/common/ContextMenu";
 import EmptyState from "@/components/common/EmptyState";
 import { useNodes } from "@/hooks/useNodes";
 import { NODES_CHANGED_EVENT } from "@/lib/editSync";
+import { errorMessage } from "@/lib/format";
+import { compareUrl, setCompareBase, useCompareBase } from "@/pages/compare/compareBase";
 import CreateNodeDialog from "@/pages/node/CreateNodeDialog";
 import NodeDialog from "@/pages/node/NodeDialog";
 import { backgroundMenu, nodeMenu } from "@/pages/node/nodeMenu";
@@ -43,9 +46,13 @@ type NodeAction = "open" | "select";
 function Node() {
   const location = useLocation();
   const { user, showMessage } = useApp();
+  const navigate = useNavigate();
+  const compareBase = useCompareBase();
   // お気に入り・検索から遷移してきた場合は対象ノードの親フォルダを開く
   const initialNodePath: string = location.state?.nodePath ?? "";
   const shared = user?.mode === "shared";
+  // ファイルがこの PC にある（ローカルモード）。OS のアプリで直接開ける。共有モードはダウンロードして開く（公開している PC の中でも同じ）
+  const filesHere = !shared;
 
   const [createOpen, setCreateOpen] = useState(false);
   const [nodeOpen, setNodeOpen] = useState(false);
@@ -109,7 +116,7 @@ function Node() {
     setRenamingPath("");
   }, []);
 
-  const actions = useNodeActions({ currentPath, shared, setSelected, refresh, navigateTo });
+  const actions = useNodeActions({ currentPath, remote: !filesHere, setSelected, refresh, navigateTo });
 
   // 開く。ファイルは探して開く（FN0003）の「最近開いたもの」に残す
   const openNode = (node: NodeItem) => {
@@ -215,9 +222,20 @@ function Node() {
   const copyFolderLink = () =>
     void copyAriLink([{ kind: "folder", path: currentPath }], baseName(currentPath) || "folder");
 
+  // 検索の対象から外す（FN0202-BR16・BR17）。戻すのは設定画面の「検索の対象外」
+  const excludeFromSearch = async (path: string, forAll: boolean) => {
+    try {
+      const response = await createExclusion(forAll, "path", path);
+      showMessage("info", `${response.message}（戻すときは設定の「検索の対象外」）`);
+    } catch (error) {
+      showMessage("error", errorMessage(error, "検索の対象から外せませんでした"));
+    }
+  };
+
   const menuContext = {
     currentPath,
     shared,
+    filesHere,
     clipboard: actions.clipboard,
     selectedNodes,
     open: openNode,
@@ -238,6 +256,17 @@ function Node() {
     refresh: () => void refresh(),
     copyLink: (targets: NodeItem[]) => copyNodeLinks(targets),
     copyFolderLink: () => copyFolderLink(),
+    canExcludeForAll: hasPermission(user, "exclusion"),
+    excludeFromSearch: (path: string, forAll: boolean) => void excludeFromSearch(path, forAll),
+    compareBase,
+    pickCompareBase: (node: NodeItem) => {
+      setCompareBase({ path: node.path, isDir: node.nodeType === NodeType.Folder });
+      showMessage("info", `「${node.name}」を比べる相手に選びました。比べたいものを右クリックして「「${node.name}」と比べる」を選んでください`);
+    },
+    compare: (left: string, right: string, isDir: boolean) => {
+      setCompareBase(null);
+      navigate(compareUrl(isDir, left, right));
+    },
   };
 
   const busy =

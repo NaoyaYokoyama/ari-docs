@@ -119,15 +119,65 @@ fn resolve_root(
     Ok((canonical_dir(default_root)?, None))
 }
 
+// 本文の画像（FN0801-BR16）。指定フォルダの中の、この拡張子の画像だけを読む
+const IMAGE_TYPES: [(&str, &str); 6] = [
+    ("png", "image/png"),
+    ("jpg", "image/jpeg"),
+    ("jpeg", "image/jpeg"),
+    ("gif", "image/gif"),
+    ("webp", "image/webp"),
+    ("svg", "image/svg+xml"),
+];
+
+// 読む画像の大きさの上限
+const MAX_IMAGE_BYTES: u64 = 20 * 1024 * 1024;
+
+// 指定フォルダの中の画像を返す（中身と Content-Type）
+pub fn get_doc_image(
+    mode: &AppMode,
+    root: Option<&str>,
+    saved_root: &str,
+    default_root: &str,
+    path: &str,
+) -> io::Result<(Vec<u8>, &'static str)> {
+    let (root, _) = resolve_root(mode, root, saved_root, default_root)?;
+    let extension = Path::new(path)
+        .extension()
+        .map(|ext| ext.to_string_lossy().to_lowercase())
+        .unwrap_or_default();
+    let mime = IMAGE_TYPES
+        .iter()
+        .find(|(ext, _)| *ext == extension)
+        .map(|(_, mime)| *mime)
+        .ok_or_else(|| {
+            io::Error::new(io::ErrorKind::InvalidInput, format!("not an image: {path}"))
+        })?;
+    let full_path = resolve_path(&root, path, &extension)?;
+    if fs::metadata(&full_path)?.len() > MAX_IMAGE_BYTES {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("image too large: {path}"),
+        ));
+    }
+    Ok((fs::read(full_path)?, mime))
+}
+
 // root の外を読めないよう、相対パスで ".." などを含まない .md のみ許可する。
 // シンボリックリンクで外に出る場合も弾く
 fn resolve_doc_path(root: &Path, path: &str) -> io::Result<PathBuf> {
+    resolve_path(root, path, "md")
+}
+
+// root の中の、拡張子が extension のファイル（大文字・小文字は問わない）
+fn resolve_path(root: &Path, path: &str, extension: &str) -> io::Result<PathBuf> {
     let relative = Path::new(path);
     let is_safe = !path.is_empty()
         && relative
             .components()
             .all(|component| matches!(component, Component::Normal(_)))
-        && relative.extension().is_some_and(|ext| ext == "md");
+        && relative
+            .extension()
+            .is_some_and(|ext| ext.to_string_lossy().eq_ignore_ascii_case(extension));
     if !is_safe {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
@@ -210,6 +260,22 @@ mod tests {
         assert!(resolve_doc_path(&root, "00_概要/a.txt").is_err());
         assert!(resolve_doc_path(&root, "").is_err());
         assert!(resolve_doc_path(&root, "00_概要/0090_ドキュメントルール.md").is_ok());
+    }
+
+    #[test]
+    fn get_doc_image_reads_only_images_inside_root() {
+        let dir = std::env::temp_dir().join(format!("ari-docs-image-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("img")).unwrap();
+        fs::write(dir.join("img/a.PNG"), b"png").unwrap();
+        fs::write(dir.join("a.md"), "# a").unwrap();
+        let root = dir.to_string_lossy().to_string();
+        let image = |path: &str| get_doc_image(&AppMode::Local, Some(&root), "", "", path);
+        assert_eq!(image("img/a.PNG").unwrap(), (b"png".to_vec(), "image/png"));
+        assert!(image("a.md").is_err());
+        assert!(image("../a.png").is_err());
+        assert!(image("img/none.png").is_err());
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

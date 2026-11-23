@@ -1,4 +1,4 @@
-import { DatabaseBackup, Download, RotateCcw, Trash2 } from "lucide-react";
+import { DatabaseBackup, Download, RotateCcw, Trash2, TriangleAlert } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 
 import {
@@ -47,9 +47,11 @@ function Select({ id, value, onChange, children }: { id: string; value: string |
   );
 }
 
-// バックアップ（FN0901）。ローカルモード、または共有モードの管理者だけ
+// バックアップ（FN0901）。ローカルモード、共有モードの管理者と許可を付けた利用者（FN0102-BR11）。
+// ダウンロード・復元・削除は管理者だけ（全員の Note も入っているため）
 export default function BackupSetting() {
-  const { showMessage, showConfirm } = useApp();
+  const { showMessage, showConfirm, user } = useApp();
+  const fullAccess = user?.mode !== "shared" || user.isAdmin;
   const [settings, setSettings] = useState<BackupSettings | null>(null);
   const [list, setList] = useState<BackupListResponse | null>(null);
   const [working, setWorking] = useState("");
@@ -177,6 +179,16 @@ export default function BackupSetting() {
                   className="w-full"
                 />
               </Field>
+              <Field label="ゴミ箱の容量の上限（MB。0 は上限なし）" htmlFor="trash-max">
+                <Input
+                  id="trash-max"
+                  type="number"
+                  min={0}
+                  value={settings.trashMaxMb}
+                  onChange={(e) => update({ trashMaxMb: Number(e.target.value) })}
+                  className="w-full"
+                />
+              </Field>
             </div>
             <Field label="保存先のフォルダ（空なら既定の場所）" htmlFor="backup-dir">
               <Input
@@ -188,7 +200,7 @@ export default function BackupSetting() {
               />
             </Field>
             <p className="text-xs text-muted-foreground">
-              壊れたときに備え、できれば別のドライブ・別の PC の共有フォルダなどを保存先にしてください。アプリ（サーバー）が動いている間だけ自動で取ります。
+              壊れたときに備え、できれば別のドライブ・別の PC の共有フォルダなどを保存先にしてください。アプリ（サーバー）が動いている間だけ自動で取ります。ゴミ箱が上限を超えたら、古く捨てたものから完全に削除します。
             </p>
             <div className="flex justify-end">
               <Button type="submit" disabled={working !== ""}>
@@ -199,7 +211,23 @@ export default function BackupSetting() {
         )}
       </SettingPanel>
 
-      <SettingPanel title="バックアップの一覧" description="ダウンロード・復元・削除ができます。復元すると、その時点の状態に戻ります">
+      <SettingPanel
+        title="バックアップの一覧"
+        description={
+          fullAccess
+            ? "ダウンロード・復元・削除ができます。復元すると、その時点の状態に戻ります"
+            : "ダウンロード・復元・削除は管理者だけができます（全員の Note も入っているため）"
+        }
+      >
+        {list?.lastFailure && (
+          <p role="alert" className="mb-4 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
+            <TriangleAlert size={16} className="mt-0.5 shrink-0 text-destructive" />
+            <span>
+              {list.lastFailure.at} の自動のバックアップに失敗しました: {list.lastFailure.message}
+              。保存先を確かめてください（次の予定で取り直します。設定を保存すると、すぐ取り直します）
+            </span>
+          </p>
+        )}
         {!list ? (
           <Spinner />
         ) : (
@@ -208,14 +236,16 @@ export default function BackupSetting() {
               <span className="text-xs text-muted-foreground">
                 {working || list.busy ? `${working || "バックアップ・復元"}を実行中です...` : `${list.backups.length} 件`}
               </span>
-              <Button
-                size="sm"
-                disabled={working !== "" || list.busy}
-                onClick={() => void run("バックアップ", createBackup)}
-              >
-                <DatabaseBackup size={15} />
-                今すぐバックアップ
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  disabled={working !== "" || list.busy}
+                  onClick={() => void run("バックアップ", createBackup)}
+                >
+                  <DatabaseBackup size={15} />
+                  今すぐバックアップ
+                </Button>
+              </div>
             </div>
             {list.backups.length === 0 ? (
               <p className="text-sm text-muted-foreground">バックアップはまだありません</p>
@@ -237,27 +267,31 @@ export default function BackupSetting() {
                         {formatSize(item.size)}・{item.createdBy === "system" ? "自動" : item.createdBy}・{item.fileName}
                       </p>
                     </div>
-                    <IconButton
-                      label="ダウンロード"
-                      disabled={!item.exists || working !== ""}
-                      onClick={() => void download(item.backupId, item.fileName)}
-                    >
-                      <Download size={16} />
-                    </IconButton>
-                    <IconButton
-                      label="この時点に戻す（復元）"
-                      disabled={!item.exists || working !== "" || list.busy}
-                      onClick={() => void restore(item.backupId, item.createdAt)}
-                    >
-                      <RotateCcw size={16} />
-                    </IconButton>
-                    <IconButton
-                      label="削除"
-                      disabled={working !== "" || list.busy}
-                      onClick={() => void remove(item.backupId, item.fileName)}
-                    >
-                      <Trash2 size={16} />
-                    </IconButton>
+{fullAccess && (
+                      <>
+                        <IconButton
+                          label="ダウンロード"
+                          disabled={!item.exists || working !== ""}
+                          onClick={() => void download(item.backupId, item.fileName)}
+                        >
+                          <Download size={16} />
+                        </IconButton>
+                        <IconButton
+                          label="この時点に戻す（復元）"
+                          disabled={!item.exists || working !== "" || list.busy}
+                          onClick={() => void restore(item.backupId, item.createdAt)}
+                        >
+                          <RotateCcw size={16} />
+                        </IconButton>
+                        <IconButton
+                          label="削除"
+                          disabled={working !== "" || list.busy}
+                          onClick={() => void remove(item.backupId, item.fileName)}
+                        >
+                          <Trash2 size={16} />
+                        </IconButton>
+                      </>
+                    )}
                   </li>
                 ))}
               </ul>

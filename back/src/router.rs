@@ -2,7 +2,7 @@ use axum::{
     Router,
     extract::{DefaultBodyLimit, Request},
     http::{
-        HeaderValue, Method,
+        HeaderName, HeaderValue, Method,
         header::{AUTHORIZATION, CONTENT_TYPE},
     },
     middleware::{self, Next},
@@ -13,8 +13,9 @@ use tower_http::cors::CorsLayer;
 
 use crate::config::app_state::AppState;
 
+use crate::api::admin_device;
+use crate::api::app_update::handler as app_update;
 use crate::api::auth;
-use crate::api::folder;
 use crate::api::history;
 use crate::api::{
     backup::handler as backup, content_folder::handler as content_folder,
@@ -24,7 +25,7 @@ use crate::api::{
     user::handler as user, wiki::handler as wiki,
 };
 
-// アップロードなどで受け取る大きさの上限（1 GB）
+// 受け取る大きさの上限（1 GB）。ファイルのアップロードはサーバーの設定の上限を使う（FN0902-BR07）
 pub const MAX_BODY_BYTES: usize = 1024 * 1024 * 1024;
 
 pub fn create_router() -> Router<AppState> {
@@ -38,13 +39,18 @@ pub fn create_router() -> Router<AppState> {
     let cors = CorsLayer::new()
         .allow_origin(origins)
         .allow_methods([Method::GET, Method::POST])
-        .allow_headers([CONTENT_TYPE, AUTHORIZATION])
+        .allow_headers([
+            CONTENT_TYPE,
+            AUTHORIZATION,
+            HeaderName::from_static(crate::service::admin_device::DEVICE_HEADER),
+        ])
         .allow_credentials(true);
 
     Router::new()
         // Docs
         .route("/api/docs", get(docs::get_docs))
         .route("/api/doc", get(docs::get_doc))
+        .route("/api/doc-image", get(docs::get_doc_image))
         // Home
         .route("/api/home/search", post(home::search))
         .route("/api/home/favorites", post(home::get_favorites))
@@ -62,6 +68,15 @@ pub fn create_router() -> Router<AppState> {
         )
         .route("/api/search/status", get(search::get_index_status))
         .route("/api/search/formats", get(search::get_formats))
+        .route("/api/search/exclusions", get(search::get_exclusions))
+        .route(
+            "/api/search/exclusions/create",
+            post(search::create_exclusion),
+        )
+        .route(
+            "/api/search/exclusions/delete",
+            post(search::delete_exclusion),
+        )
         // Favorite
         .route(
             "/api/favorite/node/create",
@@ -76,20 +91,34 @@ pub fn create_router() -> Router<AppState> {
             post(favorite::create_favorite_wiki),
         )
         .route("/api/favorite/delete", post(favorite::delete_favorite))
+        .route("/api/favorite/order", post(favorite::update_favorite_order))
         // Common
         .route("/api/login", post(auth::login))
         .route("/api/logout", post(auth::logout))
         .route("/api/me", get(auth::get_me))
         .route("/api/server-info", get(auth::get_server_info))
         .route("/api/setup/admin", post(auth::setup_admin))
-        .route("/api/folders", get(folder::get_folders))
+        // デスクトップアプリの更新（FN0904。ログイン不要）
+        .route(
+            "/api/app-update/{target}/{arch}/{current_version}",
+            get(app_update::get_update),
+        )
+        .route(
+            "/api/app-update/files/{file_name}",
+            get(app_update::get_file),
+        )
         // Node
         .route("/api/nodes", get(node::get_nodes))
         .route("/api/nodes/create", post(node::create_node))
         .route("/api/nodes/delete", post(node::delete_node))
-        .route("/api/nodes/upload", post(node::upload_node))
+        // 上限はサーバーの設定で決め、ハンドラーで確かめる（FN0902-BR07）
+        .route(
+            "/api/nodes/upload",
+            post(node::upload_node).layer(DefaultBodyLimit::disable()),
+        )
         .route("/api/nodes/open", post(node::open_node))
         .route("/api/nodes/rename", post(node::rename_node))
+        .route("/api/nodes/description", post(node::update_description))
         .route("/api/nodes/move", post(node::move_nodes))
         .route("/api/nodes/copy", post(node::copy_nodes))
         .route("/api/nodes/download", get(node::download_node))
@@ -133,6 +162,15 @@ pub fn create_router() -> Router<AppState> {
         .route("/api/wiki/create", post(wiki::create_wiki))
         .route("/api/wiki/delete", post(wiki::delete_wiki))
         .route("/api/wiki/update", post(wiki::update_wiki))
+        .route("/api/wiki/editing", post(wiki::report_editing))
+        .route(
+            "/api/compare/files",
+            post(crate::api::compare::compare_files),
+        )
+        .route(
+            "/api/compare/folders",
+            post(crate::api::compare::compare_folders),
+        )
         .route(
             "/api/wiki/{wiki_id}/history",
             get(history::get_wiki_history),
@@ -189,6 +227,21 @@ pub fn create_router() -> Router<AppState> {
         .route("/api/users/create", post(user::create_user))
         .route("/api/users/delete", post(user::delete_user))
         .route("/api/users/reset-password", post(user::reset_password))
+        .route("/api/users/role", post(user::change_role))
+        .route("/api/users/permissions", post(user::update_permissions))
+        .route("/api/admin-devices", get(admin_device::get_devices))
+        .route(
+            "/api/admin-devices/pairing",
+            post(admin_device::create_pairing),
+        )
+        .route(
+            "/api/admin-devices/register",
+            post(admin_device::register_device),
+        )
+        .route(
+            "/api/admin-devices/delete",
+            post(admin_device::delete_device),
+        )
         // 受け取る大きさの上限。axum の既定（2 MB）では大きなファイルをアップロードできないため広げる（FN0301-BR29）
         .layer(DefaultBodyLimit::max(MAX_BODY_BYTES))
         .layer(cors)

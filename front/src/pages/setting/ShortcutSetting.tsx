@@ -6,7 +6,7 @@ import Kbd from "@/components/common/Kbd";
 import { SettingPanel } from "@/pages/setting/SettingPanel";
 import { ShortcutList } from "@/shortcut/ShortcutHelp";
 
-// キーボードショートカットの一覧（FN0701）。どの画面でも ? で同じ一覧を開ける
+// キーボードショートカットの一覧（FN0701）。どの画面でも ? で同じ一覧を開ける。ここではキーを変えられる（FN0701-BR16）
 export default function ShortcutSetting() {
   const [query, setQuery] = useState("");
   return (
@@ -14,7 +14,7 @@ export default function ShortcutSetting() {
       title="ショートカット"
       description={
         <>
-          マウスを使わずに操作できるキーの一覧です。どの画面でも <Kbd>?</Kbd> を押すと開けます
+          マウスを使わずに操作できるキーの一覧です。どの画面でも <Kbd>?</Kbd> を押すと開けます。行の右のキーを押すと、新しいキーに変えられます（この PC の ari-docs に保存し、どの場所でも同じキーで使います）
         </>
       }
     >
@@ -31,7 +31,7 @@ export default function ShortcutSetting() {
           className="w-full pl-8"
         />
       </div>
-      <ShortcutList query={query} />
+      <ShortcutList query={query} editable />
     </SettingPanel>
   );
 }

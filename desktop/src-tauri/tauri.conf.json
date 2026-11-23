@@ -1,7 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "ari-docs",
-  "version": "0.1.0",
   "identifier": "com.aridocs.app",
   "build": {
     "frontendDist": "../../front/dist",
@@ -20,6 +19,15 @@
     ],
     "security": {
       "csp": null
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "",
+      "dangerousInsecureTransportProtocol": true,
+      "windows": {
+        "installMode": "passive"
+      }
     }
   },
   "bundle": {

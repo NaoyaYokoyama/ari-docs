@@ -4,7 +4,7 @@ import { twMerge } from "tailwind-merge";
 
 import Button from "@/components/common/Button";
 import Dialog from "@/components/common/Dialog";
-import { folderOptions, type Tree } from "@/pages/content/contentTree";
+import { folderOptions, MIXED_FOLDER, type Tree } from "@/pages/content/contentTree";
 
 type Props = {
   tree: Tree;
@@ -22,7 +22,7 @@ export default function MoveDialog({ tree, target, onClose, onMove }: Props) {
   // 開いたら一覧を ↑↓ で選べるようにする（div は autoFocus では選ばれないため）
   useEffect(() => {
     if (target) {
-      setDest(target.currentFolderId);
+      setDest(target.currentFolderId === MIXED_FOLDER ? "" : target.currentFolderId);
       requestAnimationFrame(() => listRef.current?.focus());
     }
   }, [target]);

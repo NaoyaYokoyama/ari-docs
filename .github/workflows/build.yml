@@ -1,5 +1,6 @@
 # 配布物のビルドとテスト（docs の OP0002）。Windows（NSIS のインストーラー）と Linux（AppImage）を作り、
-# 作ったものを Actions の成果物（Artifacts）に置く。手で動かす（Actions の画面の「Run workflow」）か、v で始まるタグを push したとき
+# 作ったものを Actions の成果物（Artifacts）に置く。手で動かす（Actions の画面の「Run workflow」）か、v で始まるタグを push したとき。
+# タグのときは、署名（.sig）と更新の情報（latest.json）も付けて GitHub Releases に載せる（アプリの更新。docs の FN0904）
 name: build
 
 on:
@@ -79,22 +80,97 @@ jobs:
           }
           Get-ChildItem $dest | Format-Table Name, Length
 
+      # 署名の鍵（Secrets の TAURI_SIGNING_PRIVATE_KEY・TAURI_SIGNING_PRIVATE_KEY_PASSWORD）があれば、
+      # 更新用の署名（.sig）も作る（tauri.updater.conf.json）。無ければ署名なしで作る（タグのときは Releases に載せられない）
       - name: 配布物のビルド
         working-directory: desktop/src-tauri
         env:
           NO_STRIP: "true"
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         shell: bash
         run: |
+          args=(--bundles ${{ matrix.bundle }})
           if [ "$RUNNER_OS" = "Windows" ]; then
-            cargo tauri build --bundles nsis --config tauri.vcruntime.conf.json
-          else
-            cargo tauri build --bundles ${{ matrix.bundle }}
+            args+=(--config tauri.vcruntime.conf.json)
           fi
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            args+=(--config tauri.updater.conf.json)
+          else
+            echo "::warning::署名の鍵が無いため、更新用の署名（.sig）を作りません"
+          fi
+          cargo tauri build "${args[@]}"
 
       - uses: actions/upload-artifact@v5
         with:
           name: ari-docs-${{ matrix.bundle }}
           path: |
             desktop/src-tauri/target/release/bundle/nsis/*.exe
+            desktop/src-tauri/target/release/bundle/nsis/*.exe.sig
             desktop/src-tauri/target/release/bundle/appimage/*.AppImage
+            desktop/src-tauri/target/release/bundle/appimage/*.AppImage.sig
           if-no-files-found: error
+
+  # タグのとき: GitHub Releases に配布物・署名・latest.json を載せる。
+  # 自分の PC のアプリは releases/latest/download/latest.json を読んで新しい版を調べる（FN0904-BR02）
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: 配布物と署名を確かめる
+        env:
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          cd dist
+          version="${TAG#v}"
+          windows="ari-docs_${version}_x64-setup.exe"
+          linux="ari-docs_${version}_amd64.AppImage"
+          for file in "$windows" "$linux"; do
+            if [ ! -f "$file" ] || [ ! -f "$file.sig" ]; then
+              echo "::error::$file か $file.sig がありません（タグと tauri.conf.json の版がそろっているか、署名の鍵があるかを確かめてください）"
+              exit 1
+            fi
+          done
+
+      - name: GitHub Releases に載せる
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        # 下書きで作り、latest.json を載せてから公開する（latest.json の無い間に、アプリが更新を調べて失敗しないように）
+        run: gh release create "$TAG" dist/* --repo "${{ github.repository }}" --title "$TAG" --generate-notes --draft
+
+      # Releases の本文（自動で作った変更点）を notes に入れる。アプリの更新の画面に出す（FN0904-BR13）
+      - name: latest.json を作って載せる
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          cd dist
+          version="${TAG#v}"
+          windows="ari-docs_${version}_x64-setup.exe"
+          linux="ari-docs_${version}_amd64.AppImage"
+          base="https://github.com/${REPO}/releases/download/${TAG}"
+          notes="$(gh release view "$TAG" --repo "$REPO" --json body -q .body)"
+          jq -n \
+            --arg version "$version" \
+            --arg notes "$notes" \
+            --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg wsig "$(cat "$windows.sig")" --arg wurl "$base/$windows" \
+            --arg lsig "$(cat "$linux.sig")" --arg lurl "$base/$linux" \
+            '{version: $version, notes: $notes, pub_date: $date, platforms: {
+              "windows-x86_64": {signature: $wsig, url: $wurl},
+              "linux-x86_64": {signature: $lsig, url: $lurl}
+            }}' > latest.json
+          cat latest.json
+          gh release upload "$TAG" latest.json --repo "$REPO"
+          gh release edit "$TAG" --repo "$REPO" --draft=false

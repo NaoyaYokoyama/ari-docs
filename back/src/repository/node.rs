@@ -37,9 +37,10 @@ pub fn find_all_modified(conn: &Connection) -> Result<std::collections::HashMap<
     rows.collect()
 }
 
+// 更新日時が変わっていれば書き換える。ari-docs の外で変わったので、更新者（FN0301-BR34）は消す
 pub fn update_modified_at(conn: &Connection, path: &str, modified_at: i64) -> Result<usize> {
     conn.execute(
-        "UPDATE node SET modified_at = ?2 WHERE path = ?1 AND modified_at <> ?2",
+        "UPDATE node SET modified_at = ?2, updated_by = '' WHERE path = ?1 AND modified_at <> ?2",
         rusqlite::params![path, modified_at],
     )
 }
@@ -95,7 +96,6 @@ pub fn find_by_node_ids(conn: &Connection, node_ids: &[String]) -> Result<Vec<No
                 node_id: row.get(0)?,
                 path: row.get(1)?,
                 description: String::new(),
-                status: String::new(),
                 updated_by: String::new(),
                 updated_at: row.get(2)?,
             })
@@ -105,7 +105,7 @@ pub fn find_by_node_ids(conn: &Connection, node_ids: &[String]) -> Result<Vec<No
     Ok(nodes)
 }
 
-// パスにキーワードを含むノード（ファイル名・フォルダ名での検索）
+// パスか説明にキーワードを含むノード（ファイル名・フォルダ名・説明での検索。FN0301-BR33）
 // 戻り値は (node_id, path)
 pub fn find_by_search(conn: &Connection, keyword: &str) -> Result<Vec<(String, String)>> {
     let sql = "
@@ -115,34 +115,105 @@ pub fn find_by_search(conn: &Connection, keyword: &str) -> Result<Vec<(String, S
         FROM
           node
         WHERE
-          path LIKE '%' || ?1 || '%'
+          path LIKE '%' || ?1 || '%' ESCAPE '\\'
+          OR description LIKE '%' || ?1 || '%' ESCAPE '\\'
         ORDER BY path ASC
     ";
 
+    // 検索語の % _ は文字として探す（API0201）
     let mut stmt = conn.prepare(sql)?;
+    let keyword = super::search::escape_like(keyword);
     let nodes = stmt.query_map([keyword], |row| Ok((row.get(0)?, row.get(1)?)))?;
     nodes.collect()
 }
 
+// 一覧に出すノードの説明（パス → 説明。空のものは含めない。FN0301-BR33）
+pub fn find_descriptions_by_paths(
+    conn: &Connection,
+    paths: &[String],
+) -> Result<std::collections::HashMap<String, String>> {
+    if paths.is_empty() {
+        return Ok(std::collections::HashMap::new());
+    }
+    let placeholders = vec!["?"; paths.len()].join(",");
+    let sql = format!(
+        "SELECT path, description FROM node WHERE description <> '' AND path IN ({placeholders})"
+    );
+    let mut stmt = conn.prepare(&sql)?;
+    stmt.query_map(params_from_iter(paths), |row| {
+        Ok((row.get(0)?, row.get(1)?))
+    })?
+    .collect()
+}
+
+// ari-docs で変えた人と、変えたあとの更新日時を記録する（FN0301-BR34）。行が無ければ作る。
+// 更新日時をそろえておくので、見張り・同期が同じ変更を見ても更新者は消えない（外で変わったときだけ消える）
+pub fn record_update(
+    conn: &Connection,
+    node_id: &str,
+    path: &str,
+    user_id: &str,
+    modified_at: i64,
+) -> Result<usize> {
+    create_node(conn, node_id, path)?;
+    conn.execute(
+        "UPDATE node SET updated_by = ?2, modified_at = ?3 WHERE path = ?1",
+        rusqlite::params![path, user_id, modified_at],
+    )
+}
+
+// 一覧に出すノードの更新者（パス → 表示名。消えたユーザーは ID のまま。FN0301-BR34）
+pub fn find_updated_by_names(
+    conn: &Connection,
+    paths: &[String],
+) -> Result<std::collections::HashMap<String, String>> {
+    if paths.is_empty() {
+        return Ok(std::collections::HashMap::new());
+    }
+    let placeholders = vec!["?"; paths.len()].join(",");
+    let sql = format!(
+        "SELECT node.path, COALESCE(user.display_name, node.updated_by)
+         FROM node LEFT JOIN user ON user.user_id = node.updated_by
+         WHERE node.updated_by <> '' AND node.path IN ({placeholders})"
+    );
+    let mut stmt = conn.prepare(&sql)?;
+    stmt.query_map(params_from_iter(paths), |row| {
+        Ok((row.get(0)?, row.get(1)?))
+    })?
+    .collect()
+}
+
+// 説明を書き換える。行が無ければ（見張り・同期がまだ登録していない）作る
+pub fn update_description(
+    conn: &Connection,
+    node_id: &str,
+    path: &str,
+    description: &str,
+) -> Result<usize> {
+    create_node(conn, node_id, path)?;
+    conn.execute(
+        "UPDATE node SET description = ?2 WHERE path = ?1",
+        rusqlite::params![path, description],
+    )
+}
+
 pub fn create_node(conn: &Connection, node_id: &str, path: &str) -> Result<i64> {
     let sql = "
-        INSERT INTO node (
+        INSERT OR IGNORE INTO node (
           node_id,
           path,
           description,
-          status,
           updated_by
         )
         VALUES (
           ?1,
           ?2,
           '',
-          0,
           ''
         )
     ";
-    conn.execute(sql, [node_id, path])?;
-    Ok(conn.last_insert_rowid())
+    // 同じパスがもうあれば登録しない（path は一意。ファイルの見張りと同期が同時に登録することがあるため）。登録した件数を返す
+    Ok(conn.execute(sql, [node_id, path])? as i64)
 }
 
 // 指定パスのノードと、その配下（フォルダの中身）のノードを削除する。
@@ -217,6 +288,59 @@ mod tests {
         conn
     }
 
+    // T019: 重なった行は先の行にまとめ、お気に入りを付け替え、そのあとは同じパスを登録しない
+    #[test]
+    fn duplicate_paths_are_merged_and_prevented() {
+        let conn = connect();
+        conn.execute_batch(
+            "INSERT INTO node (node_id, path) VALUES ('n1', 'a.txt'), ('n2', 'a.txt'), ('n3', 'b.txt');
+             INSERT INTO favorite VALUES ('fv_1', 'u', 'n2', '', '');",
+        )
+        .unwrap();
+        conn.execute_batch(include_str!(
+            "../data/migration/T019_add_node_path_unique.sql"
+        ))
+        .unwrap();
+        let mut ids: Vec<String> = find_all(&conn)
+            .unwrap()
+            .into_iter()
+            .map(|(id, _)| id)
+            .collect();
+        ids.sort();
+        assert_eq!(ids, vec!["n1", "n3"]);
+        let favorite: String = conn
+            .query_row("SELECT node_id FROM favorite", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(favorite, "n1");
+        assert_eq!(create_node(&conn, "n4", "a.txt").unwrap(), 0);
+        assert_eq!(
+            find_node_id_by_node_path(&conn, "a.txt").unwrap().unwrap(),
+            "n1"
+        );
+    }
+
+    #[test]
+    fn name_search_treats_percent_and_underscore_as_text() {
+        let conn = connect();
+        for (id, path) in [
+            ("n1", "100%.txt"),
+            ("n2", "100円.txt"),
+            ("n3", "a_b"),
+            ("n4", "axb"),
+        ] {
+            create_node(&conn, id, path).unwrap();
+        }
+        let paths = |keyword: &str| -> Vec<String> {
+            find_by_search(&conn, keyword)
+                .unwrap()
+                .into_iter()
+                .map(|(_, path)| path)
+                .collect()
+        };
+        assert_eq!(paths("0%"), vec!["100%.txt"]);
+        assert_eq!(paths("a_b"), vec!["a_b"]);
+    }
+
     #[test]
     fn delete_with_descendants_removes_children_and_favorites() {
         let conn = connect();
@@ -261,5 +385,29 @@ mod tests {
                 .unwrap();
             assert_eq!(count, 2, "{table}");
         }
+    }
+
+    // FN0301-BR34: ari-docs で記録した更新者は、同じ更新日時なら残り、外で変わる（更新日時が変わる）と消える
+    #[test]
+    fn updated_by_is_cleared_when_changed_outside() {
+        let conn = connect();
+        conn.execute_batch(include_str!(
+            "../data/migration/T012_add_node_modified_at.sql"
+        ))
+        .unwrap();
+        conn.execute_batch(
+            "CREATE TABLE user (user_id TEXT PRIMARY KEY, display_name TEXT NOT NULL);
+             INSERT INTO user VALUES ('taro', '太郎');",
+        )
+        .unwrap();
+        record_update(&conn, "n1", "a.txt", "taro", 100).unwrap();
+        let paths = vec!["a.txt".to_string()];
+        update_modified_at(&conn, "a.txt", 100).unwrap();
+        assert_eq!(
+            find_updated_by_names(&conn, &paths).unwrap().get("a.txt"),
+            Some(&"太郎".to_string())
+        );
+        update_modified_at(&conn, "a.txt", 200).unwrap();
+        assert!(find_updated_by_names(&conn, &paths).unwrap().is_empty());
     }
 }

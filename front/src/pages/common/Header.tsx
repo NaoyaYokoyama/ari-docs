@@ -23,6 +23,7 @@ import { type ThemePreference, useTheme } from "@/app/theme";
 import { useGuardedNavigate } from "@/app/useGuardedNavigate";
 import IconButton from "@/components/common/IconButton";
 import Kbd from "@/components/common/Kbd";
+import PlaceSwitcher from "@/pages/common/PlaceSwitcher";
 import { type NavigationPage, SHORTCUT, shortcutLabel } from "@/shortcut/shortcut";
 import { ShortcutContext } from "@/shortcut/ShortcutProvider";
 import { useNavigation } from "@/shortcut/useNavigation";
@@ -75,6 +76,9 @@ export default function Header({
         </span>
         <span className="hidden sm:inline">ari-docs</span>
       </button>
+
+      {/* 場所（デスクトップアプリだけ。FN0002-BR20） */}
+      <PlaceSwitcher />
 
       <nav className="flex h-full items-center gap-1">
         {menus.map((menu) => {

@@ -16,6 +16,8 @@ pub struct ServerSettings {
     pub history_keep: i64,
     // Docs（Markdown ビューア）を使う。既定は使わない（メイン機能とは別の、設計書を見るための機能）
     pub docs_enabled: bool,
+    // 1 回にアップロードできる合計の大きさ（MB。FN0301-BR29・FN0902-BR07）。既定 1 GB、10 GB まで
+    pub upload_max_mb: i64,
 }
 
 impl Default for ServerSettings {
@@ -26,11 +28,14 @@ impl Default for ServerSettings {
             lock_minutes: 15,
             history_keep: 100,
             docs_enabled: false,
+            upload_max_mb: DEFAULT_UPLOAD_MAX_MB,
         }
     }
 }
 
 const SETTINGS_KEY: &str = "server_settings";
+pub const DEFAULT_UPLOAD_MAX_MB: i64 = 1024;
+pub const MAX_UPLOAD_MAX_MB: i64 = 10 * 1024;
 
 // 読めなければ既定の値
 pub fn get(conn: &Connection) -> ServerSettings {
@@ -62,6 +67,12 @@ pub fn save(conn: &Connection, settings: &ServerSettings) -> Result<(), String> 
             "ロックする時間は 1〜1440 分",
         ),
         (settings.history_keep, 1, 1000, "残す版の数は 1〜1000 件"),
+        (
+            settings.upload_max_mb,
+            1,
+            MAX_UPLOAD_MAX_MB,
+            "アップロードの上限は 1〜10240 MB",
+        ),
     ];
     for (value, min, max, label) in ranges {
         if !(min..=max).contains(&value) {
@@ -75,6 +86,19 @@ pub fn save(conn: &Connection, settings: &ServerSettings) -> Result<(), String> 
     )
     .map_err(|e| e.to_string())?;
     Ok(())
+}
+
+// このサーバーの ID（FN0004-BR07）。ari:// のリンクに入れて、どの共有サーバーのものかを見分ける。
+// 初めて使ったときに作り、変えない（バックアップから戻しても・別の PC へ移しても残る）
+const SERVER_ID_KEY: &str = "server_id";
+
+pub fn server_id(conn: &Connection) -> rusqlite::Result<String> {
+    system_setting::insert_if_missing(
+        conn,
+        SERVER_ID_KEY,
+        &uuid::Uuid::new_v4().simple().to_string(),
+    )?;
+    Ok(system_setting::find(conn, SERVER_ID_KEY)?.unwrap_or_default())
 }
 
 #[cfg(test)]

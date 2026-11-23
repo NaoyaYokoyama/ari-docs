@@ -1,14 +1,16 @@
-import ModeChooser from "@/pages/setup/ModeChooser";
+import { LOCAL_PLACE_ID, type Place } from "@/app/places";
+import OtherPlaces from "@/pages/setup/OtherPlaces";
 import WorkspacePicker from "@/pages/setup/WorkspacePicker";
 import type { SetupStatus } from "@/types/setup";
 
 type Props = {
   status: SetupStatus;
+  places: Place[];
 };
 
-// デスクトップアプリの起動エラーの画面。作業フォルダで起動できなかった原因を出し、
-// 変えられるときは作業フォルダ・使い方を選び直せるようにする
-export default function Setup({ status }: Props) {
+// デスクトップアプリの起動エラーの画面（自分の PC）。作業フォルダで起動できなかった原因を出し、
+// 変えられるときは作業フォルダを選び直せるようにする。共有サーバーを登録していれば、そちらに切り替えられる
+export default function Setup({ status, places }: Props) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-sidebar p-6">
       <div className="w-full max-w-xl rounded-lg border border-border bg-background p-6 shadow-sm">
@@ -36,12 +38,9 @@ export default function Setup({ status }: Props) {
           </>
         )}
 
-        {status.canChangeMode && (
+        {places.length > 1 && (
           <div className="mt-6 border-t border-border pt-5">
-            <p className="mb-3 text-sm text-foreground/80">
-              使い方（個人用 / 共有サーバーに接続）を変えることもできます。
-            </p>
-            <ModeChooser currentMode={status.mode} currentServerUrl={status.serverUrl} />
+            <OtherPlaces places={places} currentId={LOCAL_PLACE_ID} hideLocal />
           </div>
         )}
       </div>

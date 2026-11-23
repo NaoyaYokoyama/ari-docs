@@ -3,8 +3,11 @@ use rusqlite::Connection;
 use crate::{
     api::user::response::UserItem,
     model::user::User,
-    repository::{session as session_repo, setting as setting_repo, user as user_repo},
-    service::auth::{ROLE_ADMIN, ROLE_USER, hash_password, is_admin, verify_password},
+    repository::{
+        session as session_repo, setting as setting_repo, user as user_repo,
+        user_permission as permission_repo,
+    },
+    service::auth::{PERMISSIONS, ROLE_ADMIN, ROLE_USER, hash_password, is_admin, verify_password},
 };
 
 pub enum UserError {
@@ -22,9 +25,10 @@ impl From<rusqlite::Error> for UserError {
     }
 }
 
-fn to_item(user: User) -> UserItem {
+fn to_item(user: User, permissions: Vec<String>) -> UserItem {
     UserItem {
         is_admin: is_admin(&user),
+        permissions,
         user_id: user.user_id,
         display_name: user.display_name,
         updated_at: user.updated_at,
@@ -54,9 +58,13 @@ pub fn create_first_admin(
 }
 
 pub fn get_users(conn: &Connection) -> Result<Vec<UserItem>, UserError> {
+    let mut permissions = permission_repo::find_all(conn)?;
     Ok(user_repo::find_all(conn)?
         .into_iter()
-        .map(to_item)
+        .map(|user| {
+            let granted = permissions.remove(&user.user_id).unwrap_or_default();
+            to_item(user, granted)
+        })
         .collect())
 }
 
@@ -91,6 +99,62 @@ pub fn delete_user(conn: &Connection, login_user_id: &str, user_id: &str) -> Res
 }
 
 // 管理者がパスワードを再設定する。そのユーザーはログアウトさせる
+// 管理者・利用者を切り替える（FN0102-BR10）。自分は変えられない（管理者がいなくならないように、自分を外させない）
+pub fn change_role(
+    conn: &Connection,
+    login_user_id: &str,
+    user_id: &str,
+    admin: bool,
+) -> Result<(), UserError> {
+    if user_id == login_user_id {
+        return Err(UserError::Invalid(
+            "自分の管理者・利用者は変えられません".to_string(),
+        ));
+    }
+    let role = if admin { ROLE_ADMIN } else { ROLE_USER };
+    if user_repo::update_role(conn, user_id, role)? == 0 {
+        return Err(UserError::NotFound);
+    }
+    // 利用者にしたら、管理者の PC の登録も消す（FN0102-BR12）
+    if !admin {
+        crate::repository::admin_device::delete_by_user(conn, user_id)?;
+    }
+    Ok(())
+}
+
+// 利用者に許可を付ける・外す（FN0102-BR11）。管理者はすべてできるので付けられない
+pub fn set_permissions(
+    conn: &Connection,
+    user_id: &str,
+    permissions: &[String],
+) -> Result<(), UserError> {
+    if user_id == "local" {
+        return Err(UserError::NotFound);
+    }
+    let user = user_repo::find_by_user_id(conn, user_id).map_err(|e| match e {
+        rusqlite::Error::QueryReturnedNoRows => UserError::NotFound,
+        e => UserError::Db(e),
+    })?;
+    if is_admin(&user) {
+        return Err(UserError::Invalid(
+            "管理者は許可を付けなくてもすべてできます".to_string(),
+        ));
+    }
+    let mut granted = Vec::new();
+    for permission in permissions {
+        let Some(known) = PERMISSIONS.iter().find(|p| **p == permission.as_str()) else {
+            return Err(UserError::Invalid(format!(
+                "「{permission}」という許可はありません"
+            )));
+        };
+        if !granted.contains(known) {
+            granted.push(*known);
+        }
+    }
+    permission_repo::replace(conn, user_id, &granted)?;
+    Ok(())
+}
+
 pub fn reset_password(conn: &Connection, user_id: &str, password: &str) -> Result<(), UserError> {
     if user_id == "local"
         || setting_repo::update_password(conn, user_id, &hash_password(password))? == 0
@@ -137,11 +201,45 @@ mod tests {
             include_str!("../data/migration/T014_create_content_history.sql"),
             include_str!("../data/migration/T015_add_session_client.sql"),
             include_str!("../data/migration/T016_create_content_folder.sql"),
+            include_str!("../data/migration/T018_create_search_exclusion.sql"),
+            include_str!("../data/migration/T020_create_trash_favorite.sql"),
+            include_str!("../data/migration/T023_user_permission.sql"),
         ] {
             conn.execute_batch(sql).unwrap();
         }
         user_repo::ensure_local_user(&conn).unwrap();
         conn
+    }
+
+    #[test]
+    fn admin_can_change_others_role_but_not_own() {
+        let conn = connect();
+        create_first_admin(&conn, "admin", "管理者", "password1")
+            .ok()
+            .unwrap();
+        create_user(&conn, "taro", "太郎", "password1", false)
+            .ok()
+            .unwrap();
+        change_role(&conn, "admin", "taro", true).ok().unwrap();
+        assert!(is_admin(
+            &user_repo::find_by_user_id(&conn, "taro").unwrap()
+        ));
+        change_role(&conn, "admin", "taro", false).ok().unwrap();
+        assert!(!is_admin(
+            &user_repo::find_by_user_id(&conn, "taro").unwrap()
+        ));
+        assert!(matches!(
+            change_role(&conn, "admin", "admin", false),
+            Err(UserError::Invalid(_))
+        ));
+        assert!(matches!(
+            change_role(&conn, "admin", "local", true),
+            Err(UserError::NotFound)
+        ));
+        assert!(matches!(
+            change_role(&conn, "admin", "nobody", true),
+            Err(UserError::NotFound)
+        ));
     }
 
     #[test]
@@ -235,5 +333,39 @@ mod tests {
             .unwrap();
         let user = user_repo::find_by_user_id(&conn, "taro").unwrap();
         assert!(verify_password("password2", &user.passwd));
+    }
+
+    // FN0102-BR11: 許可は利用者にだけ付けられ、知らない許可は弾く。ユーザーを消すと許可も消える
+    #[test]
+    fn permissions_are_for_users_only() {
+        let conn = connect();
+        create_first_admin(&conn, "admin", "管理者", "password1")
+            .ok()
+            .unwrap();
+        create_user(&conn, "taro", "太郎", "password1", false)
+            .ok()
+            .unwrap();
+        assert!(set_permissions(&conn, "admin", &["backup".to_string()]).is_err());
+        assert!(set_permissions(&conn, "taro", &["root".to_string()]).is_err());
+        set_permissions(
+            &conn,
+            "taro",
+            &[
+                "backup".to_string(),
+                "dictionary".to_string(),
+                "backup".to_string(),
+            ],
+        )
+        .ok()
+        .unwrap();
+        let users = get_users(&conn).ok().unwrap();
+        let taro = users.iter().find(|u| u.user_id == "taro").unwrap();
+        assert_eq!(taro.permissions, vec!["backup", "dictionary"]);
+        delete_user(&conn, "admin", "taro").ok().unwrap();
+        assert!(
+            permission_repo::find_by_user(&conn, "taro")
+                .unwrap()
+                .is_empty()
+        );
     }
 }

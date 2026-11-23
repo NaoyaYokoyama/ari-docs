@@ -1,7 +1,6 @@
 use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::batch::content_index;
-use crate::batch::health_check;
 use crate::batch::node_sync;
 use crate::config::app::AppConfig;
 use crate::service::backup;
@@ -24,25 +23,12 @@ use crate::service::content_image;
 /// - `*/10 * * * * *`   : 10秒間隔で実行
 /// - `0 0 */2 * * *`    : 2時間間隔で実行
 ///
-/// 5 分ごとにヘルスチェック、10 分ごとにノード同期（ふだんは node_watch が変わった所をすぐに反映する）、毎分 30 秒にファイルの中身の取り込み、
+/// 10 分ごとにノード同期（ふだんは node_watch が変わった所をすぐに反映する）、毎分 30 秒にファイルの中身の取り込み、
 /// 毎分 45 秒に定期のバックアップとゴミ箱の整理、毎時 15 分に使われなくなった Note・Wiki の画像の削除を実行する。
 ///
 pub async fn start(config: AppConfig) {
     let folder_root = config.folder_root.clone();
     let scheduler = JobScheduler::new().await.unwrap();
-
-    // 既存Indexバッチ
-    scheduler
-        .add(
-            Job::new_async("0 */5 * * * *", |_uuid, _lock| {
-                Box::pin(async move {
-                    health_check::execute().await;
-                })
-            })
-            .unwrap(),
-        )
-        .await
-        .unwrap();
 
     // Node同期バッチ
     let sync_root = folder_root.clone();
@@ -58,7 +44,7 @@ pub async fn start(config: AppConfig) {
                     let result =
                         tokio::task::spawn_blocking(move || node_sync::execute(&folder_root)).await;
                     if let Ok(Err(e)) = result {
-                        eprintln!("Node sync failed: {e}");
+                        crate::elog!("Node sync failed: {e}");
                     }
                 })
             })

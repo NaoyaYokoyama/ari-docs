@@ -42,6 +42,15 @@ pub struct BackupListResponse {
     pub busy: bool,
     // 既定の保存先（設定の dir が空のとき）
     pub default_dir: String,
+    // 最後に自動のバックアップに失敗した日時と理由（無ければ null。FN0901-BR11）
+    pub last_failure: Option<FailureItem>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FailureItem {
+    pub at: String,
+    pub message: String,
 }
 
 #[derive(Deserialize)]
@@ -50,14 +59,27 @@ pub struct BackupIdRequest {
     pub backup_id: String,
 }
 
-// バックアップは全員のデータに効くため、共有モードでは管理者だけが扱える（FN0901-BR01）
+// バックアップを取る・一覧を見る・設定を変えるのは、管理者と許可を付けた利用者（FN0901-BR01・FN0102-BR11）
+fn require_backup(state: &AppState, headers: &HeaderMap) -> Result<(Connection, User), ApiError> {
+    let conn = connection::connect();
+    let user = auth::get_login_user(&conn, state, headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    if !auth::has_permission(&conn, &state.config.mode, &user, auth::PERMISSION_BACKUP) {
+        return Err(ApiError::new(
+            StatusCode::FORBIDDEN,
+            "バックアップは管理者（と許可を付けられた人）だけが扱えます",
+        ));
+    }
+    Ok((conn, user))
+}
+
+// ダウンロード・削除・復元は管理者だけ（バックアップには全員の Note も入っているため。FN0901-BR01）
 fn require_manage(state: &AppState, headers: &HeaderMap) -> Result<(Connection, User), ApiError> {
     let conn = connection::connect();
     let user = auth::get_login_user(&conn, state, headers).ok_or(StatusCode::UNAUTHORIZED)?;
     if !auth::can_manage(&state.config.mode, &user) {
         return Err(ApiError::new(
             StatusCode::FORBIDDEN,
-            "バックアップは管理者だけが扱えます",
+            "バックアップのダウンロード・削除・復元は管理者だけができます",
         ));
     }
     Ok((conn, user))
@@ -68,7 +90,7 @@ fn bad_request(message: String) -> ApiError {
 }
 
 fn db_error(e: rusqlite::Error) -> ApiError {
-    eprintln!("backup error: {:?}", e);
+    crate::elog!("backup error: {:?}", e);
     StatusCode::INTERNAL_SERVER_ERROR.into()
 }
 
@@ -76,7 +98,7 @@ pub async fn get_settings(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Json<BackupSettings>, ApiError> {
-    let (conn, _) = require_manage(&state, &headers)?;
+    let (conn, _) = require_backup(&state, &headers)?;
     Ok(Json(backup::settings(&conn).map_err(db_error)?))
 }
 
@@ -85,7 +107,7 @@ pub async fn update_settings(
     headers: HeaderMap,
     Json(request): Json<BackupSettings>,
 ) -> Result<Json<ApiResponse<()>>, ApiError> {
-    let (conn, _) = require_manage(&state, &headers)?;
+    let (conn, _) = require_backup(&state, &headers)?;
     backup::save_settings(&conn, &request).map_err(bad_request)?;
     Ok(Json(ApiResponse {
         message: Some("バックアップの設定を保存しました".to_string()),
@@ -97,7 +119,7 @@ pub async fn get_backups(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Json<BackupListResponse>, ApiError> {
-    let (conn, _) = require_manage(&state, &headers)?;
+    let (conn, _) = require_backup(&state, &headers)?;
     let backups = backup_repo::find_all(&conn)
         .map_err(db_error)?
         .into_iter()
@@ -120,6 +142,7 @@ pub async fn get_backups(
         backups,
         busy: backup::is_busy(),
         default_dir,
+        last_failure: backup::last_failure().map(|(at, message)| FailureItem { at, message }),
     }))
 }
 
@@ -128,7 +151,7 @@ pub async fn create_backup(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Json<ApiResponse<()>>, ApiError> {
-    let (_, user) = require_manage(&state, &headers)?;
+    let (_, user) = require_backup(&state, &headers)?;
     let config = state.config.clone();
     let backup = tokio::task::spawn_blocking(move || {
         let conn = connection::connect();

@@ -2,6 +2,7 @@
 name = "back"
 version = "0.1.0"
 edition = "2024"
+license = "AGPL-3.0-only"
 
 # デスクトップアプリ（desktop/src-tauri）から同じプロセスで起動するためのライブラリ
 [lib]
@@ -46,6 +47,8 @@ image = "0.25"
 zip = { version = "9.1.3", default-features = false, features = ["deflate"] }
 quick-xml = "0.42.0"
 encoding_rs = "0.8.42"
+# 古い形式の Word・PowerPoint（.doc・.ppt。OLE の複合ファイル）を読む（FN0202-BR18）
+cfb = "0.14.0"
 # 共有サーバーの HTTPS（FN0101-BR14）。暗号は ring を使う（Windows でも C コンパイラだけでビルドできるため）
 axum-server = { version = "0.8.0", features = ["tls-rustls-no-provider"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
@@ -54,6 +57,9 @@ notify = "8"
 # バックアップのファイルを分けて送る（大きなファイルを一度にメモリに読まないため）
 tokio-util = { version = "0.7", features = ["io"] }
 unicode-normalization = "0.1.24"
+semver = "1"
+# 管理者の PC の鍵は SHA-256 だけを残す（FN0102-BR12）
+sha2 = "0.10"
 
 [build-dependencies]
 # 文字認識のモデルの確認（build_models.rs）

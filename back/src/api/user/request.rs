@@ -63,6 +63,20 @@ pub struct UserIdRequest {
     pub user_id: String,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeRoleRequest {
+    pub user_id: String,
+    pub is_admin: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PermissionsRequest {
+    pub user_id: String,
+    pub permissions: Vec<String>,
+}
+
 #[derive(Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct ResetPasswordRequest {

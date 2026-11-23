@@ -1,6 +1,8 @@
 import { useSyncExternalStore } from "react";
 
+import { personalSettingsChanged } from "@/app/personalSettings";
 import { setThemePreference, type ThemePreference } from "@/app/theme";
+import { getShortcutOverrides, replaceShortcutOverrides } from "@/shortcut/shortcut";
 import { DEFAULT_VIM_SETTINGS, getVimSettings, replaceVimSettings, type VimSettings } from "@/vim/vimSettings";
 
 // この PC（ブラウザの localStorage）だけに保存する、画面の使い方の設定（FN0701）。
@@ -160,6 +162,7 @@ function save() {
   } catch {
     // 保存できなくても、開いている間は使う
   }
+  personalSettingsChanged();
   apply();
 }
 
@@ -201,6 +204,7 @@ function writeKey(key: string, value: string | null) {
   } catch {
     // 保存できない環境では何もしない
   }
+  personalSettingsChanged();
 }
 
 // 「前回の画面」で開ける画面（設定画面も含める。メニューは設定画面の URL の ?section= で覚える）
@@ -243,6 +247,8 @@ type ExportedSettings = {
   contentSort: string;
   // Vim モード（FN0702）。無いファイル（以前に書き出したもの）は変えない
   vim?: VimSettings;
+  // 変えたショートカットのキー（FN0701-BR16）。無いファイルは変えない
+  shortcuts?: Record<string, unknown>;
 };
 
 export function exportSettings(theme: ThemePreference): string {
@@ -254,6 +260,7 @@ export function exportSettings(theme: ThemePreference): string {
     editorMode: getEditorMode(),
     contentSort: readKey(CONTENT_SORT_KEY) === "title" ? "title" : "updated",
     vim: getVimSettings(),
+    shortcuts: getShortcutOverrides(),
   };
   return JSON.stringify(data, null, 2);
 }
@@ -281,6 +288,9 @@ export function importSettings(text: string) {
   if (data.vim) {
     replaceVimSettings(data.vim);
   }
+  if (data.shortcuts) {
+    replaceShortcutOverrides(data.shortcuts);
+  }
 }
 
 // この PC の画面の設定をすべて初めの状態に戻す（ログインの情報は消さない）
@@ -292,4 +302,5 @@ export function resetSettings() {
   apply();
   setThemePreference("system");
   replaceVimSettings(DEFAULT_VIM_SETTINGS);
+  replaceShortcutOverrides({});
 }

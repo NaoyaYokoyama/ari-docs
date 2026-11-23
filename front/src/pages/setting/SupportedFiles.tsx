@@ -6,7 +6,7 @@ import { useApp } from "@/app/AppContext";
 import Spinner from "@/components/common/Spinner";
 import { formatSize } from "@/lib/fileType";
 import { errorMessage } from "@/lib/format";
-import { MAX_PREVIEW_BYTES, PREVIEW_FORMATS } from "@/lib/previewFormats";
+import { MAX_PREVIEW_BYTES, MAX_TEXT_PREVIEW_BYTES, PREVIEW_FORMATS } from "@/lib/previewFormats";
 import { SettingCard, SettingPanel } from "@/pages/setting/SettingPanel";
 import type { FormatsResponse } from "@/types/search";
 
@@ -48,7 +48,7 @@ export default function SupportedFiles() {
 
       <SettingCard
         title="プレビューできるファイル"
-        description={`${formatSize(MAX_PREVIEW_BYTES)} を超えるファイルはプレビューしません。そのほかのファイルは「開く」（PC のアプリ）か「ダウンロード」を使います`}
+        description={`${formatSize(MAX_PREVIEW_BYTES)} を超えるファイルはプレビューしません。テキスト・CSV・Markdown は先頭の ${formatSize(MAX_TEXT_PREVIEW_BYTES)} だけを出します。そのほかのファイルは「開く」（PC のアプリ）か「ダウンロード」を使います`}
       >
         <FormatTable rows={PREVIEW_FORMATS} />
       </SettingCard>

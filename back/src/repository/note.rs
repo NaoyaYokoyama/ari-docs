@@ -38,22 +38,26 @@ pub fn find_by_search(conn: &Connection, user_id: &str, keyword: &str) -> Result
         WHERE
           user_id = ?2
           AND (
-            title Like '%' || ?1 || '%'
-            OR content Like '%' || ?1 || '%'
+            title LIKE '%' || ?1 || '%' ESCAPE '\\'
+            OR content LIKE '%' || ?1 || '%' ESCAPE '\\'
           )
-        ORDER BY updated_at ASC 
+        -- タイトルに合うものを先に、同じなら新しい順（FN0201-BR03）
+        ORDER BY (title LIKE '%' || ?1 || '%' ESCAPE '\\') DESC, updated_at DESC
         ";
     let mut stmt = conn.prepare(sql)?;
     let notes = stmt
-        .query_map(params![keyword, user_id], |row| {
-            Ok(Note {
-                note_id: row.get(0)?,
-                user_id: String::new(),
-                title: row.get(1)?,
-                content: String::new(),
-                updated_at: row.get(2)?,
-            })
-        })?
+        .query_map(
+            params![super::search::escape_like(keyword), user_id],
+            |row| {
+                Ok(Note {
+                    note_id: row.get(0)?,
+                    user_id: String::new(),
+                    title: row.get(1)?,
+                    content: String::new(),
+                    updated_at: row.get(2)?,
+                })
+            },
+        )?
         .collect::<Result<Vec<_>>>()?;
     Ok(notes)
 }
@@ -194,4 +198,34 @@ pub fn find_recent(
         Ok((row.get(0)?, row.get(1)?, row.get(2)?))
     })?
     .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // タイトルに合うものが先、同じなら新しい順（FN0201-BR03）
+    #[test]
+    fn search_puts_title_matches_first() {
+        let conn = Connection::open_in_memory().unwrap();
+        crate::database::migration::migrate(&conn);
+        for (id, title, content, at) in [
+            ("nt_1", "議事録", "", "2026-01-01 00:00:00"),
+            ("nt_2", "メモ", "議事録の下書き", "2026-03-01 00:00:00"),
+            ("nt_3", "議事録 2", "", "2026-02-01 00:00:00"),
+            ("nt_4", "ほか", "", "2026-04-01 00:00:00"),
+        ] {
+            conn.execute(
+                "INSERT INTO note (note_id, user_id, title, content, updated_at) VALUES (?1, 'local', ?2, ?3, ?4)",
+                params![id, title, content, at],
+            )
+            .unwrap();
+        }
+        let ids: Vec<String> = find_by_search(&conn, "local", "議事録")
+            .unwrap()
+            .into_iter()
+            .map(|note| note.note_id)
+            .collect();
+        assert_eq!(ids, ["nt_3", "nt_1", "nt_2"]);
+    }
 }

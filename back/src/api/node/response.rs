@@ -15,7 +15,7 @@ pub struct Node {
     pub path: String,
     pub name: String,
     pub node_type: NodeType,
-    pub status: String,
+    // 説明（FN0301-BR33。無ければ空）
     pub description: String,
     pub updated_by: String,
     pub updated_at: String,

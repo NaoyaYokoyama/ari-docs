@@ -24,7 +24,7 @@ impl From<UserError> for ApiError {
             UserError::Conflict(message) => ApiError::new(StatusCode::CONFLICT, message),
             UserError::NotFound => ApiError::new(StatusCode::NOT_FOUND, "ユーザーが見つかりません"),
             UserError::Db(e) => {
-                eprintln!("user error: {:?}", e);
+                crate::elog!("user error: {:?}", e);
                 ApiError::from(StatusCode::INTERNAL_SERVER_ERROR)
             }
         }
@@ -81,6 +81,43 @@ pub async fn delete_user(
     user::delete_user(&conn, &login_user.user_id, &request.user_id)?;
     Ok(Json(ApiResponse {
         message: Some("ユーザーを削除しました".to_string()),
+        data: None,
+    }))
+}
+
+// 管理者・利用者の切り替え（API0110。FN0102-BR10）
+pub async fn change_role(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<ChangeRoleRequest>,
+) -> Result<Json<ApiResponse<()>>, ApiError> {
+    let (conn, login_user) = require_admin(&state, &headers)?;
+    user::change_role(
+        &conn,
+        &login_user.user_id,
+        &request.user_id,
+        request.is_admin,
+    )?;
+    Ok(Json(ApiResponse {
+        message: Some(if request.is_admin {
+            "管理者にしました".to_string()
+        } else {
+            "利用者にしました".to_string()
+        }),
+        data: None,
+    }))
+}
+
+// 利用者に許可を付ける・外す（API0111。FN0102-BR11）
+pub async fn update_permissions(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<PermissionsRequest>,
+) -> Result<Json<ApiResponse<()>>, ApiError> {
+    let (conn, _) = require_admin(&state, &headers)?;
+    user::set_permissions(&conn, &request.user_id, &request.permissions)?;
+    Ok(Json(ApiResponse {
+        message: Some("許可を変えました".to_string()),
         data: None,
     }))
 }

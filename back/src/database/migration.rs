@@ -133,6 +133,7 @@ mod tests {
         assert_eq!(
             tables(&conn),
             [
+                "admin_device",
                 "backup",
                 "content_folder",
                 "content_folder_item",
@@ -145,13 +146,16 @@ mod tests {
                 "node_content",
                 "node_keyword",
                 "note",
-                "role",
                 "schema_migration",
                 "search_dictionary",
+                "search_exclusion",
                 "session",
                 "system_setting",
                 "trash",
+                "trash_description",
+                "trash_favorite",
                 "user",
+                "user_permission",
                 "user_setting",
                 "wiki"
             ]

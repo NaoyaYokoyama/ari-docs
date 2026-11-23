@@ -14,11 +14,11 @@ export default function FirstRun() {
           <div>
             <h1 className="text-lg font-semibold tracking-tight">ari-docs へようこそ</h1>
             <p className="text-xs text-muted-foreground">
-              使い方を選んでください。あとから設定画面でも変えられます
+              使い方を選んでください。共有サーバーはあとから設定の「場所」でも足せます
             </p>
           </div>
         </div>
-        <ModeChooser currentMode="" currentServerUrl="" />
+        <ModeChooser />
       </div>
     </div>
   );

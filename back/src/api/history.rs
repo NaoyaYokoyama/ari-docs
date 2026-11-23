@@ -44,7 +44,7 @@ pub struct HistoryVersion {
 }
 
 fn db_error(e: rusqlite::Error) -> ApiError {
-    eprintln!("history error: {:?}", e);
+    crate::elog!("history error: {:?}", e);
     StatusCode::INTERNAL_SERVER_ERROR.into()
 }
 

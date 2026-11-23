@@ -1,7 +1,7 @@
-import { KeyRound, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { KeyRound, Plus, ShieldCheck, ShieldOff, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-import { createUser, deleteUser, getUsers, resetPassword } from "@/api/user";
+import { changeRole, createUser, deleteUser, getUsers, resetPassword, updatePermissions } from "@/api/user";
 import { useApp } from "@/app/AppContext";
 import Button from "@/components/common/Button";
 import Dialog from "@/components/common/Dialog";
@@ -12,7 +12,18 @@ import { errorMessage } from "@/lib/format";
 import { Field, SettingPanel } from "@/pages/setting/SettingPanel";
 import type { UserItem } from "@/types/user";
 
-// ユーザー管理（共有モードの管理者だけ）。登録・パスワードの再設定・削除を行う
+// 管理者が利用者に付けられる許可（FN0102-BR11）。既定はどれも無し
+const PERMISSION_LABELS: { id: string; label: string; description: string }[] = [
+  { id: "dictionary", label: "検索の辞書", description: "検索の辞書に単語を登録・削除できる" },
+  { id: "exclusion", label: "全員の対象外", description: "全員の検索の対象外を変えられる" },
+  {
+    id: "backup",
+    label: "バックアップ",
+    description: "バックアップを取る・設定を変えられる（ダウンロード・復元・削除は管理者だけ）",
+  },
+];
+
+// ユーザー管理（共有モードの管理者だけ）。登録・管理者と利用者の切り替え・許可・パスワードの再設定・削除を行う
 export default function UserManagement() {
   const { user, showMessage, showConfirm } = useApp();
   const [users, setUsers] = useState<UserItem[] | null>(null);
@@ -30,6 +41,38 @@ export default function UserManagement() {
   }, [showMessage]);
 
   useEffect(load, [load]);
+
+  const toggleRole = async (target: UserItem) => {
+    const next = !target.isAdmin;
+    const confirmed = await showConfirm(
+      next
+        ? `「${target.displayName}（${target.userId}）」を管理者にしますか？ユーザーの管理・バックアップ・サーバーの設定ができるようになります。管理者の操作は、その人が「管理者の PC」で自分の PC を登録したあとにできます`
+        : `「${target.displayName}（${target.userId}）」を利用者にしますか？管理者の操作ができなくなります`,
+    );
+    if (!confirmed) {
+      return;
+    }
+    try {
+      const response = await changeRole(target.userId, next);
+      showMessage("info", response.message);
+      load();
+    } catch (error) {
+      showMessage("error", errorMessage(error, "切り替えに失敗しました"));
+    }
+  };
+
+  const togglePermission = async (target: UserItem, permission: string) => {
+    const next = target.permissions.includes(permission)
+      ? target.permissions.filter((p) => p !== permission)
+      : [...target.permissions, permission];
+    try {
+      const response = await updatePermissions(target.userId, next);
+      showMessage("info", response.message);
+      load();
+    } catch (error) {
+      showMessage("error", errorMessage(error, "許可を変えられませんでした"));
+    }
+  };
 
   const remove = async (target: UserItem) => {
     const confirmed = await showConfirm(
@@ -79,7 +122,44 @@ export default function UserManagement() {
                   )}
                 </p>
                 <p className="truncate font-mono text-xs text-muted-foreground">{item.userId}</p>
+                {!item.isAdmin && (
+                  <div className="mt-1 flex flex-wrap gap-1" role="group" aria-label="許可">
+                    {PERMISSION_LABELS.map((permission) => {
+                      const granted = item.permissions.includes(permission.id);
+                      return (
+                        <button
+                          key={permission.id}
+                          type="button"
+                          aria-pressed={granted}
+                          title={`${permission.description}（押すと${granted ? "外します" : "付けます"}）`}
+                          onClick={() => void togglePermission(item, permission.id)}
+                          className={`rounded border px-1.5 py-0.5 text-[0.6875rem] ${
+                            granted
+                              ? "border-brand bg-brand/10 text-brand"
+                              : "border-border text-muted-foreground hover:bg-muted"
+                          }`}
+                        >
+                          {granted ? "✓ " : ""}
+                          {permission.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
+              <IconButton
+                label={
+                  item.userId === user?.userId
+                    ? "自分の管理者・利用者は変えられません"
+                    : item.isAdmin
+                      ? "利用者にする"
+                      : "管理者にする"
+                }
+                disabled={item.userId === user?.userId}
+                onClick={() => void toggleRole(item)}
+              >
+                {item.isAdmin ? <ShieldOff size={16} /> : <ShieldCheck size={16} />}
+              </IconButton>
               <IconButton label="パスワードを再設定" onClick={() => setResetting(item)}>
                 <KeyRound size={16} />
               </IconButton>

@@ -3,12 +3,12 @@ import { type ReactNode, useCallback, useEffect, useState } from "react";
 
 import { getServerInfo, login, type ServerInfo, setupAdmin } from "@/api/auth";
 import { getBaseUrl } from "@/api/client";
-import { useDesktopStatus } from "@/app/DesktopContext";
+import { useDesktop } from "@/app/DesktopContext";
 import Button from "@/components/common/Button";
 import Input from "@/components/common/Input";
 import Spinner from "@/components/common/Spinner";
 import { errorMessage } from "@/lib/format";
-import ModeChooser from "@/pages/setup/ModeChooser";
+import OtherPlaces from "@/pages/setup/OtherPlaces";
 
 // ログイン画面（共有モード）。サーバーにユーザーが 1 人もいなければ、最初の管理者を登録する
 export default function Login() {
@@ -34,7 +34,7 @@ export default function Login() {
   if (!info) {
     return <Spinner className="h-screen" label="接続中..." />;
   }
-  return info.needsAdmin ? <AdminSetupForm /> : <LoginForm />;
+  return info.needsAdmin ? <AdminSetupForm codeRequired={info.setupCodeRequired} /> : <LoginForm />;
 }
 
 function Card({ subtitle, children }: { subtitle: string; children: ReactNode }) {
@@ -129,8 +129,10 @@ function LoginForm() {
   );
 }
 
-// 最初の管理者の登録。登録するとそのままログインする
-function AdminSetupForm() {
+// 最初の管理者の登録。登録するとそのままログインし、この PC を管理者の PC にする（FN0102-BR02・BR12）。
+// ほかの PC からは、サーバーを起動した画面（または setup-code.txt）の登録用のコードが要る
+function AdminSetupForm({ codeRequired }: { codeRequired: boolean }) {
+  const [setupCode, setSetupCode] = useState("");
   const [userId, setUserId] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
@@ -144,7 +146,7 @@ function AdminSetupForm() {
     setError("");
     setLoading(true);
     try {
-      await setupAdmin(userId.trim(), displayName.trim(), password);
+      await setupAdmin(userId.trim(), displayName.trim(), password, setupCode.trim());
       window.location.href = "/";
     } catch (e) {
       setError(errorMessage(e, "管理者の登録に失敗しました"));
@@ -156,12 +158,29 @@ function AdminSetupForm() {
     <Card subtitle="最初に管理者を登録してください">
       <form onSubmit={submit} className="space-y-4">
         <p className="rounded-md bg-muted p-3 text-xs text-muted-foreground">
-          このサーバーにはまだユーザーがいません。ここで登録した人が管理者になり、ほかのユーザーを登録できます。
+          {"このサーバーにはまだユーザーがいません。ここで登録した人が管理者になり、ほかのユーザーを登録できます。" +
+            "管理者の操作は、この PC（管理者の PC）からだけできます。"}
         </p>
+        {codeRequired && (
+          <Field label="登録用のコード" htmlFor="admin-code">
+            <Input
+              id="admin-code"
+              autoFocus
+              autoComplete="off"
+              placeholder="XXXX-XXXX"
+              value={setupCode}
+              onChange={(e) => setSetupCode(e.target.value)}
+              className="w-full font-mono"
+            />
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              サーバーを起動した画面か、サーバーのデータのフォルダの setup-code.txt にあります
+            </p>
+          </Field>
+        )}
         <Field label="ユーザーID（半角英数字と _ . -）" htmlFor="admin-user">
           <Input
             id="admin-user"
-            autoFocus
+            autoFocus={!codeRequired}
             autoComplete="username"
             value={userId}
             onChange={(e) => setUserId(e.target.value)}
@@ -205,7 +224,12 @@ function AdminSetupForm() {
         <Button
           type="submit"
           disabled={
-            loading || !userId.trim() || !displayName.trim() || !password || password !== passwordConfirm
+            loading ||
+            (codeRequired && !setupCode.trim()) ||
+            !userId.trim() ||
+            !displayName.trim() ||
+            !password ||
+            password !== passwordConfirm
           }
           className="w-full"
         >
@@ -216,23 +240,21 @@ function AdminSetupForm() {
   );
 }
 
-// サーバーに接続できないとき。デスクトップアプリでは接続先（使い方）を変えられる
+// サーバーに接続できないとき。デスクトップアプリではほかの場所に切り替えられる（FN0002-BR20）
 function ConnectError({ onRetry }: { onRetry: () => void }) {
-  const desktop = useDesktopStatus();
+  const desktop = useDesktop();
   return (
     <Card subtitle="サーバーに接続できません">
       <div className="space-y-4">
         <p className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-          <span className="font-mono text-[0.8125rem]">{getBaseUrl()}</span> に接続できません。
-          サーバーが動いているか、ネットワークにつながっているかを確認してください。
+          <span className="font-mono text-[0.8125rem]">{getBaseUrl()}</span> に接続できません。サーバーが動いているか、ネットワークにつながっているかを確認してください。
         </p>
         <Button variant="secondary" onClick={onRetry} className="w-full">
           再接続
         </Button>
-        {desktop?.canChangeMode && (
+        {desktop && (
           <div className="border-t border-border pt-4">
-            <p className="mb-3 text-sm text-foreground/80">接続先を変える</p>
-            <ModeChooser currentMode={desktop.mode} currentServerUrl={desktop.serverUrl} />
+            <OtherPlaces places={desktop.places} currentId={desktop.place.id} />
           </div>
         )}
       </div>

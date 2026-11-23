@@ -11,10 +11,12 @@ import {
   Plus,
   Search,
   Trash2,
+  X,
 } from "lucide-react";
 import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
+import { personalSettingsChanged } from "@/app/personalSettings";
 import { useCopyAriLink } from "@/app/useAriLink";
 import ContextMenu, { type ContextMenuItem } from "@/components/common/ContextMenu";
 import EmptyState from "@/components/common/EmptyState";
@@ -27,6 +29,7 @@ import {
   ancestors,
   folderPath,
   isInside,
+  MIXED_FOLDER,
   type Row,
   rowKey,
   type Sort,
@@ -113,6 +116,17 @@ const ContentSidebar = forwardRef<HTMLElement, Props>(function ContentSidebar(
   const [menu, setMenu] = useState<Menu | null>(null);
   // ドロップ先のフォルダ（'' は一番上）。null はドラッグしていない
   const [dropTarget, setDropTarget] = useState<string | null>(null);
+  // まとめて選んだ Note・Wiki（Ctrl+クリック・Shift+クリック。FN0403-BR10）。まとめて移す・リンクをコピーする
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const anchorRef = useRef<string | null>(null);
+  // 消えたものは選択から外す
+  useEffect(() => {
+    setChecked((current) => {
+      const ids = new Set(items?.map((item) => item.id) ?? []);
+      const next = new Set([...current].filter((id) => ids.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [items]);
   // ドラッグ中のもの（dragover では dataTransfer の中身を読めないため）
   const dragging = useRef<{ folderIds: string[]; itemIds: string[] } | null>(null);
 
@@ -138,6 +152,7 @@ const ContentSidebar = forwardRef<HTMLElement, Props>(function ContentSidebar(
       } catch {
         // 覚えられなくても開け閉めはする
       }
+      personalSettingsChanged();
       return next;
     });
   };
@@ -177,11 +192,63 @@ const ContentSidebar = forwardRef<HTMLElement, Props>(function ContentSidebar(
     } catch {
       // 保存できなくても並べ替えはする
     }
+    personalSettingsChanged();
   };
 
   const toggle = (folder: ContentFolder, value?: boolean) => {
     const next = value ?? !open.has(folder.folderId);
     changeOpen((set) => (next ? set.add(folder.folderId) : set.delete(folder.folderId)));
+  };
+
+  // Ctrl+クリックで 1 つずつ足し引き、Shift+クリックで前に選んだものからここまで（開いているものも含める）
+  const check = (row: Row, index: number, event: React.MouseEvent) => {
+    if (row.type !== "item") {
+      return false;
+    }
+    if (event.ctrlKey || event.metaKey) {
+      setChecked((current) => {
+        const next = new Set(current.size === 0 && selectedId ? [selectedId] : current);
+        if (next.has(row.item.id)) {
+          next.delete(row.item.id);
+        } else {
+          next.add(row.item.id);
+        }
+        return next;
+      });
+    } else if (event.shiftKey) {
+      const itemRows = rows.filter((other) => other.type === "item");
+      const ids = itemRows.map((other) => other.item.id);
+      const from = ids.indexOf(anchorRef.current ?? selectedId);
+      const to = ids.indexOf(row.item.id);
+      const [start, end] = from === -1 ? [to, to] : [Math.min(from, to), Math.max(from, to)];
+      setChecked(new Set(ids.slice(start, end + 1)));
+    } else {
+      return false;
+    }
+    anchorRef.current = row.item.id;
+    setFocusedIndex(index);
+    return true;
+  };
+
+  const checkedTarget = (): MoveTarget => {
+    const ids = [...checked];
+    const first = items?.find((item) => item.id === ids[0]);
+    const folderIds = new Set(ids.map((id) => tree.folderOf.get(id) ?? ""));
+    return {
+      label: ids.length === 1 ? (first?.title ?? "") : `${ids.length} 件`,
+      folderIds: [],
+      itemIds: ids,
+      // みんな同じフォルダに入っていれば、そのフォルダ
+      currentFolderId: folderIds.size === 1 ? [...folderIds][0] : MIXED_FOLDER,
+    };
+  };
+
+  const copyCheckedLinks = () => {
+    const targets = (items ?? []).filter((item) => checked.has(item.id));
+    void copyAriLink(
+      targets.map((item) => ({ kind: kind.kind, id: item.id })),
+      targets.length === 1 ? targets[0].title : `${targets.length} 件`,
+    );
   };
 
   const activate = (row: Row, index: number) => {
@@ -200,6 +267,11 @@ const ContentSidebar = forwardRef<HTMLElement, Props>(function ContentSidebar(
     }
     const row = rows[focusedIndex];
     const move = (index: number) => setFocusedIndex(Math.min(Math.max(index, 0), rows.length - 1));
+    if (e.key === "Escape" && checked.size > 0) {
+      e.preventDefault();
+      setChecked(new Set());
+      return;
+    }
 
     if (e.key === "j" || e.key === "ArrowDown") {
       e.preventDefault();
@@ -286,6 +358,7 @@ const ContentSidebar = forwardRef<HTMLElement, Props>(function ContentSidebar(
         moving.itemIds.every((id) => (tree.folderOf.get(id) ?? "") === destId);
       if (!unchanged) {
         void folders.move(moving.folderIds, moving.itemIds, destId);
+        setChecked(new Set());
       }
     },
   });
@@ -293,10 +366,11 @@ const ContentSidebar = forwardRef<HTMLElement, Props>(function ContentSidebar(
   const dragProps = (row: Row) => ({
     draggable: true,
     onDragStart: (event: React.DragEvent) => {
+      // まとめて選んだものの 1 つをつかんだら、選んだものをまとめて移す
       const moving =
         row.type === "folder"
           ? { folderIds: [row.folder.folderId], itemIds: [] }
-          : { folderIds: [], itemIds: [row.item.id] };
+          : { folderIds: [], itemIds: checked.has(row.item.id) ? [...checked] : [row.item.id] };
       dragging.current = moving;
       event.dataTransfer.setData(DRAG_TYPE, JSON.stringify(moving));
       event.dataTransfer.effectAllowed = "move";
@@ -325,6 +399,14 @@ const ContentSidebar = forwardRef<HTMLElement, Props>(function ContentSidebar(
       return [
         { label: `新しい${kind.label}`, icon: Plus, onSelect: () => onCreate("") },
         { label: "新しいフォルダ", icon: FolderPlus, onSelect: () => onCreateFolder("") },
+      ];
+    }
+    if (row.type === "item" && checked.has(row.item.id) && checked.size > 1) {
+      return [
+        { label: `選んだ ${checked.size} 件のリンクをコピー`, icon: Link2, onSelect: copyCheckedLinks },
+        { label: `選んだ ${checked.size} 件を移動...`, icon: FolderInput, onSelect: () => onMoveRequest(checkedTarget()) },
+        "separator",
+        { label: "選択をやめる", icon: X, onSelect: () => setChecked(new Set()) },
       ];
     }
     if (row.type === "item") {
@@ -444,6 +526,21 @@ const ContentSidebar = forwardRef<HTMLElement, Props>(function ContentSidebar(
           該当する{kind.label}はありません
         </p>
       ) : (
+        <>
+        {checked.size > 0 && (
+          <div className="mx-2 mb-1 flex items-center gap-1 rounded-md bg-brand/10 px-2 py-1 text-xs">
+            <span className="min-w-0 flex-1 truncate">{checked.size} 件を選択中（Esc でやめる）</span>
+            <IconButton label="選んだものを移動" onClick={() => onMoveRequest(checkedTarget())}>
+              <FolderInput size={15} />
+            </IconButton>
+            <IconButton label="選んだもののリンクをコピー" onClick={copyCheckedLinks}>
+              <Link2 size={15} />
+            </IconButton>
+            <IconButton label="選択をやめる" onClick={() => setChecked(new Set())}>
+              <X size={15} />
+            </IconButton>
+          </div>
+        )}
         <ul
           // 空いているところは一番上へのドロップ先・右クリックで作成
           {...(filtering ? {} : dropProps(""))}
@@ -522,16 +619,22 @@ const ContentSidebar = forwardRef<HTMLElement, Props>(function ContentSidebar(
                   id={`content-row-${key}`}
                   type="button"
                   tabIndex={-1}
-                  onClick={() => activate(row, index)}
+                  onClick={(event) => {
+                    if (!check(row, index, event)) {
+                      activate(row, index);
+                    }
+                  }}
                   onContextMenu={openMenu}
                   {...(filtering ? {} : dragProps(row))}
                   {...(filtering ? {} : dropProps(row.folderId))}
+                  aria-selected={checked.has(row.item.id) || undefined}
                   // アイコンをフォルダのアイコンと揃える
                   style={filtering ? undefined : { paddingLeft: `${1.75 + row.depth * 0.875}rem` }}
                   className={twMerge(
                     "relative flex w-full items-center gap-1.5 rounded-md py-1.5 pr-2 text-left transition-colors",
                     filtering && "flex-col items-start gap-0 px-3",
                     selected ? "bg-accent" : "hover:bg-accent/60",
+                    checked.has(row.item.id) && "bg-brand/10 hover:bg-brand/15",
                     focused && !selected && "ring-1 ring-border ring-inset",
                   )}
                 >
@@ -564,6 +667,7 @@ const ContentSidebar = forwardRef<HTMLElement, Props>(function ContentSidebar(
             );
           })}
         </ul>
+        </>
       )}
 
       <ContextMenu

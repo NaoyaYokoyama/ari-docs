@@ -3,8 +3,8 @@ id: TBL0101
 title: ユーザー
 type: テーブル
 status: レビュー中
-related: [FN0101, FN0701, TBL0102]
-updated: 2026-10-30
+related: [FN0101, FN0701]
+updated: 2026-11-23
 ---
 
 # TBL0101 ユーザー
@@ -37,7 +37,8 @@ updated: 2026-10-30
 
 | カラム | 参照先 | 参照先が削除されたとき |
 |---|---|---|
-| - | - | -（`role_id` は TBL0102 を参照しない。FN0102 の決定事項） |
+| - | - | -（`role_id` はほかの表を参照しない。`admin` / `user` だけ。FN0102 の決定事項） |
+| `user_id` | TBL0105 user_permission・TBL0106 admin_device から参照される | ユーザーを削除すると、その人の許可・管理者の PC も消す（API0108） |
 
 ## 5. ライフサイクル
 
@@ -51,4 +52,5 @@ updated: 2026-10-30
 
 ## 6. 未決事項
 
-- 表示名の変更時に `updated_at` を更新するか
+-
+

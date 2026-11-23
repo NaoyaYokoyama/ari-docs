@@ -2,7 +2,7 @@ import { Search } from "lucide-react";
 import { useState } from "react";
 
 import { useApp } from "@/app/AppContext";
-import { useDesktopStatus } from "@/app/DesktopContext";
+import { useDesktop } from "@/app/DesktopContext";
 import Input from "@/components/common/Input";
 import PageSidebar from "@/components/common/PageSidebar";
 import SidebarItem from "@/components/common/SidebarItem";
@@ -24,7 +24,7 @@ export default function SettingSidebar({
   setSection,
 }: Props) {
   const { user } = useApp();
-  const desktop = useDesktopStatus();
+  const desktop = useDesktop();
   const [query, setQuery] = useState("");
 
   const sections = visibleSettingSections(user, desktop).filter((item) => matchSection(item, query));

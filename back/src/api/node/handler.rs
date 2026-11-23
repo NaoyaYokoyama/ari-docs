@@ -17,10 +17,11 @@ use axum::{
 use crate::config::app_state::AppState;
 
 use std::io::ErrorKind;
+use tokio::io::AsyncWriteExt;
 
 // ノードの操作のエラーを、画面に出す文言付きの応答にする
 fn to_api_error(e: std::io::Error) -> ApiError {
-    eprintln!("node error: {:?}", e);
+    crate::elog!("node error: {:?}", e);
     match e.kind() {
         ErrorKind::InvalidInput => ApiError::new(StatusCode::BAD_REQUEST, e.to_string()),
         ErrorKind::AlreadyExists => ApiError::new(StatusCode::CONFLICT, e.to_string()),
@@ -35,6 +36,16 @@ fn to_api_error(e: std::io::Error) -> ApiError {
             StatusCode::INTERNAL_SERVER_ERROR,
             "ファイル・フォルダを操作できませんでした",
         ),
+    }
+}
+
+// 親フォルダからの相対パス（ルートは空）
+fn join_path(parent: &str, name: &str) -> String {
+    let parent = parent.trim_matches('/');
+    if parent.is_empty() {
+        name.to_string()
+    } else {
+        format!("{parent}/{name}")
     }
 }
 
@@ -75,7 +86,8 @@ pub async fn create_node(
     headers: HeaderMap,
     Json(request): Json<CreateNodeRequest>,
 ) -> Result<StatusCode, ApiError> {
-    require_login(&state, &headers)?;
+    let conn = connection::connect();
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
     node::create_node(
         &state.config.folder_root,
         &request.parent_path,
@@ -83,6 +95,12 @@ pub async fn create_node(
         &request.name,
     )
     .map_err(to_api_error)?;
+    node::record_updates(
+        &conn,
+        &state.config.folder_root,
+        &user.user_id,
+        &[join_path(&request.parent_path, &request.name)],
+    );
     Ok(StatusCode::CREATED)
 }
 
@@ -104,6 +122,13 @@ pub async fn delete_node(
         &user.user_id,
     )
     .map_err(to_api_error)?;
+    // 消したものの入っていたフォルダに、消した人を記録する（FN0301-BR34）
+    node::record_updates(
+        &conn,
+        &state.config.folder_root,
+        &user.user_id,
+        &[join_path(&request.parent_path, &request.name)],
+    );
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -125,7 +150,7 @@ pub async fn open_node(
         }
 
         open::that(file_path).map_err(|e| {
-            eprintln!("open_node error: {:?}", e);
+            crate::elog!("open_node error: {:?}", e);
             ApiError::new(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "ファイルを開けませんでした",
@@ -141,17 +166,47 @@ pub async fn open_node(
     Ok(StatusCode::OK)
 }
 
+// アップロード（FN0301-BR29）。上限はサーバーの設定（既定 1 GB、10 GB まで。FN0902）。
+// メモリに読まず、データのフォルダの tmp/upload/ へ少しずつ書いてから、すべて届いたら置き場所へ移す
+// （途中で切れても元のファイルを壊さない）
 pub async fn upload_node(
     State(state): State<AppState>,
     headers: HeaderMap,
     mut multipart: Multipart,
 ) -> Result<StatusCode, ApiError> {
-    require_login(&state, &headers)?;
-    let mut parent_path = None;
-    let mut files = Vec::new();
-    let mut paths = Vec::new();
+    let conn = connection::connect();
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let max_mb = crate::service::server_settings::get(&conn).upload_max_mb;
+    let max_bytes = max_mb as u64 * 1024 * 1024;
+    let too_large = || {
+        ApiError::new(
+            StatusCode::PAYLOAD_TOO_LARGE,
+            format!(
+                "1 回にアップロードできるのは合計 {} までです（サーバーの設定）",
+                format_mb(max_mb)
+            ),
+        )
+    };
+    // 送る前に分かる大きさで先に断る（multipart の区切りの分だけ少し大きい）
+    if headers
+        .get(axum::http::header::CONTENT_LENGTH)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.parse::<u64>().ok())
+        .is_some_and(|length| length > max_bytes + 1024 * 1024)
+    {
+        return Err(too_large());
+    }
 
-    while let Some(field) = multipart
+    let temp_dir = state.config.data_dir().join("tmp").join("upload");
+    tokio::fs::create_dir_all(&temp_dir)
+        .await
+        .map_err(to_api_error)?;
+    let mut uploads = TempFiles(Vec::new());
+    let mut parent_path = None;
+    let mut paths = Vec::new();
+    let mut total: u64 = 0;
+
+    while let Some(mut field) = multipart
         .next_field()
         .await
         .map_err(|_| StatusCode::BAD_REQUEST)?
@@ -162,14 +217,20 @@ pub async fn upload_node(
             }
 
             Some("files") => {
-                let file_name = field
-                    .file_name()
-                    .ok_or(StatusCode::BAD_REQUEST)?
-                    .to_string();
-
-                let data = field.bytes().await.map_err(|_| StatusCode::BAD_REQUEST)?;
-
-                files.push((file_name, data));
+                if field.file_name().is_none() {
+                    return Err(StatusCode::BAD_REQUEST.into());
+                }
+                let temp = temp_dir.join(uuid::Uuid::new_v4().simple().to_string());
+                uploads.0.push(temp.clone());
+                let mut file = tokio::fs::File::create(&temp).await.map_err(to_api_error)?;
+                while let Some(chunk) = field.chunk().await.map_err(|_| StatusCode::BAD_REQUEST)? {
+                    total += chunk.len() as u64;
+                    if total > max_bytes {
+                        return Err(too_large());
+                    }
+                    file.write_all(&chunk).await.map_err(to_api_error)?;
+                }
+                file.flush().await.map_err(to_api_error)?;
             }
 
             Some("paths") => {
@@ -184,7 +245,7 @@ pub async fn upload_node(
 
     let parent_path = parent_path.ok_or(StatusCode::BAD_REQUEST)?;
 
-    if files.len() != paths.len() {
+    if uploads.0.len() != paths.len() {
         return Err(ApiError::new(
             StatusCode::BAD_REQUEST,
             "アップロードの内容が正しくありません",
@@ -193,30 +254,54 @@ pub async fn upload_node(
 
     // 書き込む前に、すべての書き込み先がノードのルートの中かを確かめる
     let mut targets = Vec::new();
-    for ((_, data), relative_path) in files.into_iter().zip(paths) {
-        let file_path = node::resolve(
-            &state.config.folder_root,
-            &format!("{}/{}", parent_path.trim_end_matches('/'), relative_path),
-        )
-        .map_err(to_api_error)?;
-        targets.push((file_path, data));
+    let mut relatives = Vec::new();
+    for (temp, relative_path) in uploads.0.iter().zip(&paths) {
+        let relative = join_path(&parent_path, relative_path.trim_matches('/'));
+        let file_path =
+            node::resolve(&state.config.folder_root, &relative).map_err(to_api_error)?;
+        targets.push((temp.clone(), file_path));
+        relatives.push(relative);
     }
 
-    for (file_path, data) in targets {
+    for (temp, file_path) in targets {
         if let Some(parent) = file_path.parent() {
             tokio::fs::create_dir_all(parent)
                 .await
                 .map_err(to_api_error)?;
         }
-
-        tokio::fs::write(&file_path, data)
-            .await
-            .map_err(to_api_error)?;
+        // 別のドライブなら移せないので、写してから消す
+        if tokio::fs::rename(&temp, &file_path).await.is_err() {
+            tokio::fs::copy(&temp, &file_path)
+                .await
+                .map_err(to_api_error)?;
+        }
 
         println!("uploaded = {:?}", file_path);
     }
 
+    // 入れたフォルダ（中のフォルダへ入れたときも）にも記録する
+    relatives.push(parent_path.trim_matches('/').to_string());
+    node::record_updates(&conn, &state.config.folder_root, &user.user_id, &relatives);
     Ok(StatusCode::OK)
+}
+
+// 途中の書きかけ（と、別のドライブへ写した元）を消す
+struct TempFiles(Vec<std::path::PathBuf>);
+
+impl Drop for TempFiles {
+    fn drop(&mut self) {
+        for path in &self.0 {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+}
+
+fn format_mb(mb: i64) -> String {
+    if mb >= 1024 && mb % 1024 == 0 {
+        format!("{} GB", mb / 1024)
+    } else {
+        format!("{mb} MB")
+    }
 }
 
 // 名前の変更（FN0301-BR18）
@@ -226,13 +311,37 @@ pub async fn rename_node(
     Json(request): Json<RenameNodeRequest>,
 ) -> Result<StatusCode, ApiError> {
     let conn = connection::connect();
-    auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
     node::rename_node(
         &conn,
         &state.config.folder_root,
         &request.parent_path,
         &request.name,
         request.new_name.trim(),
+    )
+    .map_err(to_api_error)?;
+    node::record_updates(
+        &conn,
+        &state.config.folder_root,
+        &user.user_id,
+        &[join_path(&request.parent_path, request.new_name.trim())],
+    );
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// ファイル・フォルダの説明を書く（FN0301-BR33）。だれでも書ける
+pub async fn update_description(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<NodeDescriptionRequest>,
+) -> Result<StatusCode, ApiError> {
+    let conn = connection::connect();
+    auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    node::update_description(
+        &conn,
+        &state.config.folder_root,
+        &request.path,
+        &request.description,
     )
     .map_err(to_api_error)?;
     Ok(StatusCode::NO_CONTENT)
@@ -245,7 +354,7 @@ pub async fn move_nodes(
     Json(request): Json<TransferNodesRequest>,
 ) -> Result<StatusCode, ApiError> {
     let conn = connection::connect();
-    auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
     node::move_nodes(
         &conn,
         &state.config.folder_root,
@@ -253,6 +362,17 @@ pub async fn move_nodes(
         &request.dest_path,
     )
     .map_err(to_api_error)?;
+    // 移したもの・移した先・元のフォルダに記録する（元のパスはもう無いので、その親だけが記録される）
+    let mut changed = request.paths.clone();
+    for path in &request.paths {
+        let name = path
+            .trim_matches('/')
+            .rsplit('/')
+            .next()
+            .unwrap_or_default();
+        changed.push(join_path(&request.dest_path, name));
+    }
+    node::record_updates(&conn, &state.config.folder_root, &user.user_id, &changed);
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -262,13 +382,19 @@ pub async fn copy_nodes(
     headers: HeaderMap,
     Json(request): Json<TransferNodesRequest>,
 ) -> Result<Json<CopyNodesResponse>, ApiError> {
-    require_login(&state, &headers)?;
+    let conn = connection::connect();
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
     let names = node::copy_nodes(
         &state.config.folder_root,
         &request.paths,
         &request.dest_path,
     )
     .map_err(to_api_error)?;
+    let copied: Vec<String> = names
+        .iter()
+        .map(|name| join_path(&request.dest_path, name))
+        .collect();
+    node::record_updates(&conn, &state.config.folder_root, &user.user_id, &copied);
     Ok(Json(CopyNodesResponse { names }))
 }
 
@@ -281,12 +407,14 @@ pub async fn download_node(
     require_login(&state, &headers)?;
     let path =
         node::file_for_download(&state.config.folder_root, &query.path).map_err(to_api_error)?;
-    let data = tokio::fs::read(&path).await.map_err(to_api_error)?;
+    // 大きなファイルでもメモリに全部読まないよう、少しずつ読んで送る（API0310）
+    let file = tokio::fs::File::open(&path).await.map_err(to_api_error)?;
     let name = path
         .file_name()
         .map(|name| name.to_string_lossy().to_string())
         .unwrap_or_default();
-    Ok(attachment(&name, "application/octet-stream", data))
+    let body = axum::body::Body::from_stream(tokio_util::io::ReaderStream::new(file));
+    Ok(attachment(&name, "application/octet-stream", body))
 }
 
 // エクスプローラー（Finder など）で、そのファイル・フォルダの場所を開く（ローカルモードだけ。FN0301-BR22）
@@ -310,7 +438,7 @@ pub async fn reveal_node(
         ));
     }
     reveal(&path).map_err(|e| {
-        eprintln!("reveal_node error: {:?}", e);
+        crate::elog!("reveal_node error: {:?}", e);
         ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "場所を開けませんでした")
     })?;
     Ok(StatusCode::NO_CONTENT)
@@ -352,12 +480,54 @@ pub async fn download_zip(
 ) -> Result<Response, ApiError> {
     require_login(&state, &headers)?;
     let folder_root = state.config.folder_root.clone();
-    let (data, name) =
-        tokio::task::spawn_blocking(move || archive::zip_nodes(&folder_root, &request.paths))
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-            .map_err(to_api_error)?;
-    Ok(attachment(&name, "application/zip", data))
+    // ZIP は一時ファイル（<データのフォルダ>/tmp/zip-*.zip）に作り、少しずつ読んで送る（API0312）
+    let dir = state.config.data_dir().join("tmp");
+    let (path, name) = tokio::task::spawn_blocking(move || -> std::io::Result<_> {
+        std::fs::create_dir_all(&dir)?;
+        remove_old_zips(&dir);
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let path = dir.join(format!("zip-{stamp}.zip"));
+        let file = std::fs::File::create(&path)?;
+        match archive::zip_nodes_into(&folder_root, &request.paths, file) {
+            Ok((_, name)) => Ok((path, name)),
+            Err(e) => {
+                let _ = std::fs::remove_file(&path);
+                Err(e)
+            }
+        }
+    })
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    .map_err(to_api_error)?;
+    let file = tokio::fs::File::open(&path).await.map_err(to_api_error)?;
+    // 開いたあとは消してよい（Windows は開いているファイルを消せないので、次に ZIP を作るときに消す）
+    if !cfg!(windows) {
+        let _ = std::fs::remove_file(&path);
+    }
+    let body = axum::body::Body::from_stream(tokio_util::io::ReaderStream::new(file));
+    Ok(attachment(&name, "application/zip", body))
+}
+
+// 送り終わったはずの古い一時 ZIP（1 時間より前）を消す
+fn remove_old_zips(dir: &std::path::Path) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().to_string();
+        let old = entry
+            .metadata()
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|time| time.elapsed().ok())
+            .is_some_and(|age| age > std::time::Duration::from_secs(60 * 60));
+        if name.starts_with("zip-") && name.ends_with(".zip") && old {
+            let _ = std::fs::remove_file(entry.path());
+        }
+    }
 }
 
 // ダウンロードの応答（ファイル名は日本語でも崩れないよう RFC 5987 の形で付ける）

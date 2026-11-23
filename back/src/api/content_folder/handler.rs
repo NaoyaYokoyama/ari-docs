@@ -29,7 +29,7 @@ impl From<FolderError> for ApiError {
             ),
             FolderError::Conflict(message) => ApiError::new(StatusCode::CONFLICT, message),
             FolderError::Db(e) => {
-                eprintln!("content folder error: {:?}", e);
+                crate::elog!("content folder error: {:?}", e);
                 StatusCode::INTERNAL_SERVER_ERROR.into()
             }
         }

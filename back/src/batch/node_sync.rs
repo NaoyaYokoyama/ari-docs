@@ -99,7 +99,8 @@ fn relative_path(root_path: &Path, path: &Path) -> Option<String> {
     (!relative.is_empty()).then_some(relative)
 }
 
-fn modified_at(path: &Path) -> i64 {
+// 更新日時（UNIX 時間の秒）。読めなければ 0
+pub fn modified_at(path: &Path) -> i64 {
     fs::metadata(path)
         .and_then(|m| m.modified())
         .ok()

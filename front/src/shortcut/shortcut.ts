@@ -1,3 +1,7 @@
+import { useSyncExternalStore } from "react";
+
+import { personalSettingsChanged } from "@/app/personalSettings";
+
 export type ShortcutPage =
   | "dashboard"
   | "folder"
@@ -32,6 +36,14 @@ export const SHORTCUT = {
     key: "p",
     pages: ALL_PAGES,
     description: "探して開く（Note・Wiki・ファイル・画面・操作）",
+  },
+
+  // 場所（自分の PC・共有サーバー）を切り替える（FN0002-BR20。デスクトップアプリだけ）。Alt+1〜6 は画面の移動
+  PLACE_SWITCH: {
+    alt: true,
+    key: "0",
+    pages: ALL_PAGES,
+    description: "場所（自分の PC・共有サーバー）を切り替える（デスクトップアプリ）",
   },
 
   // "?" は配列によって Shift が要らないため、Shift の有無は見ない（isShortcut）
@@ -154,8 +166,7 @@ export function navigationItems(docsEnabled: boolean): NavigationItem[] {
     label: item.label,
     path: item.path,
     shortcut: {
-      alt: true,
-      key: String(index + 1),
+      ...(overrides[`NAV_${item.page}`] ?? { alt: true, key: String(index + 1) }),
       pages: ALL_PAGES,
       description: item.description,
       focus: item.focus,
@@ -164,6 +175,10 @@ export function navigationItems(docsEnabled: boolean): NavigationItem[] {
 }
 
 export function isShortcut(e: KeyboardEvent, shortcut: Shortcut) {
+  // 設定画面でキーを決めている間は、どのショートカットも動かさない
+  if (capturing) {
+    return false;
+  }
   return (
     e.altKey === !!shortcut.alt &&
     e.ctrlKey === !!shortcut.ctrl &&
@@ -196,10 +211,191 @@ export function shortcutKeys(shortcut: Shortcut) {
   if (shortcut.shift) {
     keys.push("Shift");
   }
-  keys.push(shortcut.key.length === 1 ? shortcut.key.toUpperCase() : shortcut.key);
+  const names: Record<string, string> = { " ": "Space", Escape: "Esc", ArrowUp: "↑", ArrowDown: "↓", ArrowLeft: "←", ArrowRight: "→" };
+  keys.push(names[shortcut.key] ?? (shortcut.key.length === 1 ? shortcut.key.toUpperCase() : shortcut.key));
   return keys;
 }
 
 export function shortcutLabel(shortcut: Shortcut) {
   return shortcutKeys(shortcut).join("+");
 }
+
+// ---- キーの変更（FN0701-BR16）----
+// 利用者が操作ごとにキーを変えられる。変えたものだけを localStorage の shortcut-keys に保存する（個人の設定。FN0701-BR15）。
+// SHORTCUT の値をその場で書き換えるので、isShortcut・shortcutLabel を使っているところはそのまま新しいキーで動く。
+// 画面移動（Alt+数字）は NAV_<画面> で変える。? の一覧（HELP）は変えない（配列によって Shift が要るため）
+
+export type KeyCombo = { ctrl?: boolean; alt?: boolean; shift?: boolean; key: string };
+export type ShortcutId = Exclude<keyof typeof SHORTCUT, "HELP">;
+export type CustomShortcutId = ShortcutId | `NAV_${NavigationPage}`;
+
+const KEYS_STORAGE = "shortcut-keys";
+const SHORTCUTS = SHORTCUT as Record<string, Shortcut>;
+
+function comboOf(shortcut: KeyCombo): KeyCombo {
+  return { ctrl: !!shortcut.ctrl, alt: !!shortcut.alt, shift: !!shortcut.shift, key: shortcut.key };
+}
+
+// 変える前のキー（初期化で戻すため）
+const DEFAULT_COMBOS: Record<string, KeyCombo> = Object.fromEntries(
+  Object.entries(SHORTCUTS).map(([id, shortcut]) => [id, comboOf(shortcut)]),
+);
+
+function isCustomId(id: string): id is CustomShortcutId {
+  return (id in SHORTCUTS && id !== "HELP") || NAVIGATION_PAGES.some((item) => `NAV_${item.page}` === id);
+}
+
+function sanitizeCombo(value: unknown): KeyCombo | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const input = value as Record<string, unknown>;
+  if (typeof input.key !== "string" || input.key === "" || input.key.length > 20) {
+    return null;
+  }
+  return comboOf({ ctrl: input.ctrl === true, alt: input.alt === true, shift: input.shift === true, key: input.key });
+}
+
+function sanitizeOverrides(value: unknown): Partial<Record<CustomShortcutId, KeyCombo>> {
+  const result: Partial<Record<CustomShortcutId, KeyCombo>> = {};
+  if (value && typeof value === "object") {
+    for (const [id, combo] of Object.entries(value)) {
+      const sanitized = sanitizeCombo(combo);
+      if (isCustomId(id) && sanitized) {
+        result[id] = sanitized;
+      }
+    }
+  }
+  return result;
+}
+
+function readOverrides() {
+  try {
+    const value = localStorage.getItem(KEYS_STORAGE);
+    return value ? sanitizeOverrides(JSON.parse(value)) : {};
+  } catch {
+    return {};
+  }
+}
+
+let overrides = readOverrides();
+let version = 0;
+let capturing = false;
+const listeners = new Set<() => void>();
+
+function apply() {
+  for (const [id, combo] of Object.entries(DEFAULT_COMBOS)) {
+    const next = overrides[id as CustomShortcutId] ?? combo;
+    const shortcut = SHORTCUTS[id];
+    shortcut.ctrl = next.ctrl;
+    shortcut.alt = next.alt;
+    shortcut.shift = next.shift;
+    shortcut.key = next.key;
+  }
+  version++;
+  listeners.forEach((listener) => listener());
+}
+
+apply();
+
+function save() {
+  try {
+    if (Object.keys(overrides).length === 0) {
+      localStorage.removeItem(KEYS_STORAGE);
+    } else {
+      localStorage.setItem(KEYS_STORAGE, JSON.stringify(overrides));
+    }
+  } catch {
+    // 保存できなくても、開いている間は使う
+  }
+  personalSettingsChanged();
+  apply();
+}
+
+function sameCombo(a: KeyCombo, b: KeyCombo) {
+  return !!a.ctrl === !!b.ctrl && !!a.alt === !!b.alt && !!a.shift === !!b.shift && a.key.toLowerCase() === b.key.toLowerCase();
+}
+
+// 変えられる操作（設定画面の一覧の順）。画面移動は今ヘッダーに出ているものだけ
+export function customShortcuts(docsEnabled: boolean): { id: CustomShortcutId; shortcut: Shortcut; changed: boolean }[] {
+  const navigation = navigationItems(docsEnabled).map((item) => {
+    const id: CustomShortcutId = `NAV_${item.page}`;
+    return { id, shortcut: item.shortcut, changed: !!overrides[id] };
+  });
+  const others = (Object.keys(SHORTCUTS) as (keyof typeof SHORTCUT)[])
+    .filter((id): id is ShortcutId => id !== "HELP")
+    .map((id) => ({ id, shortcut: SHORTCUTS[id], changed: !!overrides[id] }));
+  return [...navigation, ...others];
+}
+
+// 同じ画面で同じキーを使っているほかの操作（無ければ null）。? は変えられないが、ぶつかるかは見る
+export function conflictOf(id: CustomShortcutId, combo: KeyCombo, docsEnabled: boolean): Shortcut | null {
+  const target = customShortcuts(docsEnabled).find((item) => item.id === id)?.shortcut;
+  if (!target) {
+    return null;
+  }
+  const candidates = [...customShortcuts(docsEnabled).filter((item) => item.id !== id).map((item) => item.shortcut), SHORTCUT.HELP];
+  return (
+    candidates.find(
+      (other) =>
+        (other === SHORTCUT.HELP ? combo.key === "?" : sameCombo(other, combo)) &&
+        other.pages.some((page) => target.pages.includes(page)),
+    ) ?? null
+  );
+}
+
+// キーを変える。null なら元のキーに戻す
+export function setShortcutKey(id: CustomShortcutId, combo: KeyCombo | null) {
+  const next = { ...overrides };
+  if (combo) {
+    next[id] = comboOf(combo);
+  } else {
+    delete next[id];
+  }
+  overrides = next;
+  save();
+}
+
+// 設定の書き出し・読み込み・初期化（preferences.ts）から使う
+export function getShortcutOverrides() {
+  return overrides;
+}
+
+export function replaceShortcutOverrides(value: unknown) {
+  overrides = sanitizeOverrides(value);
+  save();
+}
+
+// 押したキーからキーの組み合わせを作る。修飾キーだけのときは null
+export function comboFromEvent(e: KeyboardEvent | React.KeyboardEvent): KeyCombo | null {
+  if (["Control", "Alt", "Shift", "Meta", "AltGraph", "CapsLock", "Process", "Unidentified", "Dead"].includes(e.key)) {
+    return null;
+  }
+  const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  return { ctrl: e.ctrlKey || e.metaKey, alt: e.altKey, shift: e.shiftKey, key };
+}
+
+// キーを決めている間（設定画面）はショートカットを止める
+export function setShortcutCapturing(value: boolean) {
+  capturing = value;
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+// キーを変えたら描き直すため（表示しているキーの名前を新しくする）
+export function useShortcutVersion() {
+  return useSyncExternalStore(subscribe, () => version);
+}
+
+// 別のタブ・ウィンドウで変えたときも合わせる
+window.addEventListener("storage", (event) => {
+  if (event.key === KEYS_STORAGE || event.key === null) {
+    overrides = readOverrides();
+    apply();
+  }
+});

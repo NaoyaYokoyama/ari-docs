@@ -25,7 +25,8 @@ export type Clipboard = { mode: "copy" | "cut"; paths: string[] };
 
 type Options = {
   currentPath: string;
-  shared: boolean;
+  // ファイルがほかの PC（共有サーバー）にある。開くときはダウンロードする
+  remote: boolean;
   setSelected: (selected: Set<string>) => void;
   refresh: () => Promise<void>;
   // フォルダを開く
@@ -33,7 +34,7 @@ type Options = {
 };
 
 // フォルダ画面の操作（開く・移動・コピー・貼り付け・ゴミ箱・名前の変更・ダウンロードなど。FN0301）
-export function useNodeActions({ currentPath, shared, setSelected, refresh, navigateTo }: Options) {
+export function useNodeActions({ currentPath, remote, setSelected, refresh, navigateTo }: Options) {
   const { showMessage, showConfirm } = useApp();
   const [clipboard, setClipboard] = useState<Clipboard | null>(null);
 
@@ -45,7 +46,7 @@ export function useNodeActions({ currentPath, shared, setSelected, refresh, navi
     try {
       // 共有サーバーのファイルは、ダウンロードしてこの PC のアプリで開く（FN0301-BR21）。
       // 保存したら自動でサーバーに戻す（FN0301-BR28）
-      if (shared) {
+      if (remote) {
         const watchId = await openBlob(node.name, await downloadNode(node.path));
         if (watchId !== null) {
           watchOpened(watchId, openedFile(node.path, node.name, node.updatedAt, node.size));

@@ -2,13 +2,16 @@ import { ExternalLink, FileText, Folder, FolderOpen, Star, Trash2 } from "lucide
 import { useEffect, useState } from "react";
 
 import { createFavoriteNode, deleteFavorite } from "@/api/favorite";
-import { deleteNode } from "@/api/node";
+import { deleteNode, updateNodeDescription } from "@/api/node";
 import { useApp } from "@/app/AppContext";
 import Button from "@/components/common/Button";
 import Dialog from "@/components/common/Dialog";
 import { errorMessage } from "@/lib/format";
 import type { Node } from "@/types/node";
 import { NodeType } from "@/types/nodeType";
+
+// 説明の長さの上限（サーバーの MAX_DESCRIPTION_CHARS と同じ）
+const MAX_DESCRIPTION = 200;
 
 type Props = {
   nodeOpen: boolean;
@@ -21,11 +24,14 @@ type Props = {
 
 function NodeDialog({ nodeOpen, node, onClose, onOpen, onChanged }: Props) {
   const [favoriteId, setFavoriteId] = useState("");
+  const [description, setDescription] = useState("");
+  const [saving, setSaving] = useState(false);
   const { user, showMessage } = useApp();
 
   useEffect(() => {
     if (nodeOpen && node) {
       setFavoriteId(node.favoriteId);
+      setDescription(node.description);
     }
   }, [nodeOpen, node]);
 
@@ -72,16 +78,27 @@ function NodeDialog({ nodeOpen, node, onClose, onOpen, onChanged }: Props) {
     }
   };
 
+  // 説明（FN0301-BR33）。空にして保存すると消す
+  const saveDescription = async () => {
+    setSaving(true);
+    try {
+      await updateNodeDescription(node.path, description);
+      showMessage("info", description.trim() ? "説明を保存しました" : "説明を消しました");
+      onChanged();
+    } catch (error) {
+      console.error(error);
+      showMessage("error", errorMessage(error, "説明の保存に失敗しました"));
+    } finally {
+      setSaving(false);
+    }
+  };
+  const descriptionChanged = description.trim() !== node.description;
+
   const rows: [string, string][] = [
     ["種類", folder ? "フォルダ" : "ファイル"],
     ["場所", `folder/${node.path}`],
     ["更新日時", node.updatedAt],
-    ...(user?.mode !== "local"
-      ? ([
-          ["更新者", node.updatedBy || "-"],
-          ["説明", node.description || "-"],
-        ] as [string, string][])
-      : []),
+    ...(user?.mode !== "local" ? ([["更新者", node.updatedBy || "-"]] as [string, string][]) : []),
   ];
 
   return (
@@ -124,6 +141,33 @@ function NodeDialog({ nodeOpen, node, onClose, onOpen, onChanged }: Props) {
           </div>
         ))}
       </dl>
+      <label className="mt-4 block text-sm">
+        <span className="mb-1 flex items-baseline justify-between">
+          <span className="text-muted-foreground">説明</span>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {Array.from(description.trim()).length} / {MAX_DESCRIPTION}
+          </span>
+        </span>
+        <textarea
+          value={description}
+          maxLength={MAX_DESCRIPTION}
+          rows={3}
+          placeholder="このファイル・フォルダが何かを一言で（一覧・プレビューに出て、ホームの検索でも探せます）"
+          onChange={(e) => setDescription(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && descriptionChanged) {
+              e.preventDefault();
+              void saveDescription();
+            }
+          }}
+          className="w-full resize-y rounded-md border border-border bg-background px-2.5 py-1.5 text-sm focus:border-brand focus:outline-none"
+        />
+      </label>
+      <div className="mt-2 flex justify-end">
+        <Button size="sm" variant="secondary" disabled={!descriptionChanged || saving} onClick={saveDescription} title="説明を保存（Ctrl+Enter）">
+          説明を保存
+        </Button>
+      </div>
     </Dialog>
   );
 }

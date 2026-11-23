@@ -29,7 +29,7 @@ export default function PreviewDialog({ node, onClose, onOpen, onDownload }: Pro
           <span className="truncate">{node.name}</span>
         </span>
       }
-      description={`${formatSize(node.size)}・${node.updatedAt}`}
+      description={`${formatSize(node.size)}・${node.updatedAt}${node.updatedBy ? `・${node.updatedBy}` : ""}`}
       onClose={onClose}
       className="max-w-4xl"
       footer={

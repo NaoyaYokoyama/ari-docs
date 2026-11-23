@@ -12,12 +12,16 @@ use crate::{
         index,
         kind::{self, Filter},
     },
+    service::search_exclusion,
 };
 
 // 中身で見つかったファイルを返す最大の件数（FN0202-BR07）
 const CONTENT_LIMIT: i64 = 200;
 // 種類で絞り込むときに、中身の検索から取り出す件数（絞り込んだあとに 200 件を残すため、多めに取る）
 const FILTERED_CONTENT_LIMIT: i64 = 20_000;
+// 最近の更新に出すファイルの件数と、検索の対象外があるときに取り出す件数（FN0201-BR07）
+const RECENT_FILES: i64 = 10;
+const RECENT_FILES_FILTERED: i64 = 500;
 use rusqlite::Connection;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -43,6 +47,8 @@ pub fn search(
     } else {
         Vec::new()
     };
+    // 検索の対象外（全員の分と本人の分。FN0202-BR16・BR17）
+    let exclusions = search_exclusion::load(conn, Some(user_id))?;
     let nodes = node_repo::find_by_search(conn, keyword)?;
     let mut search_items: Vec<SearchItem> = Vec::new();
 
@@ -68,6 +74,9 @@ pub fn search(
 
     let mut found = HashSet::new();
     for (node_id, path) in nodes {
+        if exclusions.excludes(&path) {
+            continue;
+        }
         let full_path = Path::new(folder_root).join(&path);
         if !full_path.exists() {
             continue;
@@ -96,7 +105,8 @@ pub fn search(
     match index::current_tokenizer(conn) {
         Ok(tokenizer) => {
             let words = tokenizer.query_words(keyword);
-            let limit = if filter.is_all() {
+            // 絞り込むとき（種類・本人の対象外）は多めに取る
+            let limit = if filter.is_all() && exclusions.is_empty() {
                 CONTENT_LIMIT
             } else {
                 FILTERED_CONTENT_LIMIT
@@ -107,6 +117,7 @@ pub fn search(
                     break;
                 }
                 if found.contains(&node_id)
+                    || exclusions.excludes(&path)
                     || !filter.allows(kind::file_kind(&path))
                     || !Path::new(folder_root).join(&path).is_file()
                 {
@@ -124,7 +135,7 @@ pub fn search(
                 });
             }
         }
-        Err(e) => eprintln!("search tokenizer error: {e}"),
+        Err(e) => crate::elog!("search tokenizer error: {e}"),
     }
 
     Ok(SearchResponse { search_items })
@@ -154,10 +165,19 @@ pub fn get_recent(
             updated_by: String::new(),
         })
         .collect();
-    let files = node_repo::find_recent_files(conn, 10)?
+    // 検索の対象外（全員の分と本人の分）は出さない（FN0202-BR16・BR17）。
+    // バックアップを丸ごと写すと新しいファイルが並ぶので、対象外があるときは多めに取る
+    let exclusions = search_exclusion::load(conn, Some(user_id))?;
+    let fetch = if exclusions.is_empty() {
+        RECENT_FILES
+    } else {
+        RECENT_FILES_FILTERED
+    };
+    let files = node_repo::find_recent_files(conn, fetch)?
         .into_iter()
+        .filter(|(path, _)| !exclusions.excludes(path))
         .filter(|(path, _)| Path::new(folder_root).join(path).is_file())
-        .take(10)
+        .take(RECENT_FILES as usize)
         .map(|(path, modified_at)| RecentFile {
             path,
             updated_at: chrono::DateTime::from_timestamp(modified_at, 0)
@@ -176,71 +196,62 @@ pub fn get_recent(
     })
 }
 
+// お気に入りの一覧（FN0601）。種類によらず、登録の新しいものから並べる（FN0601-BR08）。参照先が消えたものは出さない
 pub fn get_favorite_list(
     conn: &Connection,
     user_id: &str,
 ) -> rusqlite::Result<FavoriteListResponse> {
     let favorites = favorite_repo::find_by_user_id(conn, user_id)?;
-    // 各IDからfavorite_idを引けるようにしておく
-    let mut node_favorite_ids = HashMap::new();
-    let mut note_favorite_ids = HashMap::new();
-    let mut wiki_favorite_ids = HashMap::new();
-    for favorite in favorites {
-        if !favorite.node_id.is_empty() {
-            node_favorite_ids.insert(favorite.node_id, favorite.favorite_id);
-        } else if !favorite.note_id.is_empty() {
-            note_favorite_ids.insert(favorite.note_id, favorite.favorite_id);
-        } else if !favorite.wiki_id.is_empty() {
-            wiki_favorite_ids.insert(favorite.wiki_id, favorite.favorite_id);
-        }
+    let ids = |pick: fn(&crate::model::favorite::Favorite) -> &String| -> Vec<String> {
+        favorites
+            .iter()
+            .map(pick)
+            .filter(|id| !id.is_empty())
+            .cloned()
+            .collect()
+    };
+    let nodes: HashMap<String, String> = node_repo::find_by_node_ids(conn, &ids(|f| &f.node_id))?
+        .into_iter()
+        .map(|node| (node.node_id, node.path))
+        .collect();
+    let notes: HashMap<String, String> =
+        note_repo::find_by_note_ids(conn, user_id, &ids(|f| &f.note_id))?
+            .into_iter()
+            .map(|note| (note.note_id, note.title))
+            .collect();
+    let wikis: HashMap<String, String> = wiki_repo::find_by_wiki_ids(conn, &ids(|f| &f.wiki_id))?
+        .into_iter()
+        .map(|wiki| (wiki.wiki_id, wiki.title))
+        .collect();
+
+    // 参照先が消えたお気に入りは出さず、行も消す（API0601）
+    let mut missing = Vec::new();
+    let favorite_list = favorites
+        .into_iter()
+        .filter_map(|favorite| {
+            let found = if !favorite.node_id.is_empty() {
+                nodes.get(&favorite.node_id)
+            } else if !favorite.note_id.is_empty() {
+                notes.get(&favorite.note_id)
+            } else {
+                wikis.get(&favorite.wiki_id)
+            };
+            let Some(name) = found.cloned() else {
+                missing.push(favorite.favorite_id);
+                return None;
+            };
+            Some(FavoriteItem {
+                favorite_id: favorite.favorite_id,
+                name,
+                node_id: favorite.node_id,
+                note_id: favorite.note_id,
+                wiki_id: favorite.wiki_id,
+            })
+        })
+        .collect();
+    for favorite_id in missing {
+        let _ = favorite_repo::delete_favorite(conn, user_id, &favorite_id);
     }
-    let node_ids: Vec<String> = node_favorite_ids.keys().cloned().collect();
-    let note_ids: Vec<String> = note_favorite_ids.keys().cloned().collect();
-    let wiki_ids: Vec<String> = wiki_favorite_ids.keys().cloned().collect();
-
-    let nodes = node_repo::find_by_node_ids(conn, &node_ids)?;
-    let notes = note_repo::find_by_note_ids(conn, &user_id, &note_ids)?;
-    let wikis = wiki_repo::find_by_wiki_ids(conn, &wiki_ids)?;
-    let mut favorite_list: Vec<FavoriteItem> = Vec::new();
-
-    favorite_list.extend(nodes.into_iter().map(|node| {
-        FavoriteItem {
-            favorite_id: node_favorite_ids
-                .get(&node.node_id)
-                .cloned()
-                .unwrap_or_default(),
-            name: node.path,
-            node_id: node.node_id,
-            note_id: "".to_string(),
-            wiki_id: "".to_string(),
-        }
-    }));
-
-    favorite_list.extend(notes.into_iter().map(|note| {
-        FavoriteItem {
-            favorite_id: note_favorite_ids
-                .get(&note.note_id)
-                .cloned()
-                .unwrap_or_default(),
-            name: note.title,
-            node_id: "".to_string(),
-            note_id: note.note_id,
-            wiki_id: "".to_string(),
-        }
-    }));
-
-    favorite_list.extend(wikis.into_iter().map(|wiki| {
-        FavoriteItem {
-            favorite_id: wiki_favorite_ids
-                .get(&wiki.wiki_id)
-                .cloned()
-                .unwrap_or_default(),
-            name: wiki.title,
-            node_id: "".to_string(),
-            note_id: "".to_string(),
-            wiki_id: wiki.wiki_id,
-        }
-    }));
 
     Ok(FavoriteListResponse { favorite_list })
 }

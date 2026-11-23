@@ -26,3 +26,11 @@ pub fn upsert(conn: &Connection, key: &str, value: &str) -> Result<usize> {
         ";
     conn.execute(sql, [key, value])
 }
+
+// 無ければ入れる（あれば変えない）。入れた件数
+pub fn insert_if_missing(conn: &Connection, key: &str, value: &str) -> Result<usize> {
+    conn.execute(
+        "INSERT INTO system_setting (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO NOTHING",
+        [key, value],
+    )
+}

@@ -27,6 +27,11 @@ export function watchOpened(watchId: number, file: Opened) {
   opened.set(watchId, file);
 }
 
+// 開いて見張っているファイルがあるか（場所を切り替えると見張りの記録が消え、それ以降の保存はサーバーに戻らない）
+export function hasOpenedFiles() {
+  return opened.size > 0;
+}
+
 function parentOf(path: string) {
   const index = path.lastIndexOf("/");
   return index === -1 ? "" : path.slice(0, index);
