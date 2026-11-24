@@ -17,6 +17,7 @@ use crate::api::admin_device;
 use crate::api::app_update::handler as app_update;
 use crate::api::auth;
 use crate::api::history;
+use crate::api::server_update;
 use crate::api::{
     backup::handler as backup, content_folder::handler as content_folder,
     content_image::handler as content_image, docs::handler as docs, favorite::handler as favorite,
@@ -242,6 +243,10 @@ pub fn create_router() -> Router<AppState> {
             "/api/admin-devices/delete",
             post(admin_device::delete_device),
         )
+        // サーバーの更新（共有モードの管理者だけ。FN0904-BR14）
+        .route("/api/server-update", get(server_update::get_status))
+        .route("/api/server-update/apply", post(server_update::apply))
+        .route("/api/server-update/upload", post(server_update::upload))
         // 受け取る大きさの上限。axum の既定（2 MB）では大きなファイルをアップロードできないため広げる（FN0301-BR29）
         .layer(DefaultBodyLimit::max(MAX_BODY_BYTES))
         .layer(cors)

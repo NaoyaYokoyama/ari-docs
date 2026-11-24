@@ -1061,23 +1061,49 @@ fn updater_pubkey(app: &AppHandle) -> String {
     .to_string()
 }
 
+// その版の更新の情報（GitHub Releases の版ごとの latest.json。共有サーバーの版にそろえるとき。FN0904-BR02）
+fn release_endpoint_for(version: &str) -> Result<tauri::Url, String> {
+  format!("https://github.com/NaoyaYokoyama/ari-docs/releases/download/v{version}/latest.json")
+    .parse()
+    .map_err(|e| format!("URL が正しくありません: {e}"))
+}
+
+async fn check_endpoint(app: &AppHandle, endpoint: tauri::Url) -> Result<Option<Update>, String> {
+  app
+    .updater_builder()
+    .endpoints(vec![endpoint])
+    .map_err(|e| e.to_string())?
+    .timeout(UPDATE_CHECK_TIMEOUT)
+    .build()
+    .map_err(|e| e.to_string())?
+    .check()
+    .await
+    .map_err(|e| e.to_string())
+}
+
+// 新しい版を調べる。共有サーバーは、サーバーに置いた更新ファイル（API0911）が無ければ、
+// サーバーと同じ版（server_version）を GitHub Releases から取る（サーバーより新しい版にはしない）
 #[tauri::command]
 async fn check_update(
   server_url: String,
+  server_version: Option<String>,
   app: AppHandle,
   pending: State<'_, PendingUpdate>,
 ) -> Result<Option<UpdateInfo>, String> {
   if updater_pubkey(&app).is_empty() {
     return Err("署名の鍵が設定されていないため、このアプリは更新できません".to_string());
   }
-  let updater = app
-    .updater_builder()
-    .endpoints(vec![update_endpoint(&server_url)?])
-    .map_err(|e| e.to_string())?
-    .timeout(UPDATE_CHECK_TIMEOUT)
-    .build()
-    .map_err(|e| e.to_string())?;
-  let update = updater.check().await.map_err(|e| e.to_string())?;
+  let mut update = check_endpoint(&app, update_endpoint(&server_url)?).await?;
+  let current = app.package_info().version.to_string();
+  let shared = !server_url.trim().is_empty();
+  if let Some(version) = server_version
+    .map(|version| version.trim().to_string())
+    .filter(|version| update.is_none() && shared && !version.is_empty() && *version != current)
+  {
+    update = check_endpoint(&app, release_endpoint_for(&version)?)
+      .await
+      .map_err(|e| format!("サーバーと同じ版（{version}）を GitHub から取れませんでした（{e}）"))?;
+  }
   let info = update.as_ref().map(|update| UpdateInfo {
     version: update.version.clone(),
     current_version: update.current_version.clone(),
@@ -1492,6 +1518,14 @@ mod tests {
       .as_str()
       .starts_with("http://ari-server:8080/api/app-update/"));
     assert!(update_endpoint("ari-server").is_err());
+  }
+
+  #[test]
+  fn release_endpoint_points_to_the_tag_of_the_server_version() {
+    assert_eq!(
+      release_endpoint_for("0.2.0").unwrap().as_str(),
+      "https://github.com/NaoyaYokoyama/ari-docs/releases/download/v0.2.0/latest.json"
+    );
   }
 
   #[test]

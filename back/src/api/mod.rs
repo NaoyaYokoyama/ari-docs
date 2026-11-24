@@ -14,6 +14,7 @@ pub mod node;
 pub mod note;
 pub mod response;
 pub mod search;
+pub mod server_update;
 pub mod setting;
 pub mod system;
 pub mod trash;

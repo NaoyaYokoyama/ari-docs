@@ -18,6 +18,7 @@ pub mod quick_open;
 pub mod search;
 pub mod search_exclusion;
 pub mod server_settings;
+pub mod server_update;
 pub mod setting;
 pub mod setup_code;
 pub mod trash;

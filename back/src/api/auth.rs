@@ -79,6 +79,8 @@ pub struct ServerInfoResponse {
     pub setup_code_required: bool,
     // このサーバーの ID（ari:// のリンクで場所を見分ける。FN0004-BR07）
     pub server_id: String,
+    // サーバーの版（デスクトップアプリはこの版まで更新する。FN0904-BR02）
+    pub version: &'static str,
 }
 
 #[derive(Deserialize, Validate)]
@@ -228,6 +230,7 @@ pub async fn get_server_info(
         needs_admin,
         setup_code_required: needs_admin && setup_code::required(&addr),
         server_id,
+        version: env!("CARGO_PKG_VERSION"),
     }))
 }
 

@@ -60,6 +60,12 @@ unicode-normalization = "0.1.24"
 semver = "1"
 # 管理者の PC の鍵は SHA-256 だけを残す（FN0102-BR12）
 sha2 = "0.10"
+# サーバーの更新（FN0904-BR14〜）。GitHub Releases から取ってきて、アプリと同じ鍵の署名（minisign）を確かめて展開する
+ureq = { version = "3", default-features = false, features = ["rustls"] }
+minisign-verify = "0.2"
+base64 = "0.23"
+tar = "0.4"
+flate2 = "1"
 
 [build-dependencies]
 # 文字認識のモデルの確認（build_models.rs）

@@ -11,6 +11,7 @@ export type FontSize = "small" | "normal" | "large" | "xlarge";
 export type StartPage = "home" | "folder" | "note" | "wiki" | "docs" | "last";
 // system は OS の「アニメーションを減らす」（Windows の「アニメーション効果」など）に合わせる
 export type ReduceMotion = "system" | "on" | "off";
+export type UpdateCheck = "ask" | "on" | "off";
 // ホームの検索で探す種類（サーバーの back/src/search/kind.rs と同じ名前。FN0201-BR09）
 export type SearchType =
   | "excel"
@@ -40,6 +41,8 @@ export type Preferences = {
   buttonHints: boolean;
   // ホームの検索で探す種類。空ならすべて
   searchTypes: SearchType[];
+  // 自分の PC の場所で、起動したときに GitHub で新しい版を調べるか（ask はまだ選んでいない。FN0904-BR04）
+  updateCheck: UpdateCheck;
 };
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -51,6 +54,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   folderPreviewPane: true,
   buttonHints: true,
   searchTypes: [],
+  updateCheck: "ask",
 };
 
 export const SEARCH_TYPES: { value: SearchType; label: string; description: string }[] = [
@@ -126,6 +130,7 @@ function sanitize(value: unknown): Preferences {
     showHidden: pick("showHidden", [true, false]),
     folderPreviewPane: pick("folderPreviewPane", [true, false]),
     buttonHints: pick("buttonHints", [true, false]),
+    updateCheck: pick("updateCheck", ["ask", "on", "off"]),
     // 知らない種類・重なりは除く。すべて選んでいれば「すべて」（空）と同じ
     searchTypes: (() => {
       const known = SEARCH_TYPES.map((type) => type.value);

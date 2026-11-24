@@ -1,6 +1,7 @@
 # 配布物のビルドとテスト（docs の OP0002）。Windows（NSIS のインストーラー）と Linux（AppImage）を作り、
 # 作ったものを Actions の成果物（Artifacts）に置く。手で動かす（Actions の画面の「Run workflow」）か、v で始まるタグを push したとき。
-# タグのときは、署名（.sig）と更新の情報（latest.json）も付けて GitHub Releases に載せる（アプリの更新。docs の FN0904）
+# タグのときは、署名（.sig）と更新の情報（latest.json）も付けて GitHub Releases に載せる（アプリの更新。docs の FN0904）。
+# Linux の共有サーバー一式（.tar.gz）も作り、管理者が画面からサーバーを更新できるようにする（FN0904-BR14）
 name: build
 
 on:
@@ -101,6 +102,28 @@ jobs:
           fi
           cargo tauri build "${args[@]}"
 
+      # Linux の共有サーバー一式（back・文字認識のモデル・ライセンス）。管理者が画面から更新するときに使う（FN0904-BR14・OP0007）。
+      # アプリと同じ鍵で署名する（サーバーは tauri.conf.json の公開鍵で確かめる）
+      - name: 共有サーバー一式（Linux）
+        if: runner.os == 'Linux'
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          cd back
+          cargo build --release
+          version="$(./target/release/back --version | sed 's/^ari-docs //')"
+          mkdir -p ../dist-server/pkg
+          cp target/release/back ../dist-server/pkg/
+          cp -r models ../dist-server/pkg/
+          cp licenses/THIRD_PARTY_NOTICES.txt ../dist-server/pkg/
+          archive="../dist-server/ari-docs-server_${version}_linux-x86_64.tar.gz"
+          tar -czf "$archive" -C ../dist-server/pkg .
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            cargo tauri signer sign "$archive"
+          fi
+          rm -rf ../dist-server/pkg
+
       - uses: actions/upload-artifact@v5
         with:
           name: ari-docs-${{ matrix.bundle }}
@@ -109,6 +132,8 @@ jobs:
             desktop/src-tauri/target/release/bundle/nsis/*.exe.sig
             desktop/src-tauri/target/release/bundle/appimage/*.AppImage
             desktop/src-tauri/target/release/bundle/appimage/*.AppImage.sig
+            dist-server/*.tar.gz
+            dist-server/*.tar.gz.sig
           if-no-files-found: error
 
   # タグのとき: GitHub Releases に配布物・署名・latest.json を載せる。
@@ -134,7 +159,8 @@ jobs:
           version="${TAG#v}"
           windows="ari-docs_${version}_x64-setup.exe"
           linux="ari-docs_${version}_amd64.AppImage"
-          for file in "$windows" "$linux"; do
+          server="ari-docs-server_${version}_linux-x86_64.tar.gz"
+          for file in "$windows" "$linux" "$server"; do
             if [ ! -f "$file" ] || [ ! -f "$file.sig" ]; then
               echo "::error::$file か $file.sig がありません（タグと tauri.conf.json の版がそろっているか、署名の鍵があるかを確かめてください）"
               exit 1
@@ -159,6 +185,7 @@ jobs:
           version="${TAG#v}"
           windows="ari-docs_${version}_x64-setup.exe"
           linux="ari-docs_${version}_amd64.AppImage"
+          server="ari-docs-server_${version}_linux-x86_64.tar.gz"
           base="https://github.com/${REPO}/releases/download/${TAG}"
           notes="$(gh release view "$TAG" --repo "$REPO" --json body -q .body)"
           jq -n \
@@ -167,9 +194,11 @@ jobs:
             --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --arg wsig "$(cat "$windows.sig")" --arg wurl "$base/$windows" \
             --arg lsig "$(cat "$linux.sig")" --arg lurl "$base/$linux" \
+            --arg ssig "$(cat "$server.sig")" --arg surl "$base/$server" \
             '{version: $version, notes: $notes, pub_date: $date, platforms: {
               "windows-x86_64": {signature: $wsig, url: $wurl},
-              "linux-x86_64": {signature: $lsig, url: $lurl}
+              "linux-x86_64": {signature: $lsig, url: $lurl},
+              "server-linux-x86_64": {signature: $ssig, url: $surl}
             }}' > latest.json
           cat latest.json
           gh release upload "$TAG" latest.json --repo "$REPO"

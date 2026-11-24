@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useSyncExternalStore } from "react";
 
+import { getServerInfo } from "@/api/auth";
 import { useApp } from "@/app/AppContext";
 import { errorMessage } from "@/lib/format";
 
@@ -54,14 +55,16 @@ export function dismissUpdate() {
   listeners.forEach((listener) => listener());
 }
 
-// 新しい版を調べる。serverUrl は今の場所の共有サーバー（自分の PC は空文字で GitHub Releases。FN0904-BR02）
+// 新しい版を調べる。serverUrl は今の場所の共有サーバー（自分の PC は空文字で GitHub Releases の最新）。
+// 共有サーバーは、サーバーに置いた更新ファイルが無ければ、サーバーと同じ版を GitHub Releases から取る（FN0904-BR02）
 export async function checkUpdate(serverUrl: string): Promise<UpdateState> {
   if (state.kind === "checking" || state.kind === "installing") {
     return state;
   }
   set({ kind: "checking" });
   try {
-    const info = await invoke<UpdateInfo | null>("check_update", { serverUrl });
+    const serverVersion = serverUrl ? (await getServerInfo()).version : null;
+    const info = await invoke<UpdateInfo | null>("check_update", { serverUrl, serverVersion });
     set(info ? { kind: "available", ...info, notes: info.notes ?? "" } : { kind: "latest" });
   } catch (error) {
     set({ kind: "error", message: `更新を確認できませんでした。${reason(error)}` });

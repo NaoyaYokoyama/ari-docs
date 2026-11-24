@@ -12,6 +12,8 @@ export type ServerInfo = {
   setupCodeRequired: boolean;
   // このサーバーの ID（ari:// のリンクで場所を見分ける。FN0004-BR07）
   serverId: string;
+  // サーバーの版（デスクトップアプリはこの版まで更新する。FN0904-BR02）
+  version: string;
 };
 
 type LoginResponse = LoginUser & { token?: string };

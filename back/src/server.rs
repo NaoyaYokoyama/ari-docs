@@ -64,6 +64,7 @@ pub async fn start(config: AppConfig, port: u16) -> Result<(), String> {
 
     // 前に止まったときのアップロードの書きかけを消す
     let _ = std::fs::remove_dir_all(config.data_dir().join("tmp").join("upload"));
+    crate::service::server_update::cleanup(&config);
 
     // ユーザーがいない・管理者の PC が 1 台も無い共有サーバーは、登録用のコードを画面に出す（FN0102-BR02・BR12）
     if !config.mode.is_local() {
