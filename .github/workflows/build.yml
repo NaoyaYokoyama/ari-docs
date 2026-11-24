@@ -36,7 +36,11 @@ jobs:
           cache: npm
           cache-dependency-path: front/package-lock.json
 
-      - uses: dtolnay/rust-toolchain@stable
+      # Rust は版を決めておく。1.100 からビルドのフォルダの作りが変わり、ort-sys（文字認識）が Windows で
+      # DLL を置く先を見つけられずに止まるため（2026-11-24）。上げるときは Windows でも通るかを確かめる
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.96.1"
 
       - uses: Swatinem/rust-cache@v2
         with:
