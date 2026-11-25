@@ -154,11 +154,14 @@ jobs:
           path: dist
           merge-multiple: true
 
+      # 成果物はリポジトリからのフォルダの形のまま届く（desktop/src-tauri/target/…・dist-server/）ので、dist の直下に並べ直す
       - name: 配布物と署名を確かめる
         env:
           TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
         run: |
+          find dist -mindepth 2 -type f -exec mv -t dist {} +
+          find dist -mindepth 1 -type d -empty -delete
           cd dist
           version="${TAG#v}"
           windows="ari-docs_${version}_x64-setup.exe"
@@ -166,7 +169,7 @@ jobs:
           server="ari-docs-server_${version}_linux-x86_64.tar.gz"
           for file in "$windows" "$linux" "$server"; do
             if [ ! -f "$file" ] || [ ! -f "$file.sig" ]; then
-              echo "::error::$file か $file.sig がありません（タグと tauri.conf.json の版がそろっているか、署名の鍵があるかを確かめてください）"
+              echo "::error::$file か $file.sig がありません（タグと desktop/src-tauri/Cargo.toml の版がそろっているか、署名の鍵があるかを確かめてください）。ある物: $(ls | tr '\n' ' ')"
               exit 1
             fi
           done
