@@ -41,6 +41,8 @@ export type Preferences = {
   buttonHints: boolean;
   // ホームの検索で探す種類。空ならすべて
   searchTypes: SearchType[];
+  // ファイル名・フォルダ名だけで探す（FN0201-BR10）
+  searchNameOnly: boolean;
   // 自分の PC の場所で、起動したときに GitHub で新しい版を調べるか（ask はまだ選んでいない。FN0904-BR04）
   updateCheck: UpdateCheck;
 };
@@ -54,6 +56,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   folderPreviewPane: true,
   buttonHints: true,
   searchTypes: [],
+  searchNameOnly: false,
   updateCheck: "ask",
 };
 
@@ -131,6 +134,7 @@ function sanitize(value: unknown): Preferences {
     folderPreviewPane: pick("folderPreviewPane", [true, false]),
     buttonHints: pick("buttonHints", [true, false]),
     updateCheck: pick("updateCheck", ["ask", "on", "off"]),
+    searchNameOnly: pick("searchNameOnly", [true, false]),
     // 知らない種類・重なりは除く。すべて選んでいれば「すべて」（空）と同じ
     searchTypes: (() => {
       const known = SEARCH_TYPES.map((type) => type.value);

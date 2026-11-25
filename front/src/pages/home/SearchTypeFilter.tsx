@@ -8,10 +8,13 @@ type Props = {
   // 空ならすべて
   value: SearchType[];
   onChange: (value: SearchType[]) => void;
+  // ファイル名・フォルダ名だけで探す（FN0201-BR10）
+  nameOnly: boolean;
+  onNameOnlyChange: (value: boolean) => void;
 };
 
 // 検索で探す種類を選ぶ（複数選べる。既定はすべて。FN0201-BR09）
-export default function SearchTypeFilter({ value, onChange }: Props) {
+export default function SearchTypeFilter({ value, onChange, nameOnly, onNameOnlyChange }: Props) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -56,11 +59,13 @@ export default function SearchTypeFilter({ value, onChange }: Props) {
   const selectedLabels = SEARCH_TYPES.filter((type) => value.includes(type.value)).map(
     (type) => type.label,
   );
-  const label = all
+  const typeLabel = all
     ? "すべて"
     : selectedLabels.length <= 2
       ? selectedLabels.join("・")
       : `${selectedLabels.length} 種類`;
+  const label = nameOnly ? `名前だけ・${typeLabel}` : typeLabel;
+  const title = `探す種類: ${all ? "すべて" : selectedLabels.join("・")}${nameOnly ? "（ファイル名・フォルダ名だけ）" : ""}`;
 
   return (
     <div ref={rootRef} className="relative shrink-0">
@@ -69,11 +74,11 @@ export default function SearchTypeFilter({ value, onChange }: Props) {
         type="button"
         aria-haspopup="true"
         aria-expanded={open}
-        title={all ? "探す種類: すべて" : `探す種類: ${selectedLabels.join("・")}`}
+        title={title}
         onClick={() => setOpen((current) => !current)}
         className={twMerge(
           "flex h-12 max-w-48 items-center gap-1.5 rounded-full border border-input bg-background px-4 text-sm shadow-sm transition outline-none hover:bg-accent focus-visible:border-ring focus-visible:ring-4 focus-visible:ring-ring/20",
-          !all && "border-brand text-brand",
+          (!all || nameOnly) && "border-brand text-brand",
         )}
       >
         <ListFilter size={16} className="shrink-0" />
@@ -87,6 +92,13 @@ export default function SearchTypeFilter({ value, onChange }: Props) {
           aria-label="探す種類"
           className="absolute top-full right-0 z-20 mt-2 w-72 rounded-xl border border-border bg-background p-1.5 shadow-lg"
         >
+          <Option
+            label="ファイル名・フォルダ名だけで探す"
+            description="中身・説明・Note・Wiki では探さない"
+            checked={nameOnly}
+            onClick={() => onNameOnlyChange(!nameOnly)}
+          />
+          <div className="my-1 border-t border-border" />
           <Option label="すべて" checked={all} onClick={() => onChange([])} />
           <div className="my-1 border-t border-border" />
           {SEARCH_TYPES.map((type) => (

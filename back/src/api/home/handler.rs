@@ -22,6 +22,7 @@ pub async fn search(
         &user.user_id,
         &request.keyword,
         &request.types,
+        request.name_only,
         &state.config.folder_root,
     )
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;

@@ -3,12 +3,14 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 type Props = {
+  // ファイル名・フォルダ名だけで探すとき（FN0201-BR10）は案内の文を変える
+  nameOnly?: boolean;
   searching: boolean;
   onSearch: (keyword: string) => void;
   onClear: () => void;
 };
 
-function SearchBar({ searching, onSearch, onClear }: Props) {
+function SearchBar({ searching, nameOnly = false, onSearch, onClear }: Props) {
   const location = useLocation();
   const searchRef = useRef<HTMLInputElement>(null);
   const [keyword, setKeyword] = useState("");
@@ -49,7 +51,7 @@ function SearchBar({ searching, onSearch, onClear }: Props) {
         onKeyDown={handleKeyDown}
         // Vim モードの / で移る（FN0702）
         data-vim-filter
-        placeholder="ファイル、Wiki、Noteを検索（Enter）"
+        placeholder={nameOnly ? "ファイル名・フォルダ名で検索（Enter）" : "ファイル、Wiki、Noteを検索（Enter）"}
         className="h-12 w-full rounded-full border border-input bg-background pr-12 pl-11 text-base shadow-sm transition outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-4 focus:ring-ring/20"
       />
 

@@ -28,21 +28,23 @@ use std::path::Path;
 
 // Note・Wiki・ノード（名前・中身の順）の順に並べる（FN0201-BR03）。
 // ノードは同期バッチで登録したものを使うが、消えたファイルも残るため、実体があるものだけを返す。
-// types は探す種類（空ならすべて。FN0201-BR09）
+// types は探す種類（空ならすべて。FN0201-BR09）。
+// name_only はファイル名・フォルダ名だけで探す（パスの最後の名前に合うものだけ。説明・中身・Note・Wiki は探さない。FN0201-BR10）
 pub fn search(
     conn: &Connection,
     user_id: &str,
     keyword: &str,
     types: &[String],
+    name_only: bool,
     folder_root: &str,
 ) -> rusqlite::Result<SearchResponse> {
     let filter = Filter(types);
-    let notes = if filter.allows(kind::NOTE) {
+    let notes = if !name_only && filter.allows(kind::NOTE) {
         note_repo::find_by_search(conn, user_id, keyword)?
     } else {
         Vec::new()
     };
-    let wikis = if filter.allows(kind::WIKI) {
+    let wikis = if !name_only && filter.allows(kind::WIKI) {
         wiki_repo::find_by_search(conn, keyword)?
     } else {
         Vec::new()
@@ -74,7 +76,7 @@ pub fn search(
 
     let mut found = HashSet::new();
     for (node_id, path) in nodes {
-        if exclusions.excludes(&path) {
+        if exclusions.excludes(&path) || (name_only && !name_matches(&path, keyword)) {
             continue;
         }
         let full_path = Path::new(folder_root).join(&path);
@@ -99,6 +101,10 @@ pub fn search(
             node_type: if is_dir { "folder" } else { "file" }.to_string(),
             match_type: "name".to_string(),
         });
+    }
+
+    if name_only {
+        return Ok(SearchResponse { search_items });
     }
 
     // ファイルの中身（FN0202）。名前で見つかったものは除く。単語の区切りに失敗しても、名前の検索の結果は返す
@@ -139,6 +145,14 @@ pub fn search(
     }
 
     Ok(SearchResponse { search_items })
+}
+
+// パスの最後の名前（ファイル名・フォルダ名）に検索語が入っているか。
+// 名前の検索の SQL（LIKE）に合わせて、英字の大文字と小文字は区別しない
+fn name_matches(path: &str, keyword: &str) -> bool {
+    let name = path.rsplit('/').next().unwrap_or(path);
+    name.to_ascii_lowercase()
+        .contains(&keyword.to_ascii_lowercase())
 }
 
 // 最近更新されたもの（FN0201-BR07）。ファイルは消えていないものだけ
@@ -254,4 +268,18 @@ pub fn get_favorite_list(
     }
 
     Ok(FavoriteListResponse { favorite_list })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // 名前だけで探すときは、パスの最後の名前だけを見る（親のフォルダの名前では当たらない）
+    #[test]
+    fn name_matches_only_the_last_name() {
+        assert!(name_matches("営業/見積/Report_2026.xlsx", "report"));
+        assert!(name_matches("営業/見積", "見積"));
+        assert!(!name_matches("営業/見積/a.xlsx", "見積"));
+        assert!(!name_matches("営業/見積/a.xlsx", "営業"));
+    }
 }

@@ -30,11 +30,15 @@ function Home() {
   const [searching, setSearching] = useState(false);
 
   // 探す種類（この PC に覚える。空ならすべて。FN0201-BR09）
-  const { searchTypes } = usePreferences();
+  const { searchTypes, searchNameOnly } = usePreferences();
 
   const openAriLink = useOpenAriLink();
 
-  const handleSearch = async (keyword: string, types: SearchType[] = searchTypes) => {
+  const handleSearch = async (
+    keyword: string,
+    types: SearchType[] = searchTypes,
+    nameOnly: boolean = searchNameOnly,
+  ) => {
     // ari-docs の中のリンク（ari://…。FN0004）を貼って Enter なら、探さずにそこへ移る
     const link = parseAriLink(keyword);
     if (link) {
@@ -43,7 +47,7 @@ function Home() {
     }
     setSearching(true);
     try {
-      const response = await search(keyword, types);
+      const response = await search(keyword, types, nameOnly);
       setResult({ keyword, items: response.searchItems });
     } catch (error) {
       console.error(error);
@@ -64,17 +68,25 @@ function Home() {
             <div className="min-w-0 flex-1">
               <SearchBar
                 searching={searching}
+                nameOnly={searchNameOnly}
                 onSearch={(keyword) => void handleSearch(keyword)}
                 onClear={() => setResult(null)}
               />
             </div>
             <SearchTypeFilter
               value={searchTypes}
+              nameOnly={searchNameOnly}
               onChange={(types) => {
                 setPreference("searchTypes", types);
                 // 検索した結果を出しているときは、選んだ種類で探し直す
                 if (result) {
                   void handleSearch(result.keyword, types);
+                }
+              }}
+              onNameOnlyChange={(nameOnly) => {
+                setPreference("searchNameOnly", nameOnly);
+                if (result) {
+                  void handleSearch(result.keyword, searchTypes, nameOnly);
                 }
               }}
             />

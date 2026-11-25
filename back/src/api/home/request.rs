@@ -7,6 +7,9 @@ pub struct HomeSearchRequest {
     // 探す種類（excel・pdf・note など。search/kind.rs）。空ならすべて（FN0201-BR09）
     #[serde(default)]
     pub types: Vec<String>,
+    // ファイル名・フォルダ名だけで探す（FN0201-BR10）
+    #[serde(default)]
+    pub name_only: bool,
 }
 
 // 探して開く（FN0003）
