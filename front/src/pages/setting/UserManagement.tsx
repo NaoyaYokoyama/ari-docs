@@ -1,5 +1,6 @@
-import { KeyRound, Plus, ShieldCheck, ShieldOff, Trash2 } from "lucide-react";
+import { KeyRound, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { twMerge } from "tailwind-merge";
 
 import { changeRole, createUser, deleteUser, getUsers, resetPassword, updatePermissions } from "@/api/user";
 import { useApp } from "@/app/AppContext";
@@ -29,6 +30,8 @@ export default function UserManagement() {
   const [users, setUsers] = useState<UserItem[] | null>(null);
   const [creating, setCreating] = useState(false);
   const [resetting, setResetting] = useState<UserItem | null>(null);
+  // 一覧で見るロール（すべて・管理者・利用者）
+  const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "user">("all");
 
   const load = useCallback(() => {
     getUsers()
@@ -42,8 +45,10 @@ export default function UserManagement() {
 
   useEffect(load, [load]);
 
-  const toggleRole = async (target: UserItem) => {
-    const next = !target.isAdmin;
+  const changeUserRole = async (target: UserItem, next: boolean) => {
+    if (next === target.isAdmin) {
+      return;
+    }
     const confirmed = await showConfirm(
       next
         ? `「${target.displayName}（${target.userId}）」を管理者にしますか？ユーザーの管理・バックアップ・サーバーの設定ができるようになります。管理者の操作は、その人が「管理者の PC」で自分の PC を登録したあとにできます`
@@ -95,7 +100,36 @@ export default function UserManagement() {
       title="ユーザー管理"
       description="この共有サーバーを使うユーザーを登録します。登録したユーザー ID と初期パスワードを本人に伝えてください"
     >
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        {/* ロールごとの人数と、一覧で見るロール（FN0102-BR10） */}
+        {users && (
+          <div role="radiogroup" aria-label="ロールで絞り込む" className="flex gap-1">
+            {(
+              [
+                ["all", "すべて", users.length],
+                ["admin", "管理者", users.filter((item) => item.isAdmin).length],
+                ["user", "利用者", users.filter((item) => !item.isAdmin).length],
+              ] as const
+            ).map(([value, label, count]) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={roleFilter === value}
+                onClick={() => setRoleFilter(value)}
+                className={twMerge(
+                  "rounded-full border px-3 py-1 text-xs",
+                  roleFilter === value
+                    ? "border-brand bg-brand/10 text-brand"
+                    : "border-border text-muted-foreground hover:bg-muted",
+                )}
+              >
+                {label} {count}
+              </button>
+            ))}
+          </div>
+        )}
+        <span className="flex-1" />
         <Button size="sm" onClick={() => setCreating(true)}>
           <Plus size={16} />
           ユーザーを登録
@@ -106,7 +140,9 @@ export default function UserManagement() {
         <Spinner />
       ) : (
         <ul className="divide-y divide-border">
-          {users.map((item) => (
+          {users
+            .filter((item) => roleFilter === "all" || item.isAdmin === (roleFilter === "admin"))
+            .map((item) => (
             <li key={item.userId} className="flex items-center gap-3 py-2.5">
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-1.5 truncate text-sm font-medium">
@@ -147,19 +183,18 @@ export default function UserManagement() {
                   </div>
                 )}
               </div>
-              <IconButton
-                label={
-                  item.userId === user?.userId
-                    ? "自分の管理者・利用者は変えられません"
-                    : item.isAdmin
-                      ? "利用者にする"
-                      : "管理者にする"
-                }
+              {/* ロール（管理者・利用者）を見て、その場で変える。自分は変えられない（管理者がいなくなるのを防ぐ） */}
+              <select
+                aria-label={`「${item.displayName}」のロール`}
+                title={item.userId === user?.userId ? "自分のロールは変えられません" : "ロールを変える"}
+                value={item.isAdmin ? "admin" : "user"}
                 disabled={item.userId === user?.userId}
-                onClick={() => void toggleRole(item)}
+                onChange={(e) => void changeUserRole(item, e.target.value === "admin")}
+                className="h-8 shrink-0 rounded-md border border-input bg-background px-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:opacity-60"
               >
-                {item.isAdmin ? <ShieldOff size={16} /> : <ShieldCheck size={16} />}
-              </IconButton>
+                <option value="admin">管理者</option>
+                <option value="user">利用者</option>
+              </select>
               <IconButton label="パスワードを再設定" onClick={() => setResetting(item)}>
                 <KeyRound size={16} />
               </IconButton>
