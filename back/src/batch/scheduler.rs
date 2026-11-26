@@ -28,6 +28,8 @@ use crate::service::content_image;
 ///
 pub async fn start(config: AppConfig) {
     let folder_root = config.folder_root.clone();
+    // 以前の版の片付け（毎時 15 分）で使う
+    let version_root = config.clone();
     let scheduler = JobScheduler::new().await.unwrap();
 
     // Node同期バッチ
@@ -87,13 +89,17 @@ pub async fn start(config: AppConfig) {
     // Note・Wiki の本文から使われなくなった画像の削除（FN0404-BR05）。毎時 15 分
     scheduler
         .add(
-            Job::new_async("0 15 * * * *", |_uuid, _lock| {
+            Job::new_async("0 15 * * * *", move |_uuid, _lock| {
+                let version_config = version_root.clone();
                 Box::pin(async move {
                     if backup::is_busy() {
                         return;
                     }
-                    let _ = tokio::task::spawn_blocking(|| {
-                        content_image::purge_unused(&crate::database::connection::connect())
+                    let _ = tokio::task::spawn_blocking(move || {
+                        let conn = crate::database::connection::connect();
+                        content_image::purge_unused(&conn);
+                        // 行き場の無くなったファイルの以前の版（FN0301-BR39）
+                        crate::service::node_version::cleanup(&conn, &version_config);
                     })
                     .await;
                 })

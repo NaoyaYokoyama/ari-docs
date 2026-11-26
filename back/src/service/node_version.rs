@@ -223,6 +223,63 @@ pub fn restore(
     result
 }
 
+// 行き場の無くなった版を片付ける（毎時。FN0301-BR39）。
+// - ファイルが ari-docs の外で消された・名前を変えられた（ノードの同期が行を消した）
+// - ゴミ箱の中のものとして控えたが、ゴミ箱にもう無い
+// - 行の無いファイル・ファイルの無い行（バックアップから戻したときなど）。戻すときの一時ファイル（1 日より前）も消す
+pub fn cleanup(conn: &Connection, config: &AppConfig) -> usize {
+    let stale: Vec<String> = conn
+        .prepare(
+            "SELECT version_id FROM node_version
+             WHERE (substr(node_id, 1, 6) <> 'trash:' AND node_id NOT IN (SELECT node_id FROM node))
+                OR (substr(node_id, 1, 6) = 'trash:'
+                    AND substr(node_id, 7, instr(substr(node_id, 7), ':') - 1) NOT IN (SELECT trash_id FROM trash))",
+        )
+        .and_then(|mut stmt| stmt.query_map([], |row| row.get(0))?.collect())
+        .unwrap_or_else(|e| {
+            crate::elog!("version cleanup error: {e:?}");
+            Vec::new()
+        });
+    let mut removed = 0;
+    for version_id in stale {
+        if delete_version(conn, config, &version_id).is_ok() {
+            removed += 1;
+        }
+    }
+    let known: std::collections::HashSet<String> = conn
+        .prepare("SELECT version_id FROM node_version")
+        .and_then(|mut stmt| stmt.query_map([], |row| row.get(0))?.collect())
+        .unwrap_or_default();
+    // ファイルの無い行
+    for version_id in &known {
+        if !version_file(config, version_id).is_file()
+            && delete_version(conn, config, version_id).is_ok()
+        {
+            removed += 1;
+        }
+    }
+    // 行の無いファイル
+    let day_ago = std::time::SystemTime::now() - std::time::Duration::from_secs(86_400);
+    for entry in fs::read_dir(versions_dir(config))
+        .into_iter()
+        .flatten()
+        .flatten()
+    {
+        let name = entry.file_name().to_string_lossy().to_string();
+        let temp_old = name.starts_with("restore-")
+            && entry
+                .metadata()
+                .and_then(|m| m.modified())
+                .is_ok_and(|time| time < day_ago);
+        if (!name.starts_with("restore-") && !known.contains(&name)) || temp_old {
+            if fs::remove_file(entry.path()).is_ok() {
+                removed += 1;
+            }
+        }
+    }
+    removed
+}
+
 // ゴミ箱へ移すとき: 中のファイルの版を、ゴミ箱の中のものとして控える（元に戻したら付け直す）
 pub fn to_trash(conn: &Connection, trash_id: &str, path: &str) {
     let result = conn.execute(
@@ -337,6 +394,32 @@ mod tests {
         let (latest, _) = &list(&conn, "a/memo.txt").unwrap()[0];
         let (path, _) = find(&conn, &config, "a/memo.txt", &latest.version_id).unwrap();
         assert_eq!(fs::read_to_string(path).unwrap(), "v4");
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    // ari-docs の外で消された（行が無くなった）ファイルの版と、行の無いファイルは片付ける。ゴミ箱の中のものは残す
+    #[test]
+    fn cleanup_removes_orphans() {
+        let (dir, config, conn) = setup("cleanup");
+        for name in ["gone.txt", "kept.txt", "trashed.txt"] {
+            let file = dir.join("folder/a").join(name);
+            fs::write(&file, "old").unwrap();
+            keep_before_overwrite(&conn, &config, "u1", &format!("a/{name}"), &file);
+        }
+        node_repo::delete_with_descendants(&conn, "a/gone.txt").unwrap();
+        conn.execute(
+            "INSERT INTO trash (trash_id, original_path, name, node_type, size, deleted_by) VALUES ('t1', 'a/trashed.txt', 'trashed.txt', 'file', 0, 'u1')",
+            [],
+        )
+        .unwrap();
+        to_trash(&conn, "t1", "a/trashed.txt");
+        fs::write(versions_dir(&config).join("stray"), "x").unwrap();
+        assert_eq!(cleanup(&conn, &config), 2);
+        assert_eq!(list(&conn, "a/kept.txt").unwrap().len(), 1);
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM node_version", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(count, 2);
         fs::remove_dir_all(&dir).unwrap();
     }
 
