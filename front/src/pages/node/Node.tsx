@@ -7,12 +7,13 @@ import { createExclusion } from "@/api/search";
 import { hasPermission, useApp } from "@/app/AppContext";
 import { useDesktop } from "@/app/DesktopContext";
 import { usePreferences } from "@/app/preferences";
-import { useCopyAriLink } from "@/app/useAriLink";
+import { useCopyAriLink, useOpenAriLink } from "@/app/useAriLink";
 import { notifyNodesChanged, onNodesChanged, openNewWindow, setWindowFolder } from "@/app/windows";
 import Button from "@/components/common/Button";
 import ContextMenu from "@/components/common/ContextMenu";
 import EmptyState from "@/components/common/EmptyState";
 import { useNodes } from "@/hooks/useNodes";
+import { parseAriLink } from "@/lib/ariLink";
 import { NODES_CHANGED_EVENT } from "@/lib/editSync";
 import { errorMessage } from "@/lib/format";
 import { compareUrl, setCompareBase, useCompareBase } from "@/pages/compare/compareBase";
@@ -46,7 +47,8 @@ type Menu = { position: { x: number; y: number }; node: NodeItem | null };
 
 // 探して開く（FN0003）から来たときの動き。open: フォルダは中を開き、ファイルはアプリで開く。select: 選ぶだけ（場所を示す）。
 // 無ければ（お気に入り・検索から）フォルダは中を開き、ファイルは詳細を開く
-type NodeAction = "open" | "select";
+// go: 場所の入力（FN0301-BR40）。フォルダは中へ、ファイルは選ぶ
+type NodeAction = "open" | "select" | "go";
 
 // フォルダ画面（SCR0301）。一覧・ツリー・ゴミ箱と、各ダイアログ・メニューをまとめる
 function Node() {
@@ -145,6 +147,44 @@ function Node() {
     setRenamingPath("");
   }, []);
 
+  // 場所の入力（FN0301-BR40）。ari:// のリンクか、folder からのパス（先頭の folder/ は無くてもよい）
+  const [addressRequest, setAddressRequest] = useState(0);
+  const openAriLink = useOpenAriLink();
+  const goToAddress = async (text: string) => {
+    const value = text.trim();
+    if (!value) {
+      return false;
+    }
+    if (/^<?ari:\/\//i.test(value)) {
+      const link = parseAriLink(value);
+      if (!link) {
+        showMessage("error", "ari:// のリンクとして読めませんでした");
+        return false;
+      }
+      // ほかの場所のリンクは場所を切り替えて開く。ファイルは入っているフォルダで選ぶ
+      openAriLink(link);
+      return true;
+    }
+    const path = value
+      .replace(/\\/g, "/")
+      .replace(/^\/+|\/+$/g, "")
+      .replace(/^folder(\/|$)/, "");
+    if (path.split("/").some((segment) => segment === "..")) {
+      showMessage("error", "「..」を含む場所には移れません");
+      return false;
+    }
+    if (!path) {
+      navigateTo("");
+      return true;
+    }
+    // 親フォルダを開き、読み込んだらフォルダは中へ・ファイルは選ぶ（無ければお知らせ）
+    navigateTo(parentPath(path));
+    setSelected(new Set([path]));
+    setTargetPath(path);
+    setTargetAction("go");
+    return true;
+  };
+
   const actions = useNodeActions({ currentPath, remote: !filesHere, setSelected, refresh, navigateTo });
 
   // 開く。ファイルは探して開く（FN0003）の「最近開いたもの」に残す
@@ -203,7 +243,7 @@ function Node() {
       }
       return;
     }
-    if (targetAction === "select") {
+    if (targetAction === "select" || (targetAction === "go" && target.nodeType !== NodeType.Folder)) {
       requestAnimationFrame(() =>
         document.querySelector(`[data-path="${CSS.escape(target.path)}"]`)?.scrollIntoView({ block: "center" }),
       );
@@ -433,6 +473,12 @@ function Node() {
       enabled: !busy,
     },
     {
+      shortcut: SHORTCUT.FOLDER_ADDRESS,
+      handler: () => setAddressRequest((count) => count + 1),
+      whileTyping: true,
+      enabled: !busy,
+    },
+    {
       shortcut: SHORTCUT.FOLDER_PARENT,
       handler: () => currentPath && navigateTo(parentPath(currentPath)),
       enabled: listKeys,
@@ -497,6 +543,8 @@ function Node() {
               onCreate={openCreate}
               previewOpen={previewOpen}
               onTogglePreview={() => setPreviewOpen((open) => !open)}
+              addressRequest={addressRequest}
+              onAddress={goToAddress}
             />
 
             <SelectionBar

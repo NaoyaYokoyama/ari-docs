@@ -115,6 +115,7 @@ export const SHORTCUT = {
   FOLDER_CUT: { ctrl: true, key: "x", pages: ["folder"], description: "切り取り" },
   FOLDER_PASTE: { ctrl: true, key: "v", pages: ["folder"], description: "貼り付け" },
   FOLDER_FILTER: { ctrl: true, key: "f", pages: ["folder"], description: "絞り込み" },
+  FOLDER_ADDRESS: { ctrl: true, key: "l", pages: ["folder"], description: "場所を入力" },
   FOLDER_PARENT: { key: "Backspace", pages: ["folder"], description: "一つ上のフォルダへ" },
   FOLDER_CLEAR: { key: "Escape", pages: ["folder"], description: "選択を外す" },
 

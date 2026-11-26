@@ -84,6 +84,7 @@ const baseGroups = (navigation: NavigationItem[]): { title: string; rows: Row[] 
       row("FOLDER_RENAME", SHORTCUT.FOLDER_RENAME),
       row("FOLDER_DELETE", SHORTCUT.FOLDER_DELETE),
       row("FOLDER_FILTER", SHORTCUT.FOLDER_FILTER, "このフォルダ内を絞り込む"),
+      row("FOLDER_ADDRESS", SHORTCUT.FOLDER_ADDRESS, "場所（パス・ari:// のリンク）を入力して移る"),
       row("FOLDER_PARENT", SHORTCUT.FOLDER_PARENT, "一つ上のフォルダへ（Alt+↑ も可）"),
       row("FOLDER_CLEAR", SHORTCUT.FOLDER_CLEAR),
     ],

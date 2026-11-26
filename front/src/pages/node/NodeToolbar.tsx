@@ -1,5 +1,5 @@
-import { FilePlus, FolderPlus, PanelRight, RefreshCw, Search, Upload, X } from "lucide-react";
-import type { RefObject } from "react";
+import { FilePlus, FolderPlus, PanelRight, RefreshCw, Search, TextCursorInput, Upload, X } from "lucide-react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 
 import Breadcrumb from "@/components/common/Breadcrumb";
 import Button from "@/components/common/Button";
@@ -33,6 +33,9 @@ type Props = {
   // 右のプレビュー（FN0301-BR31）を出しているか
   previewOpen: boolean;
   onTogglePreview: () => void;
+  // 場所の入力（FN0301-BR40）。Ctrl+L で開くたびに数を増やす。入れたものを渡し、移れたら true
+  addressRequest: number;
+  onAddress: (text: string) => Promise<boolean>;
 };
 
 // フォルダ画面の上の帯（パンくず・絞り込み・再読み込み・アップロード・新規作成）
@@ -54,7 +57,26 @@ export default function NodeToolbar({
   onCreate,
   previewOpen,
   onTogglePreview,
+  addressRequest,
+  onAddress,
 }: Props) {
+  // 場所の入力欄（エクスプローラーのアドレスバーと同じく、パンくずの空いているところを押すか Ctrl+L）
+  const [address, setAddress] = useState<string | null>(null);
+  const addressRef = useRef<HTMLInputElement>(null);
+  const openAddress = () => setAddress(currentPath ? `folder/${currentPath}` : "folder");
+  useEffect(() => {
+    if (addressRequest > 0) {
+      openAddress();
+    }
+    // Ctrl+L を押したときだけ開く
+  }, [addressRequest]);
+  useEffect(() => {
+    if (address !== null) {
+      addressRef.current?.focus();
+      addressRef.current?.select();
+    }
+  }, [address !== null]);
+
   return (
     // エクスプローラーと同じく、上の段に操作のボタン、下の段にパンくずと絞り込みを置く
     // （パンくずに横幅をすべて使わせ、深い階層でも名前が切れにくいように）
@@ -128,7 +150,46 @@ export default function NodeToolbar({
       </div>
 
       <div className="flex items-center gap-3 px-4 py-2">
-        <div className="min-w-0 flex-1">
+        {address !== null ? (
+          <form
+            className="min-w-0 flex-1"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void onAddress(address).then((moved) => {
+                if (moved) {
+                  setAddress(null);
+                }
+              });
+            }}
+          >
+            <Input
+              ref={addressRef}
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setAddress(null);
+                }
+              }}
+              onBlur={() => setAddress(null)}
+              aria-label="場所"
+              placeholder="folder/フォルダ/… か ari:// のリンクを入れて Enter"
+              className="h-8 w-full text-sm"
+            />
+          </form>
+        ) : (
+        <div
+          className="flex min-w-0 flex-1 cursor-text items-center self-stretch"
+          title={`押すと場所を入力できます（${shortcutLabel(SHORTCUT.FOLDER_ADDRESS)}）`}
+          onClick={(e) => {
+            // 名前のボタンでなく、空いているところを押したとき
+            if (!(e.target as HTMLElement).closest("button")) {
+              openAddress();
+            }
+          }}
+        >
           <Breadcrumb
             path={currentPath}
             onNavigate={onNavigate}
@@ -153,6 +214,10 @@ export default function NodeToolbar({
             }}
           />
         </div>
+        )}
+        <IconButton label={`場所を入力（パス・ari:// のリンク。${shortcutLabel(SHORTCUT.FOLDER_ADDRESS)}）`} onClick={openAddress}>
+          <TextCursorInput size={16} />
+        </IconButton>
         <IconButton label="再読み込み" onClick={onRefresh}>
           <RefreshCw size={16} className={loading ? "animate-spin" : undefined} />
         </IconButton>
