@@ -5,6 +5,7 @@ pub mod content_image;
 pub mod favorite;
 pub mod history;
 pub mod node;
+pub mod node_lock;
 pub mod note;
 pub mod search;
 pub mod search_exclusion;

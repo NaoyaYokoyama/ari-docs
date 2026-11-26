@@ -18,6 +18,10 @@ export function usePageShortcuts(bindings: Binding[]) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // ダイアログ（確認など）の中のキーは画面のショートカットにしない（確認の Enter で一覧のファイルを開かないように）
+      if (e.target instanceof Element && e.target.closest('[role="dialog"], [role="alertdialog"]')) {
+        return;
+      }
       for (const binding of bindingsRef.current) {
         if (binding.enabled === false || !isShortcut(e, binding.shortcut)) {
           continue;

@@ -57,6 +57,7 @@ pub fn get_nodes(
                 .to_string(),
             favorite_id: String::new(),
             size,
+            lock: None,
         });
     }
 
@@ -67,6 +68,9 @@ pub fn get_nodes(
         node_repo::find_descriptions_by_paths(conn, &paths).map_err(std::io::Error::other)?;
     let updated_by =
         node_repo::find_updated_by_names(conn, &paths).map_err(std::io::Error::other)?;
+    let locks =
+        crate::repository::node_lock::find_by_paths(conn, &paths, crate::service::node_lock::now())
+            .map_err(std::io::Error::other)?;
     for node in &mut nodes {
         if let Some(favorite_id) = favorite_ids.get(&node.path) {
             node.favorite_id = favorite_id.clone();
@@ -76,6 +80,13 @@ pub fn get_nodes(
         }
         if let Some(name) = updated_by.get(&node.path) {
             node.updated_by = name.clone();
+        }
+        if let Some(lock) = locks.get(&node.path) {
+            node.lock = Some(crate::api::node::response::NodeLock {
+                user_name: lock.display_name.clone(),
+                mine: lock.user_id == user_id,
+                expires_at: crate::service::node_lock::format_time(lock.expires_at),
+            });
         }
     }
 

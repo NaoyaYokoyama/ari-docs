@@ -2,7 +2,7 @@ use super::{request::*, response::*};
 use crate::{
     api::error::ApiError,
     database::connection,
-    service::{archive, auth, node, trash},
+    service::{archive, auth, node, node_lock, trash},
 };
 use axum::{
     Json,
@@ -25,6 +25,8 @@ fn to_api_error(e: std::io::Error) -> ApiError {
     match e.kind() {
         ErrorKind::InvalidInput => ApiError::new(StatusCode::BAD_REQUEST, e.to_string()),
         ErrorKind::AlreadyExists => ApiError::new(StatusCode::CONFLICT, e.to_string()),
+        // ほかの人のロック（FN0301-BR38）
+        ErrorKind::ResourceBusy => ApiError::new(StatusCode::LOCKED, e.to_string()),
         ErrorKind::NotFound => {
             ApiError::new(StatusCode::NOT_FOUND, "ファイル・フォルダが見つかりません")
         }
@@ -112,6 +114,13 @@ pub async fn delete_node(
 ) -> Result<StatusCode, ApiError> {
     let conn = connection::connect();
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    // ほかの人がロックしているもの（フォルダなら中のもの）は消せない（FN0301-BR38）
+    node_lock::ensure_unlocked(
+        &conn,
+        &user.user_id,
+        &[join_path(&request.parent_path, &request.name)],
+    )
+    .map_err(to_api_error)?;
     // すぐに消さず、ゴミ箱へ移す（FN0302-BR01）
     trash::move_to_trash(
         &conn,
@@ -263,6 +272,9 @@ pub async fn upload_node(
         relatives.push(relative);
     }
 
+    // ほかの人がロックしているファイルは上書きしない（FN0301-BR38）
+    node_lock::ensure_unlocked(&conn, &user.user_id, &relatives).map_err(to_api_error)?;
+
     for (temp, file_path) in targets {
         if let Some(parent) = file_path.parent() {
             tokio::fs::create_dir_all(parent)
@@ -312,6 +324,12 @@ pub async fn rename_node(
 ) -> Result<StatusCode, ApiError> {
     let conn = connection::connect();
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    node_lock::ensure_unlocked(
+        &conn,
+        &user.user_id,
+        &[join_path(&request.parent_path, &request.name)],
+    )
+    .map_err(to_api_error)?;
     node::rename_node(
         &conn,
         &state.config.folder_root,
@@ -355,6 +373,7 @@ pub async fn move_nodes(
 ) -> Result<StatusCode, ApiError> {
     let conn = connection::connect();
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    node_lock::ensure_unlocked(&conn, &user.user_id, &request.paths).map_err(to_api_error)?;
     node::move_nodes(
         &conn,
         &state.config.folder_root,
@@ -568,4 +587,66 @@ mod tests {
             "%E8%AD%B0%E4%BA%8B%E9%8C%B2.xlsx"
         );
     }
+}
+
+fn to_lock_error(error: node_lock::LockError) -> ApiError {
+    match error {
+        node_lock::LockError::Invalid(message) => ApiError::new(StatusCode::BAD_REQUEST, message),
+        node_lock::LockError::Forbidden(message) => ApiError::new(StatusCode::FORBIDDEN, message),
+        node_lock::LockError::Busy(message) => ApiError::new(StatusCode::CONFLICT, message),
+        node_lock::LockError::NotFound => {
+            ApiError::new(StatusCode::NOT_FOUND, "ファイルが見つかりません")
+        }
+        node_lock::LockError::Db(e) => {
+            crate::elog!("node lock error: {e:?}");
+            StatusCode::INTERNAL_SERVER_ERROR.into()
+        }
+    }
+}
+
+fn require_shared(state: &AppState) -> Result<(), ApiError> {
+    if state.config.mode.is_local() {
+        return Err(ApiError::new(
+            StatusCode::FORBIDDEN,
+            "ファイルのロックは共有サーバーで使えます",
+        ));
+    }
+    Ok(())
+}
+
+// ファイルをロックする（期限を変えるときも。FN0301-BR38）
+pub async fn lock_node(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<LockNodeRequest>,
+) -> Result<StatusCode, ApiError> {
+    let conn = connection::connect();
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    require_shared(&state)?;
+    let expires_at = chrono::DateTime::parse_from_rfc3339(&request.expires_at)
+        .map_err(|_| ApiError::new(StatusCode::BAD_REQUEST, "期限の日時が正しくありません"))?
+        .timestamp();
+    node_lock::lock(
+        &conn,
+        &state.config.folder_root,
+        &user.user_id,
+        &request.path,
+        expires_at,
+    )
+    .map_err(to_lock_error)?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// ロックを外す。ロックした人と管理者だけ（FN0301-BR38）
+pub async fn unlock_node(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<UnlockNodeRequest>,
+) -> Result<StatusCode, ApiError> {
+    let conn = connection::connect();
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    require_shared(&state)?;
+    node_lock::unlock(&conn, &user.user_id, auth::is_admin(&user), &request.path)
+        .map_err(to_lock_error)?;
+    Ok(StatusCode::NO_CONTENT)
 }

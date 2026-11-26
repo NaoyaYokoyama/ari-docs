@@ -47,3 +47,17 @@ pub struct NodeDescriptionRequest {
     pub path: String,
     pub description: String,
 }
+
+// ファイルのロック（FN0301-BR38）。expires_at は期限（RFC 3339。画面の日時）
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LockNodeRequest {
+    pub path: String,
+    pub expires_at: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnlockNodeRequest {
+    pub path: String,
+}

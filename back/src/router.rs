@@ -122,6 +122,8 @@ pub fn create_router() -> Router<AppState> {
         .route("/api/nodes/description", post(node::update_description))
         .route("/api/nodes/move", post(node::move_nodes))
         .route("/api/nodes/copy", post(node::copy_nodes))
+        .route("/api/nodes/lock", post(node::lock_node))
+        .route("/api/nodes/unlock", post(node::unlock_node))
         .route("/api/nodes/download", get(node::download_node))
         .route("/api/nodes/reveal", post(node::reveal_node))
         .route("/api/nodes/download-zip", post(node::download_zip))

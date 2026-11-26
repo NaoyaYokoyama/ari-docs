@@ -16,6 +16,8 @@ export type LoginUser = {
   permissions: Permission[];
   // 管理者だが、この PC を管理者の PC に登録していない（利用者として使っている。FN0102-BR12）
   adminElsewhere: boolean;
+  // ファイルのロックの期限の上限（日。サーバーの設定。FN0301-BR38）
+  fileLockMaxDays?: number;
 };
 
 export type Permission = "dictionary" | "exclusion" | "backup";

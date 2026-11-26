@@ -15,6 +15,8 @@ import {
   Info,
   Link2,
   ListChecks,
+  Lock,
+  LockOpen,
   PanelsTopLeft,
   Pencil,
   RefreshCw,
@@ -56,6 +58,10 @@ type MenuContext = {
   refresh: () => void;
   // 新しいウィンドウでフォルダを開く（FN0301-BR36）
   openInNewWindow: (path: string) => void;
+  // ファイルのロック（FN0301-BR38。共有モードだけ）。管理者はほかの人のロックも外せる
+  isAdmin: boolean;
+  lock: (node: Node) => void;
+  unlock: (node: Node) => void;
   // ari-docs の中のリンク（FN0004）
   copyLink: (nodes: Node[]) => void;
   copyFolderLink: () => void;
@@ -110,6 +116,27 @@ function excludeItems(context: MenuContext, path: string, label: string): Contex
   ];
   if (context.canExcludeForAll) {
     items.push({ label: `${label}（全員）`, icon: FolderX, onSelect: () => context.excludeFromSearch(path, true) });
+  }
+  return items;
+}
+
+// ロックの項目（FN0301-BR38）。自分のロックは期限を変える・外す、ほかの人のロックは表示だけ（管理者は外せる）
+function lockItems(context: MenuContext, node: Node): ContextMenuItem[] {
+  const { lock } = node;
+  if (!lock) {
+    return [{ label: "ロックする", icon: Lock, onSelect: () => context.lock(node) }];
+  }
+  if (lock.mine) {
+    return [
+      { label: "ロックの期限を変える", icon: Lock, onSelect: () => context.lock(node) },
+      { label: "ロックを外す", icon: LockOpen, onSelect: () => context.unlock(node) },
+    ];
+  }
+  const items: ContextMenuItem[] = [
+    { label: `${lock.userName}さんがロック中（${lock.expiresAt} まで）`, icon: Lock, disabled: true, onSelect: () => {} },
+  ];
+  if (context.isAdmin) {
+    items.push({ label: "ロックを外す（管理者）", icon: LockOpen, onSelect: () => context.unlock(node) });
   }
   return items;
 }
@@ -205,6 +232,9 @@ export function nodeMenu(context: MenuContext): ContextMenuItem[] {
       ...excludeItems(context, node.path, "検索の対象から外す"),
       { label: "詳細・説明", icon: Info, onSelect: () => context.openDetails(node) },
     );
+    if (!folder && context.shared) {
+      items.push("separator", ...lockItems(context, node));
+    }
   }
   items.push("separator", {
     label: selectedNodes.length > 1 ? `ゴミ箱に移動（${selectedNodes.length} 件）` : "ゴミ箱に移動",

@@ -2,6 +2,7 @@ import { FolderUp, TriangleAlert, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
+import { unlockNode } from "@/api/node";
 import { createExclusion } from "@/api/search";
 import { hasPermission, useApp } from "@/app/AppContext";
 import { useDesktop } from "@/app/DesktopContext";
@@ -16,6 +17,7 @@ import { NODES_CHANGED_EVENT } from "@/lib/editSync";
 import { errorMessage } from "@/lib/format";
 import { compareUrl, setCompareBase, useCompareBase } from "@/pages/compare/compareBase";
 import CreateNodeDialog from "@/pages/node/CreateNodeDialog";
+import LockDialog from "@/pages/node/LockDialog";
 import NodeDialog from "@/pages/node/NodeDialog";
 import { backgroundMenu, nodeMenu } from "@/pages/node/nodeMenu";
 import { baseName, joinPath, parentPath } from "@/pages/node/nodePath";
@@ -47,7 +49,7 @@ type NodeAction = "open" | "select";
 // フォルダ画面（SCR0301）。一覧・ツリー・ゴミ箱と、各ダイアログ・メニューをまとめる
 function Node() {
   const location = useLocation();
-  const { user, showMessage } = useApp();
+  const { user, showMessage, showConfirm } = useApp();
   const navigate = useNavigate();
   const compareBase = useCompareBase();
   const desktop = useDesktop();
@@ -71,6 +73,8 @@ function Node() {
   const [visual, setVisual] = useState(false);
   const [renamingPath, setRenamingPath] = useState("");
   const [filter, setFilter] = useState("");
+  // ロックするファイル（FN0301-BR38）
+  const [lockTarget, setLockTarget] = useState<NodeItem | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
   const [uploadMenu, setUploadMenu] = useState<Menu["position"] | null>(null);
   // プレビューしているファイル（FN0301-BR30）
@@ -253,6 +257,20 @@ function Node() {
     }
   };
 
+  // ロックを外す（FN0301-BR38）。ほかの人のロックは管理者だけ（確かめてから）
+  const unlock = async (node: NodeItem) => {
+    if (node.lock && !node.lock.mine && !(await showConfirm(`${node.lock.userName}さんのロックを外しますか？`))) {
+      return;
+    }
+    try {
+      await unlockNode(node.path);
+      showMessage("info", `「${node.name}」のロックを外しました`);
+      await refresh();
+    } catch (e) {
+      showMessage("error", errorMessage(e, "ロックを外せませんでした"));
+    }
+  };
+
   const menuContext = {
     currentPath,
     shared,
@@ -275,6 +293,9 @@ function Node() {
     uploadFolder: () => folderInputRef.current?.click(),
     selectAll,
     refresh: () => void refresh(),
+    isAdmin: !!user?.isAdmin,
+    lock: (node: NodeItem) => setLockTarget(node),
+    unlock: (node: NodeItem) => void unlock(node),
     openInNewWindow: (target: string) =>
       void openNewWindow("/folder", { nodePath: target }, desktop?.place.id).catch((e: unknown) => {
         console.error(e);
@@ -302,6 +323,7 @@ function Node() {
     conflict !== null ||
     menu !== null ||
     uploadMenu !== null ||
+    lockTarget !== null ||
     previewNode !== null;
   const listKeys = !busy && renamingPath === "";
 
@@ -557,6 +579,15 @@ function Node() {
         />
 
         <UploadConflictDialog names={conflict?.names ?? null} onChoose={(choice) => conflict?.resolve(choice)} />
+
+        <LockDialog
+          node={lockTarget}
+          onClose={() => setLockTarget(null)}
+          onLocked={() => {
+            setLockTarget(null);
+            void refresh();
+          }}
+        />
 
         <CreateNodeDialog
           open={createOpen}

@@ -13,6 +13,7 @@ pub mod favorite;
 pub mod home;
 pub mod host;
 pub mod node;
+pub mod node_lock;
 pub mod note;
 pub mod quick_open;
 pub mod search;

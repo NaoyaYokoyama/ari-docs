@@ -99,6 +99,10 @@ function NodeDialog({ nodeOpen, node, onClose, onOpen, onChanged }: Props) {
     ["場所", `folder/${node.path}`],
     ["更新日時", node.updatedAt],
     ...(user?.mode !== "local" ? ([["更新者", node.updatedBy || "-"]] as [string, string][]) : []),
+    // ロック（FN0301-BR38）
+    ...(node.lock
+      ? ([["ロック", `${node.lock.mine ? "自分" : `${node.lock.userName}さん`}（${node.lock.expiresAt} まで）`]] as [string, string][])
+      : []),
   ];
 
   return (

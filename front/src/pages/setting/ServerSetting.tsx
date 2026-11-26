@@ -16,6 +16,7 @@ const DEFAULTS: ServerSettings = {
   historyKeep: 100,
   docsEnabled: false,
   uploadMaxMb: 1024,
+  fileLockMaxDays: 7,
 };
 
 // 数で指定する設定（入力欄に出す）
@@ -80,6 +81,15 @@ const STORAGE_ITEMS: Item[] = [
     min: 1,
     max: 10240,
   },
+  {
+    key: "fileLockMaxDays",
+    label: "ファイルのロックの期限の上限",
+    description: "Folder でファイルをロックするとき、期限にできるのはこの日数後までです。期限が来ると自動で外れます。管理者はいつでも外せます",
+    unit: "日",
+    min: 1,
+    max: 365,
+    sharedOnly: true,
+  },
 ];
 
 // ログインと保存の設定（FN0902）。全員に効くため、共有モードでは管理者だけ
@@ -133,7 +143,11 @@ export default function ServerSetting() {
       const response = await updateServerSettings(values);
       setSaved(values);
       // ヘッダーのメニュー・Alt+数字にすぐ反映する（ほかの人・PC には次に開いたときに反映される）
-      setUser((current) => (current ? { ...current, docsEnabled: values.docsEnabled } : current));
+      setUser((current) =>
+        current
+          ? { ...current, docsEnabled: values.docsEnabled, fileLockMaxDays: values.fileLockMaxDays }
+          : current,
+      );
       showMessage("info", response.message);
     } catch (error) {
       showMessage("error", errorMessage(error, "サーバーの設定を保存できませんでした"));
@@ -177,7 +191,7 @@ export default function ServerSetting() {
       <form onSubmit={submit} className="space-y-6">
         {shared && <SettingCard title="ログイン">{LOGIN_ITEMS.map(row)}</SettingCard>}
         <SettingCard title="保存">
-          {STORAGE_ITEMS.map(row)}
+          {STORAGE_ITEMS.filter((item) => shared || !item.sharedOnly).map(row)}
           {values.uploadMaxMb > DEFAULTS.uploadMaxMb && (
             <div className="mt-2 rounded-md border border-border bg-muted p-3 text-xs text-muted-foreground">
               <p>初期値（1024 MB）より大きくすると、次のことに気を付けてください。</p>
@@ -236,5 +250,6 @@ function toForm(settings: ServerSettings): NumberForm {
     lockMinutes: String(settings.lockMinutes),
     historyKeep: String(settings.historyKeep),
     uploadMaxMb: String(settings.uploadMaxMb),
+    fileLockMaxDays: String(settings.fileLockMaxDays ?? 7),
   };
 }

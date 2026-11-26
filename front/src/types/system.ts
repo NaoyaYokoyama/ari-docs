@@ -8,6 +8,8 @@ export interface ServerSettings {
   docsEnabled: boolean;
   // 1 回にアップロードできる合計の大きさ（MB。既定 1024、10240 まで。FN0902-BR07）
   uploadMaxMb: number;
+  // ファイルのロックの期限の上限（日。既定 7、365 まで。FN0301-BR38）
+  fileLockMaxDays: number;
 }
 
 // アプリの情報（FN0903）

@@ -18,6 +18,8 @@ pub struct ServerSettings {
     pub docs_enabled: bool,
     // 1 回にアップロードできる合計の大きさ（MB。FN0301-BR29・FN0902-BR07）。既定 1 GB、10 GB まで
     pub upload_max_mb: i64,
+    // ファイルのロック（FN0301-BR38）の期限の上限（日）。既定 7 日、365 日まで
+    pub file_lock_max_days: i64,
 }
 
 impl Default for ServerSettings {
@@ -29,6 +31,7 @@ impl Default for ServerSettings {
             history_keep: 100,
             docs_enabled: false,
             upload_max_mb: DEFAULT_UPLOAD_MAX_MB,
+            file_lock_max_days: 7,
         }
     }
 }
@@ -72,6 +75,12 @@ pub fn save(conn: &Connection, settings: &ServerSettings) -> Result<(), String> 
             1,
             MAX_UPLOAD_MAX_MB,
             "アップロードの上限は 1〜10240 MB",
+        ),
+        (
+            settings.file_lock_max_days,
+            1,
+            365,
+            "ファイルのロックの期限の上限は 1〜365 日",
         ),
     ];
     for (value, min, max, label) in ranges {

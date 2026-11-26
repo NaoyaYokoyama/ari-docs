@@ -6,7 +6,7 @@ import {
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, EllipsisVertical, Eye, FolderOpen, Star, Upload } from "lucide-react";
+import { ArrowDown, ArrowUp, EllipsisVertical, Eye, FolderOpen, Lock, Star, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
@@ -230,6 +230,21 @@ function NodeTable({
               )}
               {node.favoriteId && (
                 <Star size={13} className="shrink-0 fill-warning text-warning" aria-label="お気に入り" />
+              )}
+              {/* ロック（FN0301-BR38）。自分のロックは差し色、ほかの人のロックは注意の色 */}
+              {node.lock && (
+                <span
+                  title={`${node.lock.mine ? "自分" : `${node.lock.userName}さん`}がロック中（${node.lock.expiresAt} まで）`}
+                  className={twMerge(
+                    "flex shrink-0 items-center gap-0.5 text-xs",
+                    node.lock.mine ? "text-brand" : "text-warning",
+                  )}
+                >
+                  <Lock size={13} aria-label="ロック中" />
+                  <span className="hidden max-w-24 truncate @xl:inline">
+                    {node.lock.mine ? "自分" : node.lock.userName}
+                  </span>
+                </span>
               )}
               {/* プレビューできるファイルには目の印を出す（Space でプレビューできるものが一目で分かるように。FN0301-BR30） */}
               {!folder && previewKind(node.name) !== "none" && node.size <= MAX_PREVIEW_BYTES && (

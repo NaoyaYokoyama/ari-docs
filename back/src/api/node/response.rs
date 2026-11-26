@@ -22,6 +22,19 @@ pub struct Node {
     pub favorite_id: String,
     // ファイルのサイズ（バイト）。フォルダは 0
     pub size: u64,
+    // ロック（FN0301-BR38）。期限内のものだけ
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lock: Option<NodeLock>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NodeLock {
+    // ロックした人の表示名と、自分か
+    pub user_name: String,
+    pub mine: bool,
+    // 期限（この PC の時刻。YYYY/MM/DD HH:MM）
+    pub expires_at: String,
 }
 
 #[derive(Serialize)]

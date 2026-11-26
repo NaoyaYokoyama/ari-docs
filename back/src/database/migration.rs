@@ -145,6 +145,7 @@ mod tests {
                 "node",
                 "node_content",
                 "node_keyword",
+                "node_lock",
                 "note",
                 "schema_migration",
                 "search_dictionary",

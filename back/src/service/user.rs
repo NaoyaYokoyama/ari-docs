@@ -204,6 +204,7 @@ mod tests {
             include_str!("../data/migration/T018_create_search_exclusion.sql"),
             include_str!("../data/migration/T020_create_trash_favorite.sql"),
             include_str!("../data/migration/T023_user_permission.sql"),
+            include_str!("../data/migration/T024_node_lock.sql"),
         ] {
             conn.execute_batch(sql).unwrap();
         }

@@ -47,6 +47,8 @@ pub struct LoginResponse {
     pub permissions: Vec<String>,
     // 管理者だが、この PC を管理者の PC に登録していない（利用者として使える。FN0102-BR12）
     pub admin_elsewhere: bool,
+    // ファイルのロックの期限の上限（日。サーバーの設定。FN0301-BR38）
+    pub file_lock_max_days: i64,
     // ログイン・管理者の登録のときだけ返す。デスクトップアプリは Authorization: Bearer で送る
     #[serde(skip_serializing_if = "Option::is_none")]
     pub token: Option<String>,
@@ -62,6 +64,7 @@ impl LoginResponse {
             docs_enabled: server_settings::get(conn).docs_enabled,
             permissions: auth::permissions(conn, mode, user),
             admin_elsewhere: user.admin_elsewhere,
+            file_lock_max_days: server_settings::get(conn).file_lock_max_days,
             token: None,
         }
     }

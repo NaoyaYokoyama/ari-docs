@@ -61,6 +61,16 @@ export function renameNode(parentPath: string, name: string, newName: string) {
   return post("/api/nodes/rename", { parentPath, name, newName });
 }
 
+// ファイルをロックする（期限を変えるときも。FN0301-BR38）。expiresAt は期限の日時
+export function lockNode(path: string, expiresAt: Date) {
+  return post("/api/nodes/lock", { path, expiresAt: expiresAt.toISOString() });
+}
+
+// ロックを外す（ロックした人と管理者だけ）
+export function unlockNode(path: string) {
+  return post("/api/nodes/unlock", { path });
+}
+
 // ファイル・フォルダの説明を書く（FN0301-BR33）。空なら消す
 export function updateNodeDescription(path: string, description: string) {
   return post("/api/nodes/description", { path, description });
