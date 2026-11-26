@@ -250,9 +250,14 @@ export default function ContentPage({ kind }: Props) {
     }
   };
 
-  const create = async (title: string) => {
+  const create = async (title: string, body: string) => {
     try {
-      const created = await kind.create(title);
+      let created = await kind.create(title);
+      // ひな形の本文を入れる（FN0401-BR16）
+      if (body) {
+        const saved = await kind.update(created.id, title, body, created.updatedAt);
+        created = { ...created, content: body, updatedAt: saved.data.updatedAt };
+      }
       // フォルダの中に作るときは、作ってから入れる
       if (createFolderId) {
         try {
