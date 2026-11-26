@@ -10,6 +10,8 @@ export interface ServerSettings {
   uploadMaxMb: number;
   // ファイルのロックの期限の上限（日。既定 7、365 まで。FN0301-BR38）
   fileLockMaxDays: number;
+  // ファイルの以前の版を 1 つのファイルにつき残す数（既定 10、0 なら残さない、100 まで。FN0301-BR39）
+  fileVersionKeep: number;
 }
 
 // アプリの情報（FN0903）

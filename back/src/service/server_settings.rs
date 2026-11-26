@@ -20,6 +20,8 @@ pub struct ServerSettings {
     pub upload_max_mb: i64,
     // ファイルのロック（FN0301-BR38）の期限の上限（日）。既定 7 日、365 日まで
     pub file_lock_max_days: i64,
+    // ファイルの以前の版（FN0301-BR39）を 1 つのファイルにつき残す数。既定 10、0 なら残さない、100 まで
+    pub file_version_keep: i64,
 }
 
 impl Default for ServerSettings {
@@ -32,6 +34,7 @@ impl Default for ServerSettings {
             docs_enabled: false,
             upload_max_mb: DEFAULT_UPLOAD_MAX_MB,
             file_lock_max_days: 7,
+            file_version_keep: 10,
         }
     }
 }
@@ -81,6 +84,12 @@ pub fn save(conn: &Connection, settings: &ServerSettings) -> Result<(), String> 
             1,
             365,
             "ファイルのロックの期限の上限は 1〜365 日",
+        ),
+        (
+            settings.file_version_keep,
+            0,
+            100,
+            "ファイルの以前の版を残す数は 0〜100 件",
         ),
     ];
     for (value, min, max, label) in ranges {

@@ -73,6 +73,8 @@ pub fn move_to_trash(
         if let Err(e) = trash_repo::save_descriptions(conn, &trash_id, &relative_path) {
             crate::elog!("move_to_trash descriptions error: {:?}", e);
         }
+        // 以前の版（FN0301-BR39）は、元に戻したときのためにゴミ箱の中のものとして控える
+        crate::service::node_version::to_trash(conn, &trash_id, &relative_path);
         if let Err(e) = node_repo::delete_with_descendants(conn, &relative_path) {
             crate::elog!("move_to_trash cleanup error: {:?}", e);
         }
@@ -127,6 +129,7 @@ pub fn restore(conn: &Connection, config: &AppConfig, trash_id: &str) -> io::Res
             crate::elog!("restore description error: {:?}", e);
         }
     }
+    crate::service::node_version::from_trash(conn, trash_id, &restored);
     trash_repo::delete(conn, trash_id).map_err(db_error)?;
     Ok(restored)
 }
@@ -137,6 +140,7 @@ pub fn delete_permanently(conn: &Connection, config: &AppConfig, trash_id: &str)
     if dir.exists() {
         remove_path(&dir)?;
     }
+    crate::service::node_version::delete_trashed(conn, config, trash_id);
     if trash_repo::delete(conn, trash_id).map_err(db_error)? == 0 {
         return Err(not_found("ゴミ箱に見つかりません"));
     }
@@ -204,6 +208,7 @@ mod tests {
             include_str!("../data/migration/T020_create_trash_favorite.sql"),
             include_str!("../data/migration/T021_add_favorite_sort_order.sql"),
             include_str!("../data/migration/T022_node_description.sql"),
+            include_str!("../data/migration/T025_node_version.sql"),
         ] {
             conn.execute_batch(sql).unwrap();
         }

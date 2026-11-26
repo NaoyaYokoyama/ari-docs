@@ -17,6 +17,7 @@ const DEFAULTS: ServerSettings = {
   docsEnabled: false,
   uploadMaxMb: 1024,
   fileLockMaxDays: 7,
+  fileVersionKeep: 10,
 };
 
 // 数で指定する設定（入力欄に出す）
@@ -80,6 +81,14 @@ const STORAGE_ITEMS: Item[] = [
     unit: "MB",
     min: 1,
     max: 10240,
+  },
+  {
+    key: "fileVersionKeep",
+    label: "ファイルの以前の版を残す数",
+    description: "ari-docs でファイルを上書きしたとき、前の中身を 1 つのファイルにつきこの数まで残します（Folder の右クリックの「以前の版」）。0 なら残しません。残した分だけサーバーのディスクを使います",
+    unit: "件",
+    min: 0,
+    max: 100,
   },
   {
     key: "fileLockMaxDays",
@@ -251,5 +260,6 @@ function toForm(settings: ServerSettings): NumberForm {
     historyKeep: String(settings.historyKeep),
     uploadMaxMb: String(settings.uploadMaxMb),
     fileLockMaxDays: String(settings.fileLockMaxDays ?? 7),
+    fileVersionKeep: String(settings.fileVersionKeep ?? 10),
   };
 }

@@ -32,6 +32,7 @@ import UploadConflictDialog from "@/pages/node/UploadConflictDialog";
 import { useNodeActions } from "@/pages/node/useNodeActions";
 import { useNodeShortcuts } from "@/pages/node/useNodeShortcuts";
 import { useNodeUpload } from "@/pages/node/useNodeUpload";
+import VersionsDialog from "@/pages/node/VersionsDialog";
 import { forgetOpened, rememberOpened } from "@/quickOpen/recent";
 import { isTyping, SHORTCUT } from "@/shortcut/shortcut";
 import { usePageShortcuts } from "@/shortcut/usePageShortcuts";
@@ -75,6 +76,8 @@ function Node() {
   const [filter, setFilter] = useState("");
   // ロックするファイル（FN0301-BR38）
   const [lockTarget, setLockTarget] = useState<NodeItem | null>(null);
+  // 以前の版を見るファイル（FN0301-BR39）
+  const [versionsTarget, setVersionsTarget] = useState<NodeItem | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
   const [uploadMenu, setUploadMenu] = useState<Menu["position"] | null>(null);
   // プレビューしているファイル（FN0301-BR30）
@@ -295,6 +298,7 @@ function Node() {
     refresh: () => void refresh(),
     isAdmin: !!user?.isAdmin,
     lock: (node: NodeItem) => setLockTarget(node),
+    versions: (node: NodeItem) => setVersionsTarget(node),
     unlock: (node: NodeItem) => void unlock(node),
     openInNewWindow: (target: string) =>
       void openNewWindow("/folder", { nodePath: target }, desktop?.place.id).catch((e: unknown) => {
@@ -324,6 +328,7 @@ function Node() {
     menu !== null ||
     uploadMenu !== null ||
     lockTarget !== null ||
+    versionsTarget !== null ||
     previewNode !== null;
   const listKeys = !busy && renamingPath === "";
 
@@ -577,6 +582,15 @@ function Node() {
         />
 
         <UploadConflictDialog names={conflict?.names ?? null} onChoose={(choice) => conflict?.resolve(choice)} />
+
+        <VersionsDialog
+          node={versionsTarget}
+          onClose={() => setVersionsTarget(null)}
+          onRestored={() => {
+            setVersionsTarget(null);
+            void refresh();
+          }}
+        />
 
         <LockDialog
           node={lockTarget}

@@ -12,6 +12,7 @@ import {
   FolderUp,
   FolderX,
   GitCompare,
+  History,
   Info,
   Link2,
   ListChecks,
@@ -61,6 +62,8 @@ type MenuContext = {
   // ファイルのロック（FN0301-BR38。共有モードだけ）。管理者はほかの人のロックも外せる
   isAdmin: boolean;
   lock: (node: Node) => void;
+  // ファイルの以前の版（FN0301-BR39）
+  versions: (node: Node) => void;
   unlock: (node: Node) => void;
   // ari-docs の中のリンク（FN0004）
   copyLink: (nodes: Node[]) => void;
@@ -232,6 +235,9 @@ export function nodeMenu(context: MenuContext): ContextMenuItem[] {
       ...excludeItems(context, node.path, "検索の対象から外す"),
       { label: "詳細・説明", icon: Info, onSelect: () => context.openDetails(node) },
     );
+    if (!folder) {
+      items.push({ label: "以前の版", icon: History, onSelect: () => context.versions(node) });
+    }
     if (!folder && context.shared) {
       items.push("separator", ...lockItems(context, node));
     }

@@ -1,5 +1,5 @@
 import { get, getBlob, post, postBlob, postFormWithProgress } from "@/api/client";
-import type { NodeLockItem } from "@/types/node";
+import type { NodeLockItem, NodeVersionItem } from "@/types/node";
 import type { NodeResponse } from "@/types/nodeResponse";
 import type { NodeType } from "@/types/nodeType";
 import type { UploadFile } from "@/types/uploadFile";
@@ -65,6 +65,22 @@ export function renameNode(parentPath: string, name: string, newName: string) {
 // ファイルをロックする（期限を変えるときも。FN0301-BR38）。expiresAt は期限の日時
 export function lockNode(path: string, expiresAt: Date) {
   return post("/api/nodes/lock", { path, expiresAt: expiresAt.toISOString() });
+}
+
+// ファイルの以前の版（FN0301-BR39。新しい順）
+export function getVersions(path: string) {
+  return get<NodeVersionItem[]>(`/api/nodes/versions?path=${encodeURIComponent(path)}`);
+}
+
+export function downloadVersion(path: string, versionId: string) {
+  return getBlob(
+    `/api/nodes/versions/download?path=${encodeURIComponent(path)}&versionId=${encodeURIComponent(versionId)}`,
+  );
+}
+
+// 以前の版に戻す（今の中身も以前の版として残る）
+export function restoreVersion(path: string, versionId: string) {
+  return post("/api/nodes/versions/restore", { path, versionId });
 }
 
 // ロック中のファイルの一覧（期限の近い順）

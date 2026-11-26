@@ -14,6 +14,17 @@ export interface Node {
   lock?: NodeLock;
 }
 
+// ファイルの以前の版（FN0301-BR39）。日時は YYYY/MM/DD HH:MM
+export interface NodeVersionItem {
+  versionId: string;
+  size: number;
+  // その版の中身の更新日時
+  modifiedAt: string;
+  // 上書きした人と日時
+  replacedBy: string;
+  replacedAt: string;
+}
+
 // ロック中のファイルの一覧の 1 行
 export interface NodeLockItem {
   path: string;

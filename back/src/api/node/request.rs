@@ -61,3 +61,18 @@ pub struct LockNodeRequest {
 pub struct UnlockNodeRequest {
     pub path: String,
 }
+
+// ファイルの以前の版（FN0301-BR39）
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NodeVersionQuery {
+    pub path: String,
+    pub version_id: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RestoreVersionRequest {
+    pub path: String,
+    pub version_id: String,
+}

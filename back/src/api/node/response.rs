@@ -53,3 +53,15 @@ pub struct NodeLockItem {
     pub mine: bool,
     pub expires_at: String,
 }
+
+// ファイルの以前の版（FN0301-BR39）
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NodeVersionItem {
+    pub version_id: String,
+    pub size: i64,
+    // その版の中身の更新日時と、上書きした人・日時（YYYY/MM/DD HH:MM）
+    pub modified_at: String,
+    pub replaced_by: String,
+    pub replaced_at: String,
+}

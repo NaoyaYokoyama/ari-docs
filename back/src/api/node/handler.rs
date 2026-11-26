@@ -2,7 +2,7 @@ use super::{request::*, response::*};
 use crate::{
     api::error::ApiError,
     database::connection,
-    service::{archive, auth, node, node_lock, trash},
+    service::{archive, auth, node, node_lock, node_version, trash},
 };
 use axum::{
     Json,
@@ -275,7 +275,17 @@ pub async fn upload_node(
     // ほかの人がロックしているファイルは上書きしない（FN0301-BR38）
     node_lock::ensure_unlocked(&conn, &user.user_id, &relatives).map_err(to_api_error)?;
 
-    for (temp, file_path) in targets {
+    for ((temp, file_path), relative) in targets.into_iter().zip(&relatives) {
+        // 上書きする前の中身を以前の版として残す（FN0301-BR39）
+        if file_path.is_file() {
+            node_version::keep_before_overwrite(
+                &conn,
+                &state.config,
+                &user.user_id,
+                relative,
+                &file_path,
+            );
+        }
         if let Some(parent) = file_path.parent() {
             tokio::fs::create_dir_all(parent)
                 .await
@@ -672,4 +682,82 @@ pub async fn get_locks(
             })
             .collect(),
     ))
+}
+
+fn format_time(seconds: i64) -> String {
+    node_lock::format_time(seconds)
+}
+
+// ファイルの以前の版の一覧（FN0301-BR39。新しい順）
+pub async fn get_versions(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<NodeQuery>,
+) -> Result<Json<Vec<NodeVersionItem>>, ApiError> {
+    let conn = connection::connect();
+    auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let versions = node_version::list(&conn, &query.path).map_err(to_api_error)?;
+    Ok(Json(
+        versions
+            .into_iter()
+            .map(|(version, replaced_by_name)| NodeVersionItem {
+                version_id: version.version_id,
+                size: version.size,
+                modified_at: format_time(version.modified_at),
+                replaced_by: replaced_by_name,
+                replaced_at: format_time(version.replaced_at),
+            })
+            .collect(),
+    ))
+}
+
+// 以前の版をダウンロードする。名前に、その版の更新日時を付ける（今のファイルと見分けるため）
+pub async fn download_version(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<NodeVersionQuery>,
+) -> Result<Response, ApiError> {
+    let conn = connection::connect();
+    auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let (file, version) = node_version::find(&conn, &state.config, &query.path, &query.version_id)
+        .map_err(to_api_error)?;
+    let stamp = chrono::DateTime::from_timestamp(version.modified_at, 0)
+        .map(|time| {
+            time.with_timezone(&chrono::Local)
+                .format("%Y%m%d-%H%M")
+                .to_string()
+        })
+        .unwrap_or_default();
+    let name = match version.name.rsplit_once('.') {
+        Some((stem, ext)) if !stem.is_empty() => format!("{stem}_{stamp}.{ext}"),
+        _ => format!("{}_{stamp}", version.name),
+    };
+    let file = tokio::fs::File::open(&file).await.map_err(to_api_error)?;
+    let body = axum::body::Body::from_stream(tokio_util::io::ReaderStream::new(file));
+    Ok(attachment(&name, "application/octet-stream", body))
+}
+
+// 以前の版に戻す（今の中身も以前の版として残す。ほかの人のロック中は戻せない）
+pub async fn restore_version(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<RestoreVersionRequest>,
+) -> Result<StatusCode, ApiError> {
+    let conn = connection::connect();
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    node_version::restore(
+        &conn,
+        &state.config,
+        &user.user_id,
+        &request.path,
+        &request.version_id,
+    )
+    .map_err(to_api_error)?;
+    node::record_updates(
+        &conn,
+        &state.config.folder_root,
+        &user.user_id,
+        &[request.path.trim_matches('/').to_string()],
+    );
+    Ok(StatusCode::NO_CONTENT)
 }
