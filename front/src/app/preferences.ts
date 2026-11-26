@@ -47,6 +47,8 @@ export type Preferences = {
   updateCheck: UpdateCheck;
   // タスクの期限（今日・期限切れ）を OS の通知で知らせる（デスクトップアプリだけ。FN0602-BR13）
   taskNotify: boolean;
+  // タスクの画面に WBS の表示を出す（FN0602-BR14）
+  taskWbs: boolean;
 };
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -61,6 +63,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   searchNameOnly: false,
   updateCheck: "ask",
   taskNotify: true,
+  taskWbs: true,
 };
 
 export const SEARCH_TYPES: { value: SearchType; label: string; description: string }[] = [
@@ -140,6 +143,7 @@ function sanitize(value: unknown): Preferences {
     updateCheck: pick("updateCheck", ["ask", "on", "off"]),
     searchNameOnly: pick("searchNameOnly", [true, false]),
     taskNotify: pick("taskNotify", [true, false]),
+    taskWbs: pick("taskWbs", [true, false]),
     // 知らない種類・重なりは除く。すべて選んでいれば「すべて」（空）と同じ
     searchTypes: (() => {
       const known = SEARCH_TYPES.map((type) => type.value);

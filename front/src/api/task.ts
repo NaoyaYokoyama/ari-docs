@@ -20,6 +20,11 @@ export function reorderTasks(status: TaskStatus, taskIds: string[]) {
   return post("/api/tasks/order", { status, taskIds });
 }
 
+// WBS の中で動かす（FN0602-BR14）。parentId（空なら一番上）の子の index 番目へ
+export function moveTaskInWbs(taskId: string, parentId: string, index: number) {
+  return post("/api/tasks/move", { taskId, parentId, index });
+}
+
 export function deleteTask(taskId: string) {
   return post("/api/tasks/delete", { taskId });
 }

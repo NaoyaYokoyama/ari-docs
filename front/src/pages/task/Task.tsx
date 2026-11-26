@@ -1,10 +1,32 @@
-import { ArrowDown, ArrowUp, CalendarDays, Columns3, Link2, List, ListTodo, Plus, Repeat, Trash2 } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  CalendarDays,
+  Columns3,
+  Link2,
+  List,
+  ListTodo,
+  ListTree,
+  Plus,
+  Repeat,
+  Trash2,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { twMerge } from "tailwind-merge";
 
-import { createTask, deleteDoneTasks, deleteTask, getTasks, onTasksChanged, reorderTasks, updateTask } from "@/api/task";
+import {
+  createTask,
+  deleteDoneTasks,
+  deleteTask,
+  getTasks,
+  moveTaskInWbs,
+  onTasksChanged,
+  reorderTasks,
+  updateTask,
+} from "@/api/task";
 import { useApp } from "@/app/AppContext";
+import { usePreferences } from "@/app/preferences";
 import Button from "@/components/common/Button";
 import EmptyState from "@/components/common/EmptyState";
 import Input from "@/components/common/Input";
@@ -26,16 +48,18 @@ import {
   repeatLabel,
   STATUSES,
 } from "@/pages/task/taskView";
+import WbsView, { childrenMap } from "@/pages/task/WbsView";
 import { SHORTCUT, shortcutLabel } from "@/shortcut/shortcut";
 import { usePageShortcuts } from "@/shortcut/usePageShortcuts";
 import type { Task as TaskItem, TaskInput, TaskPriority, TaskStatus } from "@/types/task";
 
-type View = "board" | "list";
+type View = "board" | "list" | "wbs";
 const VIEW_KEY = "task-view";
 
 function readView(): View {
   try {
-    return localStorage.getItem(VIEW_KEY) === "list" ? "list" : "board";
+    const value = localStorage.getItem(VIEW_KEY);
+    return value === "list" || value === "wbs" ? value : "board";
   } catch {
     return "board";
   }
@@ -60,7 +84,10 @@ function readSort(): ListSort {
 export default function Task() {
   const { showMessage, showConfirm } = useApp();
   const [tasks, setTasks] = useState<TaskItem[] | null>(null);
-  const [view, setView] = useState<View>(readView);
+  const [savedView, setView] = useState<View>(readView);
+  // WBS を使わない設定（FN0602-BR14）ならボードにする
+  const { taskWbs } = usePreferences();
+  const view: View = savedView === "wbs" && !taskWbs ? "board" : savedView;
   const [editing, setEditing] = useState<TaskItem | null>(null);
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
@@ -146,6 +173,10 @@ export default function Task() {
     try {
       const task = await createTask({ title: text, priority: effectivePriority, dueDate: effectiveDue });
       setTasks((current) => [task, ...(current ?? [])]);
+      // WBS では足した行を選ぶ（続けて Tab で段を下げられるように）
+      if (view === "wbs") {
+        requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-wbs-row="${task.taskId}"]`)?.focus());
+      }
       setTitle("");
       setDueDate("");
       setPriority("medium");
@@ -178,6 +209,10 @@ export default function Task() {
       await deleteTask(task.taskId);
       setTasks((current) => current?.filter((item) => item.taskId !== task.taskId) ?? null);
       setEditing(null);
+      // 子があれば消したものの位置へ繰り上がるので読み直す（FN0602-BR14）
+      if (tasks?.some((item) => item.parentId === task.taskId)) {
+        load();
+      }
     } catch (error) {
       showMessage("error", errorMessage(error, "タスクを削除できませんでした"));
     }
@@ -191,6 +226,7 @@ export default function Task() {
     try {
       await deleteDoneTasks();
       setTasks((current) => current?.filter((task) => task.status !== "done") ?? null);
+      load();
     } catch (error) {
       showMessage("error", errorMessage(error, "削除できませんでした"));
     }
@@ -228,6 +264,41 @@ export default function Task() {
     }
   };
 
+  // WBS の子を足す（FN0602-BR14）
+  const addChild = async (input: TaskInput) => {
+    try {
+      const task = await createTask(input);
+      setTasks((current) => [task, ...(current ?? [])]);
+      return task;
+    } catch (error) {
+      showMessage("error", errorMessage(error, "タスクを追加できませんでした"));
+      return null;
+    }
+  };
+
+  // WBS の中で動かす（段を下げる・上げる・並べ替え）。先に画面を変え、失敗したら読み直す
+  const moveWbs = async (taskId: string, parentId: string, index: number) => {
+    if (!tasks) {
+      return;
+    }
+    const siblings = (childrenMap(tasks).get(parentId) ?? [])
+      .filter((task) => task.taskId !== taskId)
+      .map((task) => task.taskId);
+    siblings.splice(Math.min(index, siblings.length), 0, taskId);
+    setTasks(
+      tasks.map((task) => {
+        const order = siblings.indexOf(task.taskId);
+        return order === -1 ? task : { ...task, parentId, wbsOrder: order };
+      }),
+    );
+    try {
+      await moveTaskInWbs(taskId, parentId, index);
+    } catch (error) {
+      showMessage("error", errorMessage(error, "動かせませんでした"));
+      load();
+    }
+  };
+
   const counts = useMemo(() => {
     const result = { todo: 0, doing: 0, done: 0, overdue: 0 };
     for (const task of tasks ?? []) {
@@ -256,8 +327,9 @@ export default function Task() {
             [
               ["board", "ボード", Columns3],
               ["list", "一覧", List],
+              ["wbs", "WBS", ListTree],
             ] as const
-          ).map(([value, label, Icon]) => (
+          ).filter(([value]) => value !== "wbs" || taskWbs).map(([value, label, Icon]) => (
             <button
               key={value}
               type="button"
@@ -330,6 +402,8 @@ export default function Task() {
       <div className="min-h-0 flex-1 overflow-auto">
         {!tasks ? (
           <Spinner />
+        ) : view === "wbs" ? (
+          <WbsView tasks={tasks} onOpen={setEditing} onStatus={setStatus} onMove={moveWbs} onAdd={addChild} />
         ) : view === "board" ? (
           <Board tasks={tasks} onOpen={setEditing} onMove={(id, status, index) => void move(id, status, index)} onRemoveDone={() => void removeDone()} />
         ) : (

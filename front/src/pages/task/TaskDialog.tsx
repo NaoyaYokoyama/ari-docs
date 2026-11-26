@@ -37,6 +37,7 @@ export default function TaskDialog({ task, onClose, onSave, onDelete }: Props) {
   const [status, setStatus] = useState<TaskStatus>("todo");
   const [description, setDescription] = useState("");
   const [repeat, setRepeat] = useState<TaskRepeat>("");
+  const [startDate, setStartDate] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -47,6 +48,7 @@ export default function TaskDialog({ task, onClose, onSave, onDelete }: Props) {
       setStatus(task.status);
       setDescription(task.description);
       setRepeat(task.repeat ?? "");
+      setStartDate(task.startDate ?? "");
       setSaving(false);
     }
   }, [task]);
@@ -62,7 +64,15 @@ export default function TaskDialog({ task, onClose, onSave, onDelete }: Props) {
       return false;
     }
     setSaving(true);
-    const saved = await onSave(task, { title: title.trim(), priority, dueDate, status, description, repeat });
+    const saved = await onSave(task, {
+      title: title.trim(),
+      priority,
+      dueDate,
+      status,
+      description,
+      repeat,
+      startDate,
+    });
     if (!saved) {
       setSaving(false);
     }
@@ -208,16 +218,40 @@ export default function TaskDialog({ task, onClose, onSave, onDelete }: Props) {
           </div>
         </div>
 
-        <div>
-          <label htmlFor="task-repeat" className="mb-1.5 block text-sm font-medium">
-            繰り返し
-          </label>
-          <div className="flex items-center gap-3">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="task-start" className="mb-1.5 block text-sm font-medium">
+              開始日
+            </label>
+            <div className="flex items-center gap-1">
+              <Input
+                id="task-start"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="min-w-0 flex-1"
+              />
+              {startDate && (
+                <Button variant="ghost" size="sm" onClick={() => setStartDate("")}>
+                  なし
+                </Button>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {startDate && dueDate && startDate > dueDate
+                ? "開始日が期限より後になっています"
+                : "WBS のガントチャートに使います"}
+            </p>
+          </div>
+          <div>
+            <label htmlFor="task-repeat" className="mb-1.5 block text-sm font-medium">
+              繰り返し
+            </label>
             <select
               id="task-repeat"
               value={repeat}
               onChange={(e) => setRepeat(e.target.value as TaskRepeat)}
-              className="h-9 w-48 rounded-md border border-input bg-background px-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
+              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
             >
               {REPEATS.map((item) => (
                 <option key={item.value} value={item.value}>
@@ -225,7 +259,7 @@ export default function TaskDialog({ task, onClose, onSave, onDelete }: Props) {
                 </option>
               ))}
             </select>
-            {repeat && <span className="text-xs text-muted-foreground">完了にすると、次の回のタスクを作ります</span>}
+            {repeat && <p className="mt-1 text-xs text-muted-foreground">完了にすると、次の回のタスクを作ります</p>}
           </div>
         </div>
 

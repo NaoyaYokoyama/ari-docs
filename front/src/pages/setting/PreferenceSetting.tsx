@@ -129,6 +129,7 @@ export function BehaviorSetting() {
     "folderPreviewPane",
     "buttonHints",
     "taskNotify",
+    "taskWbs",
   ];
   return (
     <SettingPanel title="操作" description={PC_ONLY} plain>
@@ -223,8 +224,20 @@ export function BehaviorSetting() {
         </SettingRow>
       </SettingCard>
 
-      {isTauri() && (
-        <SettingCard title="Task">
+      <SettingCard title="Task">
+        <SettingRow
+          label="WBS を使う"
+          description="タスクの画面の表示に「WBS」（親子で分けた番号付きの木とガントチャート）を出します。使わなければオフに。オフにしても、タスクの親子と開始日は消えません"
+          htmlFor="task-wbs"
+        >
+          <Toggle
+            id="task-wbs"
+            label="WBS を使う"
+            checked={preferences.taskWbs}
+            onChange={(value) => setPreference("taskWbs", value)}
+          />
+        </SettingRow>
+        {isTauri() && (
           <SettingRow
             label="期限を通知で知らせる"
             description="アプリを起動したとき（開いたままなら毎朝 8 時すぎ）に、今日が期限のタスクと期限切れのタスクを OS の通知に出します。場所ごとに 1 日 1 回です"
@@ -237,8 +250,8 @@ export function BehaviorSetting() {
               onChange={(value) => setPreference("taskNotify", value)}
             />
           </SettingRow>
-        </SettingCard>
-      )}
+        )}
+      </SettingCard>
 
       <div className="flex justify-end">
         <ResetButton visible={!isDefault(preferences, keys)} onClick={() => resetKeys(keys)} />

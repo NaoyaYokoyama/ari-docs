@@ -14,6 +14,9 @@ pub struct TaskRequest {
     pub due_date: Option<String>,
     pub status: Option<String>,
     pub repeat: Option<String>,
+    pub start_date: Option<String>,
+    // 作るときだけ（WBS の子として作る。FN0602-BR14）
+    pub parent_id: Option<String>,
 }
 
 impl TaskRequest {
@@ -25,6 +28,8 @@ impl TaskRequest {
             due_date: self.due_date,
             status: self.status,
             repeat: self.repeat,
+            start_date: self.start_date,
+            parent_id: self.parent_id,
         }
     }
 }
@@ -41,4 +46,14 @@ pub struct TaskIdRequest {
 pub struct TaskOrderRequest {
     pub status: String,
     pub task_ids: Vec<String>,
+}
+
+// WBS の中で動かす（FN0602-BR14）。parentId（空なら一番上）の子の index 番目へ
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskMoveRequest {
+    pub task_id: String,
+    #[serde(default)]
+    pub parent_id: String,
+    pub index: usize,
 }

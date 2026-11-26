@@ -91,6 +91,24 @@ pub async fn delete_done_tasks(
     headers: HeaderMap,
 ) -> Result<StatusCode, ApiError> {
     let (conn, user_id) = login(&state, &headers)?;
-    task::delete_done(&conn, &user_id).map_err(|e| to_error(TaskError::Db(e)))?;
+    task::delete_done(&conn, &user_id).map_err(to_error)?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// WBS の中で動かす（FN0602-BR14）
+pub async fn move_task(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<TaskMoveRequest>,
+) -> Result<StatusCode, ApiError> {
+    let (conn, user_id) = login(&state, &headers)?;
+    task::move_in_wbs(
+        &conn,
+        &user_id,
+        &request.task_id,
+        &request.parent_id,
+        request.index,
+    )
+    .map_err(to_error)?;
     Ok(StatusCode::NO_CONTENT)
 }

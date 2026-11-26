@@ -17,6 +17,12 @@ export interface Task {
   updatedAt: string;
   completedAt: string;
   repeat: TaskRepeat;
+  // WBS（FN0602-BR14）。親（空なら一番上）・開始日（YYYY-MM-DD。無ければ空）・同じ親の中の並び
+  parentId: string;
+  startDate: string;
+  wbsOrder: number;
 }
 
-export type TaskInput = Partial<Pick<Task, "title" | "description" | "priority" | "dueDate" | "status" | "repeat">>;
+export type TaskInput = Partial<
+  Pick<Task, "title" | "description" | "priority" | "dueDate" | "status" | "repeat" | "startDate" | "parentId">
+>;
