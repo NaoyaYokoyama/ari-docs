@@ -25,6 +25,8 @@ function AppRoutes() {
       <Route path="/setting" element={<Setting />} />
       {/* 比べる（FN0304）。Folder の右クリックから開く */}
       <Route path="/compare" element={<ComparePage />} />
+      {/* 無い画面（古いブックマーク・打ち間違い）は何も出ないままにせず Home へ */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
