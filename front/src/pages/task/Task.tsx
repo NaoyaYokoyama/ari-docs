@@ -1,4 +1,4 @@
-import { CalendarDays, Columns3, List, ListTodo, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, CalendarDays, Columns3, List, ListTodo, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
@@ -10,7 +10,17 @@ import Input from "@/components/common/Input";
 import Spinner from "@/components/common/Spinner";
 import { errorMessage } from "@/lib/format";
 import TaskDialog from "@/pages/task/TaskDialog";
-import { compareForList, DUE_CLASS, dueInfo, PRIORITIES, priorityOf, STATUSES } from "@/pages/task/taskView";
+import {
+  compareForList,
+  DEFAULT_LIST_SORT,
+  DUE_CLASS,
+  dueInfo,
+  LIST_SORTS,
+  type ListSort,
+  PRIORITIES,
+  priorityOf,
+  STATUSES,
+} from "@/pages/task/taskView";
 import { SHORTCUT, shortcutLabel } from "@/shortcut/shortcut";
 import { usePageShortcuts } from "@/shortcut/usePageShortcuts";
 import type { Task as TaskItem, TaskInput, TaskPriority, TaskStatus } from "@/types/task";
@@ -26,6 +36,21 @@ function readView(): View {
   }
 }
 
+const SORT_KEY = "task-list-sort";
+
+// 一覧の並べ方（この PC に覚える）
+function readSort(): ListSort {
+  try {
+    const value = JSON.parse(localStorage.getItem(SORT_KEY) ?? "null") as Partial<ListSort> | null;
+    if (value && LIST_SORTS.some((item) => item.value === value.key)) {
+      return { key: value.key!, desc: !!value.desc };
+    }
+  } catch {
+    // 読めなければ既定
+  }
+  return DEFAULT_LIST_SORT;
+}
+
 // 個人のタスク（FN0602）。優先度（高・中・低）と期限を付け、カンバン（未着手・進行中・完了）か一覧で見る
 export default function Task() {
   const { showMessage, showConfirm } = useApp();
@@ -36,6 +61,7 @@ export default function Task() {
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [dueDate, setDueDate] = useState("");
   const [hideDone, setHideDone] = useState(false);
+  const [sort, setSort] = useState<ListSort>(readSort);
   const titleRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(() => {
@@ -56,6 +82,15 @@ export default function Task() {
       localStorage.setItem(VIEW_KEY, next);
     } catch {
       // 覚えられなくても表示は変える
+    }
+  };
+
+  const changeSort = (next: ListSort) => {
+    setSort(next);
+    try {
+      localStorage.setItem(SORT_KEY, JSON.stringify(next));
+    } catch {
+      // 覚えられなくても並びは変える
     }
   };
 
@@ -259,6 +294,8 @@ export default function Task() {
             tasks={tasks}
             hideDone={hideDone}
             onHideDoneChange={setHideDone}
+            sort={sort}
+            onSortChange={changeSort}
             onOpen={setEditing}
             onStatus={setStatus}
             onRemoveDone={() => void removeDone()}
@@ -427,11 +464,13 @@ function Board({
   );
 }
 
-// 一覧。状態 → 期限の近い順 → 優先度の高い順。チェックで完了・未着手を切り替える
+// 一覧。期限・優先度・状態・追加で並べ替える（同じものをもう一度押すと逆順）。チェックで完了・未着手を切り替える
 function TaskList({
   tasks,
   hideDone,
   onHideDoneChange,
+  sort,
+  onSortChange,
   onOpen,
   onStatus,
   onRemoveDone,
@@ -439,14 +478,43 @@ function TaskList({
   tasks: TaskItem[];
   hideDone: boolean;
   onHideDoneChange: (value: boolean) => void;
+  sort: ListSort;
+  onSortChange: (sort: ListSort) => void;
   onOpen: (task: TaskItem) => void;
   onStatus: (task: TaskItem, status: TaskStatus) => void;
   onRemoveDone: () => void;
 }) {
-  const shown = tasks.filter((task) => !hideDone || task.status !== "done").sort(compareForList);
+  const shown = tasks.filter((task) => !hideDone || task.status !== "done").sort(compareForList(sort));
+  const current = LIST_SORTS.find((item) => item.value === sort.key) ?? LIST_SORTS[0];
+  const SortArrow = sort.desc ? ArrowUp : ArrowDown;
   return (
     <div className="mx-auto max-w-4xl p-4">
-      <div className="mb-2 flex items-center gap-3 text-xs text-muted-foreground">
+      <div className="mb-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+        <div role="radiogroup" aria-label="並べ方" className="flex items-center gap-1">
+          <span>並び</span>
+          {LIST_SORTS.map((item) => {
+            const active = item.value === sort.key;
+            const label = active ? (sort.desc ? item.desc : item.asc) : item.asc;
+            return (
+              <button
+                key={item.value}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                title={active ? `${label}（押すと逆順）` : label}
+                onClick={() => onSortChange(active ? { key: item.value, desc: !sort.desc } : { key: item.value, desc: false })}
+                className={twMerge(
+                  "flex items-center gap-0.5 rounded-md border px-2 py-1",
+                  active ? "border-border bg-accent font-medium text-foreground" : "border-transparent hover:text-foreground",
+                )}
+              >
+                {item.label}
+                {active && <SortArrow size={12} />}
+              </button>
+            );
+          })}
+          <span className="ml-1 mr-3">{sort.desc ? current.desc : current.asc}</span>
+        </div>
         <label className="flex items-center gap-1.5">
           <input type="checkbox" checked={hideDone} onChange={(e) => onHideDoneChange(e.target.checked)} className="accent-brand" />
           完了を隠す

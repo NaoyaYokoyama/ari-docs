@@ -58,12 +58,48 @@ export const DUE_CLASS: Record<string, string> = {
   done: "text-muted-foreground",
 };
 
-// 一覧の並び: 状態（未着手・進行中・完了）→ 期限の近い順（無いものは後）→ 優先度の高い順
-export function compareForList(a: Task, b: Task) {
-  return (
-    STATUS_RANK[a.status] - STATUS_RANK[b.status] ||
-    (a.dueDate || "9999").localeCompare(b.dueDate || "9999") ||
-    PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority] ||
-    a.sortOrder - b.sortOrder
-  );
+// 一覧の並べ方（FN0602-BR05）。「近い順」の向きは、期限は近い順・優先度は高い順・状態は未着手から・追加は新しい順
+export type ListSortKey = "due" | "priority" | "status" | "created";
+export type ListSort = { key: ListSortKey; desc: boolean };
+
+export const LIST_SORTS: { value: ListSortKey; label: string; asc: string; desc: string }[] = [
+  { value: "due", label: "期限", asc: "期限の近い順", desc: "期限の遠い順" },
+  { value: "priority", label: "優先度", asc: "優先度の高い順", desc: "優先度の低い順" },
+  { value: "status", label: "状態", asc: "未着手から", desc: "完了から" },
+  { value: "created", label: "追加", asc: "追加の新しい順", desc: "追加の古い順" },
+];
+
+export const DEFAULT_LIST_SORT: ListSort = { key: "due", desc: false };
+
+// 期限の比べ方。期限の無いものは向きによらず後
+function compareDue(a: Task, b: Task, desc: boolean) {
+  if (!a.dueDate || !b.dueDate) {
+    return Number(!a.dueDate) - Number(!b.dueDate);
+  }
+  const order = a.dueDate.localeCompare(b.dueDate);
+  return desc ? -order : order;
+}
+
+// 一覧の並び。状態で並べるとき以外も、完了は下にまとめる。同じなら期限の近い順 → 優先度の高い順
+export function compareForList(sort: ListSort) {
+  const sign = sort.desc ? -1 : 1;
+  return (a: Task, b: Task) => {
+    const done = Number(a.status === "done") - Number(b.status === "done");
+    let primary: number;
+    if (sort.key === "status") {
+      primary = sign * (STATUS_RANK[a.status] - STATUS_RANK[b.status]);
+    } else if (sort.key === "due") {
+      primary = done || compareDue(a, b, sort.desc);
+    } else if (sort.key === "priority") {
+      primary = done || sign * (PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]);
+    } else {
+      primary = done || -sign * a.createdAt.localeCompare(b.createdAt);
+    }
+    return (
+      primary ||
+      compareDue(a, b, false) ||
+      PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority] ||
+      a.sortOrder - b.sortOrder
+    );
+  };
 }
