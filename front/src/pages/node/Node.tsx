@@ -4,8 +4,10 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import { createExclusion } from "@/api/search";
 import { hasPermission, useApp } from "@/app/AppContext";
+import { useDesktop } from "@/app/DesktopContext";
 import { usePreferences } from "@/app/preferences";
 import { useCopyAriLink } from "@/app/useAriLink";
+import { notifyNodesChanged, onNodesChanged, openNewWindow, setWindowFolder } from "@/app/windows";
 import Button from "@/components/common/Button";
 import ContextMenu from "@/components/common/ContextMenu";
 import EmptyState from "@/components/common/EmptyState";
@@ -48,6 +50,7 @@ function Node() {
   const { user, showMessage } = useApp();
   const navigate = useNavigate();
   const compareBase = useCompareBase();
+  const desktop = useDesktop();
   // お気に入り・検索から遷移してきた場合は対象ノードの親フォルダを開く
   const initialNodePath: string = location.state?.nodePath ?? "";
   const shared = user?.mode === "shared";
@@ -105,7 +108,25 @@ function Node() {
   const refresh = useCallback(async () => {
     await reload();
     setVersion((v) => v + 1);
+    // ほかのウィンドウ（FN0301-BR36）の一覧も読み直す
+    notifyNodesChanged();
   }, [reload]);
+
+  // ほかのウィンドウで変えたとき・このウィンドウに戻ってきたときに読み直す（外で変えたものも映す）
+  useEffect(
+    () =>
+      onNodesChanged(() => {
+        void reload();
+        setVersion((v) => v + 1);
+      }),
+    [reload],
+  );
+
+  // 新しいウィンドウ（Ctrl+Shift+N）で今のフォルダを開くため
+  useEffect(() => {
+    setWindowFolder(currentPath);
+    return () => setWindowFolder(null);
+  }, [currentPath]);
 
   const navigateTo = useCallback((next: string) => {
     setVisual(false);
@@ -254,6 +275,11 @@ function Node() {
     uploadFolder: () => folderInputRef.current?.click(),
     selectAll,
     refresh: () => void refresh(),
+    openInNewWindow: (target: string) =>
+      void openNewWindow("/folder", { nodePath: target }, desktop?.place.id).catch((e: unknown) => {
+        console.error(e);
+        showMessage("error", "新しいウィンドウを開けませんでした");
+      }),
     copyLink: (targets: NodeItem[]) => copyNodeLinks(targets),
     copyFolderLink: () => copyFolderLink(),
     canExcludeForAll: hasPermission(user, "exclusion"),

@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 
 import { createFavoriteNode, deleteFavorite } from "@/api/favorite";
 import {
@@ -16,12 +16,13 @@ import { getPreferences } from "@/app/preferences";
 import { openBlob, saveBlob } from "@/lib/download";
 import { openedFile, watchOpened } from "@/lib/editSync";
 import { errorMessage } from "@/lib/format";
+import { type Clipboard, useNodeClipboard } from "@/pages/node/nodeClipboard";
 import { canDropInto } from "@/pages/node/nodeDrag";
 import { baseName, joinPath, parentPath } from "@/pages/node/nodePath";
 import type { Node } from "@/types/node";
 import { NodeType } from "@/types/nodeType";
 
-export type Clipboard = { mode: "copy" | "cut"; paths: string[] };
+export type { Clipboard };
 
 type Options = {
   currentPath: string;
@@ -36,7 +37,8 @@ type Options = {
 // フォルダ画面の操作（開く・移動・コピー・貼り付け・ゴミ箱・名前の変更・ダウンロードなど。FN0301）
 export function useNodeActions({ currentPath, remote, setSelected, refresh, navigateTo }: Options) {
   const { showMessage, showConfirm } = useApp();
-  const [clipboard, setClipboard] = useState<Clipboard | null>(null);
+  // ほかのウィンドウとも同じもの（FN0301-BR36）
+  const [clipboard, setClipboard] = useNodeClipboard();
 
   const open = async (node: Node) => {
     if (node.nodeType === NodeType.Folder) {

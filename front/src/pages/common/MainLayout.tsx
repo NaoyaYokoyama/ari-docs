@@ -2,10 +2,13 @@ import { type ReactNode, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { useApp } from "@/app/AppContext";
+import { useDesktop } from "@/app/DesktopContext";
 import { rememberLastPage, startPath } from "@/app/preferences";
 import { hasPendingAriLink, useAriLinkPlace } from "@/app/useAriLink";
+import { openCurrentInNewWindow } from "@/app/windows";
 import Header from "@/pages/common/Header";
 import UpdateNotice from "@/pages/common/UpdateNotice";
+import { isShortcut, SHORTCUT } from "@/shortcut/shortcut";
 import VimLayer from "@/vim/VimLayer";
 
 // 起動したときの画面へは 1 回だけ移る（あとで Home を開いたときは移らない）
@@ -27,6 +30,23 @@ function MainLayout({
   const location = useLocation();
   const navigate = useNavigate();
   const { user, showMessage } = useApp();
+  const desktop = useDesktop();
+  const placeId = desktop?.place.id;
+
+  // 今の画面を新しいウィンドウで開く（FN0301-BR36）。入力中でも効かせる
+  useEffect(() => {
+    const handleKey = (event: KeyboardEvent) => {
+      if (isShortcut(event, SHORTCUT.NEW_WINDOW) && !event.isComposing) {
+        event.preventDefault();
+        openCurrentInNewWindow(placeId).catch((error: unknown) => {
+          console.error(error);
+          showMessage("error", "新しいウィンドウを開けませんでした");
+        });
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [placeId, showMessage]);
   const docsEnabled = !!user?.docsEnabled;
   // リンクに入れる今の場所と、場所を切り替えて開くリンク（FN0004-BR07）
   useAriLinkPlace();

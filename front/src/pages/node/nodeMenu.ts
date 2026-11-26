@@ -15,6 +15,7 @@ import {
   Info,
   Link2,
   ListChecks,
+  PanelsTopLeft,
   Pencil,
   RefreshCw,
   Scissors,
@@ -53,6 +54,8 @@ type MenuContext = {
   uploadFolder: () => void;
   selectAll: () => void;
   refresh: () => void;
+  // 新しいウィンドウでフォルダを開く（FN0301-BR36）
+  openInNewWindow: (path: string) => void;
   // ari-docs の中のリンク（FN0004）
   copyLink: (nodes: Node[]) => void;
   copyFolderLink: () => void;
@@ -131,6 +134,7 @@ export function backgroundMenu(context: MenuContext): ContextMenuItem[] {
     "separator",
     pasteItem(context, context.currentPath),
     { label: "このフォルダのリンクをコピー", icon: Link2, shortcut: shortcutLabel(SHORTCUT.FOLDER_COPY_LINK), onSelect: context.copyFolderLink },
+    { label: "新しいウィンドウで開く", icon: PanelsTopLeft, shortcut: shortcutLabel(SHORTCUT.NEW_WINDOW), onSelect: () => context.openInNewWindow(context.currentPath) },
     ...(context.currentPath ? excludeItems(context, context.currentPath, "このフォルダを検索の対象から外す") : []),
     "separator",
     { label: "すべて選択", icon: ListChecks, shortcut: shortcutLabel(SHORTCUT.FOLDER_SELECT_ALL), onSelect: context.selectAll },
@@ -151,6 +155,9 @@ export function nodeMenu(context: MenuContext): ContextMenuItem[] {
       shortcut: shortcutLabel(SHORTCUT.FOLDER_OPEN),
       onSelect: () => context.open(node),
     });
+    if (folder) {
+      items.push({ label: "新しいウィンドウで開く", icon: PanelsTopLeft, onSelect: () => context.openInNewWindow(node.path) });
+    }
     if (!folder) {
       items.push(
         { label: "プレビュー", icon: Eye, shortcut: shortcutLabel(SHORTCUT.FOLDER_PREVIEW), onSelect: () => context.preview(node) },

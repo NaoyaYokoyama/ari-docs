@@ -18,7 +18,19 @@ import { fileKind, formatSize } from "@/lib/fileType";
 import { timeOf } from "@/lib/format";
 import { MAX_PREVIEW_BYTES } from "@/lib/previewFormats";
 import { previewKind } from "@/pages/node/FilePreview";
-import { canDropInto, draggedPaths, filesFromDrop, isFileDrag, isNodeDrag, NODE_DRAG_TYPE, wantsCopy } from "@/pages/node/nodeDrag";
+import {
+  canDropInto,
+  draggedPaths,
+  endNodeDrag,
+  filesFromDrop,
+  isDragFrom,
+  isFileDrag,
+  isFromOtherPlace,
+  isNodeDrag,
+  startNodeDrag,
+  wantsCopy,
+} from "@/pages/node/nodeDrag";
+import { parentPath } from "@/pages/node/nodePath";
 import RenameInput from "@/pages/node/RenameInput";
 import type { Node } from "@/types/node";
 import { NodeType } from "@/types/nodeType";
@@ -54,6 +66,15 @@ type Props = {
   emptyTitle: string;
 };
 
+// 囲んで選ぶ（FN0301-BR35）を始められる列。名前と操作のボタンの列は、行のドラッグ（移動・コピー）に使う
+const LASSO_COLUMNS = new Set(["description", "updatedBy", "updatedAt", "size"]);
+// これより動かしたら囲み始める（クリックと見分ける）
+const LASSO_THRESHOLD = 4;
+// 一覧の上下の端からこの幅に入ったら、囲みながらスクロールする
+const LASSO_EDGE = 32;
+
+type Lasso = { x0: number; y0: number; x1: number; y1: number };
+
 // 一覧が狭いとき（右のプレビューを出したとき・ウィンドウが狭いとき）に出さない列。名前の幅を残すため。
 // 説明はプレビュー・詳細でも見られる。幅は一覧（@container）の幅で決める
 const NARROW_HIDDEN: Record<string, string> = {
@@ -79,12 +100,19 @@ function NodeTable({
   visual,
   emptyTitle,
 }: Props) {
-  const { user } = useApp();
+  const { user, showMessage } = useApp();
   const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }]);
   // ドロップ先。表示中のフォルダ（背景）は currentPath、フォルダの行はそのパス。null はドラッグしていない
   const [dropTarget, setDropTarget] = useState<string | null>(null);
+  // 背景へのドロップが、OS のファイル（アップロード）か、ほかのウィンドウの行（移動）か
+  const [dropKind, setDropKind] = useState<"files" | "nodes">("files");
   // Shift で範囲を選ぶときの起点
   const anchor = useRef<string | null>(null);
+  // 囲んで選ぶ（FN0301-BR35）。座標は一覧の中身の上の位置（スクロールしても変わらない）
+  const listRef = useRef<HTMLDivElement>(null);
+  const [lasso, setLasso] = useState<Lasso | null>(null);
+  // 囲み終えたときのクリックで、選んだものを消さないように
+  const suppressClick = useRef(false);
 
   const columns = useMemo<ColumnDef<Node>[]>(
     () => [
@@ -331,11 +359,111 @@ function NodeTable({
     !!keyboardEnabled,
   );
 
-  // 背景（表示中のフォルダ）へのドロップ。行の移動は同じフォルダなので何もしない
+  // 空いているところ・名前の外の列からドラッグすると、囲んだ行を選ぶ（エクスプローラーと同じ）。
+  // Ctrl・Shift を押していれば、今選んでいるものに足す
+  const startLasso = (event: React.MouseEvent<HTMLDivElement>) => {
+    const list = listRef.current;
+    const target = event.target as HTMLElement;
+    if (event.button !== 0 || !list || renamingPath) {
+      return;
+    }
+    const cell = target.closest<HTMLElement>("td[data-column]");
+    const fromBackground = target === list || target.tagName === "TBODY" || target.tagName === "TABLE";
+    if (!fromBackground && !(cell && LASSO_COLUMNS.has(cell.dataset.column ?? ""))) {
+      return;
+    }
+    // 行のドラッグ（移動）と文字の選択を始めない
+    event.preventDefault();
+    const base = event.ctrlKey || event.metaKey || event.shiftKey ? new Set(selected) : new Set<string>();
+    const point = (clientX: number, clientY: number) => {
+      const rect = list.getBoundingClientRect();
+      return { x: clientX - rect.left + list.scrollLeft, y: clientY - rect.top + list.scrollTop };
+    };
+    const start = point(event.clientX, event.clientY);
+    let last = { clientX: event.clientX, clientY: event.clientY };
+    let active = false;
+
+    const update = () => {
+      const end = point(last.clientX, last.clientY);
+      if (!active) {
+        if (Math.hypot(end.x - start.x, end.y - start.y) < LASSO_THRESHOLD) {
+          return;
+        }
+        active = true;
+      }
+      setLasso({ x0: start.x, y0: start.y, x1: end.x, y1: end.y });
+      const top = Math.min(start.y, end.y);
+      const bottom = Math.max(start.y, end.y);
+      const listTop = list.getBoundingClientRect().top - list.scrollTop;
+      const inside: string[] = [];
+      list.querySelectorAll<HTMLElement>("tr[data-path]").forEach((row) => {
+        const rowRect = row.getBoundingClientRect();
+        const rowTop = rowRect.top - listTop;
+        if (rowTop < bottom && rowTop + rowRect.height > top) {
+          inside.push(row.dataset.path ?? "");
+        }
+      });
+      onSelectionChange(new Set([...base, ...inside]));
+      if (inside.length > 0) {
+        anchor.current = inside[start.y <= end.y ? inside.length - 1 : 0];
+      }
+    };
+
+    // 端に寄せている間は、動かさなくてもスクロールを続ける
+    const timer = window.setInterval(() => {
+      const rect = list.getBoundingClientRect();
+      const delta =
+        last.clientY < rect.top + LASSO_EDGE ? -16 : last.clientY > rect.bottom - LASSO_EDGE ? 16 : 0;
+      if (active && delta !== 0) {
+        list.scrollTop += delta;
+        update();
+      }
+    }, 30);
+
+    const handleMove = (moveEvent: MouseEvent) => {
+      last = { clientX: moveEvent.clientX, clientY: moveEvent.clientY };
+      update();
+    };
+    const handleUp = () => {
+      window.clearInterval(timer);
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+      if (active) {
+        suppressClick.current = true;
+        // クリックが来なかったとき（一覧の外で離した）のために、少し後で戻す
+        window.setTimeout(() => {
+          suppressClick.current = false;
+        }, 0);
+      }
+      setLasso(null);
+    };
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+  };
+
+  // ほかの場所のウィンドウから運んだものは移せない（パスは場所の中でしか使えないため）
+  const rejectOtherPlace = (event: React.DragEvent) => {
+    if (isFromOtherPlace(event.dataTransfer)) {
+      showMessage("error", "ほかの場所（自分の PC・共有サーバー）のウィンドウからは移せません");
+      return true;
+    }
+    return false;
+  };
+
+  // 背景（表示中のフォルダ）へのドロップ。このウィンドウの同じフォルダの行なら何もしない。
+  // ほかのウィンドウ（FN0301-BR36）から運んだ行は、表示中のフォルダへ移す（Ctrl でコピー）
   const handleBackgroundDrop = async (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setDropTarget(null);
     if (isNodeDrag(event)) {
+      if (isDragFrom(currentPath) || rejectOtherPlace(event)) {
+        return;
+      }
+      // すでにこのフォルダにあるものは除く
+      const paths = draggedPaths(event.dataTransfer).filter((path) => parentPath(path) !== currentPath);
+      if (paths.length > 0 && canDropInto(paths, currentPath)) {
+        onDropNodes(paths, currentPath, wantsCopy(event));
+      }
       return;
     }
     const files = await filesFromDrop(event.dataTransfer);
@@ -349,6 +477,9 @@ function NodeTable({
     event.stopPropagation();
     setDropTarget(null);
     if (isNodeDrag(event)) {
+      if (rejectOtherPlace(event)) {
+        return;
+      }
       const paths = draggedPaths(event.dataTransfer);
       if (paths.length > 0 && canDropInto(paths, node.path)) {
         onDropNodes(paths, node.path, wantsCopy(event));
@@ -364,7 +495,16 @@ function NodeTable({
   return (
     <div
       // 一覧の幅で、出す列を変える（NARROW_HIDDEN）
-      className="@container relative min-h-0 flex-1 overflow-y-auto"
+      ref={listRef}
+      // 下に余白を残す（ファイルが多くても、空いているところから囲み始められるように）
+      className="@container relative min-h-0 flex-1 overflow-y-auto pb-16"
+      onMouseDown={startLasso}
+      onClickCapture={(event) => {
+        if (suppressClick.current) {
+          suppressClick.current = false;
+          event.stopPropagation();
+        }
+      }}
       onClick={(event) => {
         // 空いているところのクリックで選択を外す
         if (event.target === event.currentTarget) {
@@ -380,12 +520,19 @@ function NodeTable({
           return;
         }
         event.preventDefault();
-        // 行の移動は、背景（同じフォルダ）へは何もしない
+        // 行の移動は、このウィンドウの同じフォルダへは何もしない。ほかのウィンドウからなら表示中のフォルダへ移す
         if (isNodeDrag(event)) {
-          event.dataTransfer.dropEffect = "none";
-          setDropTarget(null);
+          if (isDragFrom(currentPath)) {
+            event.dataTransfer.dropEffect = "none";
+            setDropTarget(null);
+            return;
+          }
+          event.dataTransfer.dropEffect = wantsCopy(event) ? "copy" : "move";
+          setDropKind("nodes");
+          setDropTarget(currentPath);
           return;
         }
+        setDropKind("files");
         event.dataTransfer.dropEffect = "copy";
         setDropTarget(currentPath);
       }}
@@ -490,16 +637,19 @@ function NodeTable({
                     if (!isSelected) {
                       onSelectionChange(new Set([node.path]));
                     }
-                    event.dataTransfer.setData(NODE_DRAG_TYPE, JSON.stringify(paths));
-                    event.dataTransfer.effectAllowed = "copyMove";
+                    startNodeDrag(event.dataTransfer, paths, currentPath);
                   }}
-                  onDragEnd={() => setDropTarget(null)}
+                  onDragEnd={() => {
+                    endNodeDrag();
+                    setDropTarget(null);
+                  }}
                   onDragOver={(event) => {
                     if (!folder || (!isFileDrag(event) && !isNodeDrag(event))) {
                       return;
                     }
                     // ドラッグ中の行の中身は dragover では読めないため、選んでいる行を自分自身への移動とみなす
-                    if (isNodeDrag(event) && !canDropInto([...selected], node.path)) {
+                    // （ほかのウィンドウから来たものは、ドロップしたときに確かめる）
+                    if (isNodeDrag(event) && isDragFrom(currentPath) && !canDropInto([...selected], node.path)) {
                       return;
                     }
                     event.preventDefault();
@@ -516,6 +666,7 @@ function NodeTable({
                   {row.getVisibleCells().map((cell) => (
                     <td
                       key={cell.id}
+                      data-column={cell.column.id}
                       className={twMerge(
                         "h-10 px-3",
                         cell.column.id === "actions" && "pr-0 pl-1.5",
@@ -532,10 +683,22 @@ function NodeTable({
         </table>
       )}
 
+      {lasso && (
+        <div
+          className="pointer-events-none absolute z-20 border border-brand bg-brand/10"
+          style={{
+            left: Math.min(lasso.x0, lasso.x1),
+            top: Math.min(lasso.y0, lasso.y1),
+            width: Math.abs(lasso.x1 - lasso.x0),
+            height: Math.abs(lasso.y1 - lasso.y0),
+          }}
+        />
+      )}
+
       {dropTarget === currentPath && (
         <div className="pointer-events-none absolute inset-2 z-20 flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand bg-brand/5 text-sm font-medium text-brand">
           <Upload size={28} />
-          ドロップしてこのフォルダにアップロード
+          {dropKind === "nodes" ? "ドロップしてこのフォルダへ移動（Ctrl でコピー）" : "ドロップしてこのフォルダにアップロード"}
         </div>
       )}
     </div>

@@ -43,6 +43,7 @@ const baseGroups = (navigation: NavigationItem[]): { title: string; rows: Row[] 
     rows: [
       ...navigation.map(({ page, shortcut }) => row(`NAV_${page}`, shortcut)),
       row("PLACE_SWITCH", SHORTCUT.PLACE_SWITCH),
+      row("NEW_WINDOW", SHORTCUT.NEW_WINDOW),
       row("QUICK_OPEN", SHORTCUT.QUICK_OPEN),
       { keys: ["?"], description: SHORTCUT.HELP.description },
     ],

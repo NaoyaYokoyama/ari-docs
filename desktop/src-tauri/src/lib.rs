@@ -1081,6 +1081,42 @@ async fn check_endpoint(app: &AppHandle, endpoint: tauri::Url) -> Result<Option<
     .map_err(|e| e.to_string())
 }
 
+// 新しいウィンドウの名前（label）に付ける番号
+static NEXT_WINDOW: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
+// 新しいウィンドウを開く（FN0301-BR36）。url は画面の中のパス（例: "/?page=%2Ffolder&place=local"。app/windows.ts）。
+// 窓は同じアプリの画面で、同じバックエンド・設定を使う。Windows で窓を作るときは非同期のコマンドにする（同期だと止まる）
+#[tauri::command]
+async fn open_window(url: String, app: AppHandle) -> Result<(), String> {
+  if !url.starts_with('/') || url.starts_with("//") {
+    return Err("開く画面が正しくありません".into());
+  }
+  let label = format!(
+    "win-{}",
+    NEXT_WINDOW.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+  );
+  let mut builder =
+    tauri::WebviewWindowBuilder::new(&app, label, tauri::WebviewUrl::App(PathBuf::from(url)))
+      .title("ari-docs")
+      .inner_size(1200.0, 800.0)
+      .resizable(true)
+      // OS のファイルのドロップを画面に届ける（tauri.conf.json の dragDropEnabled: false と同じ）
+      .disable_drag_drop_handler();
+  // 今の窓から少しずらして開く（重なって見分けにくくならないように）
+  if let Some(position) = app
+    .webview_windows()
+    .values()
+    .find(|window| window.is_focused().unwrap_or(false))
+    .and_then(|window| {
+      let scale = window.scale_factor().ok()?;
+      Some(window.outer_position().ok()?.to_logical::<f64>(scale))
+    })
+  {
+    builder = builder.position(position.x + 32.0, position.y + 32.0);
+  }
+  builder.build().map(|_| ()).map_err(|e| format!("新しいウィンドウを開けません: {e}"))
+}
+
 // 新しい版を調べる。共有サーバーは、サーバーに置いた更新ファイル（API0911）が無ければ、
 // サーバーと同じ版（server_version）を GitHub Releases から取る（サーバーより新しい版にはしない）
 #[tauri::command]
@@ -1219,7 +1255,8 @@ pub fn run() {
       open_download,
       read_watched,
       check_update,
-      install_update
+      install_update,
+      open_window
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

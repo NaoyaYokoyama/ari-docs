@@ -46,6 +46,15 @@ export const SHORTCUT = {
     description: "場所（自分の PC・共有サーバー）を切り替える（デスクトップアプリ）",
   },
 
+  // 今の画面を新しいウィンドウで開く（FN0301-BR36）。Folder は開いているフォルダ
+  NEW_WINDOW: {
+    ctrl: true,
+    shift: true,
+    key: "n",
+    pages: ALL_PAGES,
+    description: "今の画面を新しいウィンドウで開く",
+  },
+
   // "?" は配列によって Shift が要らないため、Shift の有無は見ない（isShortcut）
   HELP: {
     key: "?",

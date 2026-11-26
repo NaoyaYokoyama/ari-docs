@@ -86,6 +86,16 @@ export function initialPlace(config: PlacesConfig): Place {
   return find(read(() => sessionStorage, CURRENT_KEY)) ?? find(start) ?? places[0];
 }
 
+// このウィンドウの今の場所（ブラウザでは空）。窓をまたいだドラッグで、同じ場所かを見分ける（FN0301-BR36）
+export function currentPlaceId() {
+  return read(() => sessionStorage, CURRENT_KEY) ?? "";
+}
+
+// 新しいウィンドウ（FN0301-BR36）で、開いた窓と同じ場所にする。前回の場所は変えない
+export function setCurrentPlace(id: string) {
+  write(() => sessionStorage, CURRENT_KEY, id);
+}
+
 export function rememberPlace(id: string) {
   write(() => sessionStorage, CURRENT_KEY, id);
   write(() => localStorage, LAST_KEY, id);
