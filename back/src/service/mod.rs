@@ -23,6 +23,7 @@ pub mod server_settings;
 pub mod server_update;
 pub mod setting;
 pub mod setup_code;
+pub mod task;
 pub mod trash;
 pub mod user;
 pub mod wiki;

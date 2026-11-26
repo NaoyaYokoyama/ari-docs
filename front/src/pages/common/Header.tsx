@@ -6,6 +6,7 @@ import {
   Folder,
   Home,
   LibraryBig,
+  ListTodo,
   LogOut,
   type LucideIcon,
   Monitor,
@@ -33,6 +34,7 @@ const ICONS: Record<NavigationPage, LucideIcon> = {
   folder: Folder,
   note: FileText,
   wiki: BookOpen,
+  task: ListTodo,
   docs: BookText,
   setting: Settings,
 };

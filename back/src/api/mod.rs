@@ -17,6 +17,7 @@ pub mod search;
 pub mod server_update;
 pub mod setting;
 pub mod system;
+pub mod task;
 pub mod trash;
 pub mod user;
 pub mod validation;

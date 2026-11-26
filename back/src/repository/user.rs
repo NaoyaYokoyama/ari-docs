@@ -171,6 +171,8 @@ pub fn delete_user(conn: &Connection, user_id: &str) -> Result<usize> {
     tx.execute("DELETE FROM admin_device WHERE user_id = ?1", [user_id])?;
     // その人のファイルのロックは外す（FN0301-BR38）
     tx.execute("DELETE FROM node_lock WHERE user_id = ?1", [user_id])?;
+    // その人のタスク（FN0602）
+    tx.execute("DELETE FROM task WHERE user_id = ?1", [user_id])?;
     let result = tx.execute("DELETE FROM user WHERE user_id = ?1", [user_id])?;
     tx.commit()?;
     Ok(result)

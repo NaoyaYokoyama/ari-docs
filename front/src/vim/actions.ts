@@ -27,8 +27,8 @@ export const VIM_ACTIONS = [
   { id: "goFolder", group: "画面", label: "Folder へ", description: "Alt+2 と同じ", keys: "gf" },
   { id: "goNote", group: "画面", label: "Note へ", description: "Alt+3 と同じ", keys: "gn" },
   { id: "goWiki", group: "画面", label: "Wiki へ", description: "Alt+4 と同じ", keys: "gw" },
-  { id: "goDocs", group: "画面", label: "Docs へ", description: "Docs を使う設定のときだけ（Alt+5 と同じ）", keys: "gd" },
-  { id: "goSetting", group: "画面", label: "設定へ", description: "一番右の画面（Alt+5。Docs を使う設定なら Alt+6）", keys: "gs" },
+  { id: "goDocs", group: "画面", label: "Docs へ", description: "Docs を使う設定のときだけ（Alt+6 と同じ）", keys: "gd" },
+  { id: "goSetting", group: "画面", label: "設定へ", description: "一番右の画面（Alt+6。Docs を使う設定なら Alt+7）", keys: "gs" },
   // Folder の一覧のファイル操作（ranger・vifm と同じ考え方）。d は半ページ下へに使うので、切り取りは x にする
   { id: "yank", group: "Folder の操作", label: "コピー", description: "選んでいるものをコピーする（Ctrl+C と同じ）", keys: "yy" },
   { id: "cut", group: "Folder の操作", label: "切り取り", description: "選んでいるものを切り取る（Ctrl+X と同じ）", keys: "x" },

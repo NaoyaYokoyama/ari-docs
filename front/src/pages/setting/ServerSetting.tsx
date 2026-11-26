@@ -216,7 +216,7 @@ export default function ServerSetting() {
         <SettingCard title="機能">
           <SettingRow
             label="Docs（Markdown ビューア）を使う"
-            description="設計書などの Markdown を見る画面です。オンにするとヘッダーの Wiki と Setting の間に出て、Docs が Alt+5、Setting が Alt+6 になります（初期値 オフ）"
+            description="設計書などの Markdown を見る画面です。オンにするとヘッダーの Task と Setting の間に出て、Docs が Alt+6、Setting が Alt+7 になります（初期値 オフ）"
             htmlFor="server-docsEnabled"
           >
             <Toggle

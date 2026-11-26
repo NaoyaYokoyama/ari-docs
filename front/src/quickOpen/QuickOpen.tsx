@@ -7,6 +7,7 @@ import {
   Folder,
   Home,
   Link2,
+  ListTodo,
   LoaderCircle,
   type LucideIcon,
   Monitor,
@@ -179,6 +180,7 @@ const PAGE_ENTRIES: Record<NavigationPage, { name: string; icon: LucideIcon; key
   folder: { name: "Folder", icon: Folder, keywords: "フォルダ ファイル" },
   note: { name: "Note", icon: FileText, keywords: "ノート メモ" },
   wiki: { name: "Wiki", icon: BookOpen, keywords: "ウィキ 共有" },
+  task: { name: "Task", icon: ListTodo, keywords: "タスク やること todo 期限 カンバン" },
   docs: { name: "Docs", icon: BookText, keywords: "ドキュメント 設計書 markdown" },
   setting: { name: "設定", icon: Settings, keywords: "setting せってい" },
 };

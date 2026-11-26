@@ -7,7 +7,7 @@ use crate::{
 };
 
 // ユーザー local を指す列（表・列）。この PC を公開するときに、登録した管理者へ書き換える（docs の FN0005-BR03）
-const LOCAL_USER_COLUMNS: [(&str, &str); 17] = [
+const LOCAL_USER_COLUMNS: [(&str, &str); 18] = [
     ("note", "user_id"),
     ("favorite", "user_id"),
     ("wiki", "user_id"),
@@ -25,6 +25,7 @@ const LOCAL_USER_COLUMNS: [(&str, &str); 17] = [
     ("trash_favorite", "user_id"),
     ("node_lock", "user_id"),
     ("node_version", "replaced_by"),
+    ("task", "user_id"),
 ];
 
 // 入力チェックの結果を、画面に出す文にする

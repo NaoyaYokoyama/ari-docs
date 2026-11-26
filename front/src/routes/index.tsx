@@ -7,6 +7,7 @@ import Home from "@/pages/home/Home";
 import Folder from "@/pages/node/Node";
 import Note from "@/pages/note/Note";
 import Setting from "@/pages/setting/Setting";
+import Task from "@/pages/task/Task";
 import Wiki from "@/pages/wiki/Wiki";
 
 function AppRoutes() {
@@ -17,6 +18,8 @@ function AppRoutes() {
       <Route path="/folder" element={<Folder />} />
       <Route path="/note" element={<Note />} />
       <Route path="/wiki" element={<Wiki />} />
+      {/* 個人のタスク（FN0602） */}
+      <Route path="/task" element={<Task />} />
       {/* Docs を使わない設定（既定）では開けないので Home へ */}
       <Route path="/docs" element={user?.docsEnabled ? <Docs /> : <Navigate to="/" replace />} />
       <Route path="/setting" element={<Setting />} />

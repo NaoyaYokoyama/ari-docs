@@ -7,6 +7,7 @@ export type ShortcutPage =
   | "folder"
   | "note"
   | "wiki"
+  | "task"
   | "docs"
   | "setting";
 
@@ -25,6 +26,7 @@ const ALL_PAGES: ShortcutPage[] = [
   "folder",
   "note",
   "wiki",
+  "task",
   "docs",
   "setting",
 ];
@@ -65,7 +67,7 @@ export const SHORTCUT = {
   CREATE: {
     ctrl: true,
     key: "n",
-    pages: ["folder", "note", "wiki"],
+    pages: ["folder", "note", "wiki", "task"],
     description: "新規作成",
   },
 
@@ -149,7 +151,7 @@ export const SHORTCUT = {
 export const QUICK_OPEN_EVENT = "quick-open";
 
 // 画面移動（ヘッダーのメニューと同じ順。Setting は一番右）
-export type NavigationPage = "home" | "folder" | "note" | "wiki" | "docs" | "setting";
+export type NavigationPage = "home" | "folder" | "note" | "wiki" | "task" | "docs" | "setting";
 
 export type NavigationItem = {
   page: NavigationPage;
@@ -163,12 +165,13 @@ const NAVIGATION_PAGES: { page: NavigationPage; label: string; path: string; des
   { page: "folder", label: "Folder", path: "/folder", description: "フォルダへ移動" },
   { page: "note", label: "Note", path: "/note", description: "Noteへ移動" },
   { page: "wiki", label: "Wiki", path: "/wiki", description: "Wikiへ移動" },
+  { page: "task", label: "Task", path: "/task", description: "タスクへ移動" },
   { page: "docs", label: "Docs", path: "/docs", description: "Docsへ移動" },
   { page: "setting", label: "Setting", path: "/setting", description: "設定へ移動" },
 ];
 
 // Alt+数字は、ヘッダーに出ている画面へ左から順に振る（機能ごとに決めない）。
-// Docs を使わない設定（サーバーの設定。既定）では Docs を出さないので、Setting が Alt+5 になる
+// Docs を使わない設定（サーバーの設定。既定）では Docs を出さないので、Setting が Alt+6 になる
 export function navigationItems(docsEnabled: boolean): NavigationItem[] {
   return NAVIGATION_PAGES.filter((item) => docsEnabled || item.page !== "docs").map((item, index) => ({
     page: item.page,

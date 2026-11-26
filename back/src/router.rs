@@ -22,8 +22,8 @@ use crate::api::{
     backup::handler as backup, content_folder::handler as content_folder,
     content_image::handler as content_image, docs::handler as docs, favorite::handler as favorite,
     home::handler as home, node::handler as node, note::handler as note, search::handler as search,
-    setting::handler as setting, system::handler as system, trash::handler as trash,
-    user::handler as user, wiki::handler as wiki,
+    setting::handler as setting, system::handler as system, task::handler as task,
+    trash::handler as trash, user::handler as user, wiki::handler as wiki,
 };
 
 // 受け取る大きさの上限（1 GB）。ファイルのアップロードはサーバーの設定の上限を使う（FN0902-BR07）
@@ -145,6 +145,13 @@ pub fn create_router() -> Router<AppState> {
         .route("/api/backups/restore", post(backup::restore_backup))
         .route("/api/backups/download", get(backup::download_backup))
         // Note
+        // 個人のタスク（FN0602）
+        .route("/api/tasks", get(task::get_tasks))
+        .route("/api/tasks/create", post(task::create_task))
+        .route("/api/tasks/update", post(task::update_task))
+        .route("/api/tasks/order", post(task::reorder_tasks))
+        .route("/api/tasks/delete", post(task::delete_task))
+        .route("/api/tasks/delete-done", post(task::delete_done_tasks))
         .route("/api/notes", get(note::get_notes))
         .route("/api/note/{node_id}", get(note::get_note))
         .route("/api/note/create", post(note::create_note))

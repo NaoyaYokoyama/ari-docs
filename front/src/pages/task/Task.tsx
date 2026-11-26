@@ -1,0 +1,491 @@
+import { CalendarDays, Columns3, List, ListTodo, Plus, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { twMerge } from "tailwind-merge";
+
+import { createTask, deleteDoneTasks, deleteTask, getTasks, reorderTasks, updateTask } from "@/api/task";
+import { useApp } from "@/app/AppContext";
+import Button from "@/components/common/Button";
+import EmptyState from "@/components/common/EmptyState";
+import Input from "@/components/common/Input";
+import Spinner from "@/components/common/Spinner";
+import { errorMessage } from "@/lib/format";
+import TaskDialog from "@/pages/task/TaskDialog";
+import { compareForList, DUE_CLASS, dueInfo, PRIORITIES, priorityOf, STATUSES } from "@/pages/task/taskView";
+import { SHORTCUT, shortcutLabel } from "@/shortcut/shortcut";
+import { usePageShortcuts } from "@/shortcut/usePageShortcuts";
+import type { Task as TaskItem, TaskInput, TaskPriority, TaskStatus } from "@/types/task";
+
+type View = "board" | "list";
+const VIEW_KEY = "task-view";
+
+function readView(): View {
+  try {
+    return localStorage.getItem(VIEW_KEY) === "list" ? "list" : "board";
+  } catch {
+    return "board";
+  }
+}
+
+// 個人のタスク（FN0602）。優先度（高・中・低）と期限を付け、カンバン（未着手・進行中・完了）か一覧で見る
+export default function Task() {
+  const { showMessage, showConfirm } = useApp();
+  const [tasks, setTasks] = useState<TaskItem[] | null>(null);
+  const [view, setView] = useState<View>(readView);
+  const [editing, setEditing] = useState<TaskItem | null>(null);
+  const [title, setTitle] = useState("");
+  const [priority, setPriority] = useState<TaskPriority>("medium");
+  const [dueDate, setDueDate] = useState("");
+  const [hideDone, setHideDone] = useState(false);
+  const titleRef = useRef<HTMLInputElement>(null);
+
+  const load = useCallback(() => {
+    getTasks()
+      .then(setTasks)
+      .catch((error) => {
+        console.error(error);
+        setTasks([]);
+        showMessage("error", errorMessage(error, "タスクを読み込めませんでした"));
+      });
+  }, [showMessage]);
+
+  useEffect(load, [load]);
+
+  const changeView = (next: View) => {
+    setView(next);
+    try {
+      localStorage.setItem(VIEW_KEY, next);
+    } catch {
+      // 覚えられなくても表示は変える
+    }
+  };
+
+  // Ctrl+N で追加の欄へ
+  usePageShortcuts([
+    {
+      shortcut: SHORTCUT.CREATE,
+      handler: () => titleRef.current?.focus(),
+      whileTyping: true,
+      enabled: editing === null,
+    },
+  ]);
+
+  const add = async () => {
+    const text = title.trim();
+    if (!text) {
+      return;
+    }
+    try {
+      const task = await createTask({ title: text, priority, dueDate });
+      setTasks((current) => [task, ...(current ?? [])]);
+      setTitle("");
+      setDueDate("");
+      setPriority("medium");
+    } catch (error) {
+      showMessage("error", errorMessage(error, "タスクを追加できませんでした"));
+    }
+  };
+
+  const save = async (task: TaskItem, input: TaskInput) => {
+    try {
+      const saved = await updateTask(task.taskId, input);
+      setTasks((current) => current?.map((item) => (item.taskId === saved.taskId ? saved : item)) ?? null);
+      setEditing(null);
+      return true;
+    } catch (error) {
+      showMessage("error", errorMessage(error, "タスクを保存できませんでした"));
+      return false;
+    }
+  };
+
+  const remove = async (task: TaskItem) => {
+    if (!(await showConfirm(`「${task.title}」を削除しますか？（元に戻せません）`))) {
+      return;
+    }
+    try {
+      await deleteTask(task.taskId);
+      setTasks((current) => current?.filter((item) => item.taskId !== task.taskId) ?? null);
+      setEditing(null);
+    } catch (error) {
+      showMessage("error", errorMessage(error, "タスクを削除できませんでした"));
+    }
+  };
+
+  const removeDone = async () => {
+    const count = tasks?.filter((task) => task.status === "done").length ?? 0;
+    if (count === 0 || !(await showConfirm(`完了したタスク ${count} 件を削除しますか？（元に戻せません）`))) {
+      return;
+    }
+    try {
+      await deleteDoneTasks();
+      setTasks((current) => current?.filter((task) => task.status !== "done") ?? null);
+    } catch (error) {
+      showMessage("error", errorMessage(error, "削除できませんでした"));
+    }
+  };
+
+  // 状態だけを変える（一覧のチェック）
+  const setStatus = (task: TaskItem, status: TaskStatus) => void save(task, { status });
+
+  // カンバンで動かした（列の中の並び・ほかの列へ）。先に画面を変え、失敗したら読み直す
+  const move = async (taskId: string, status: TaskStatus, index: number) => {
+    if (!tasks) {
+      return;
+    }
+    const column = tasks
+      .filter((task) => task.status === status && task.taskId !== taskId)
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((task) => task.taskId);
+    column.splice(Math.min(index, column.length), 0, taskId);
+    setTasks(
+      tasks.map((task) => {
+        const order = column.indexOf(task.taskId);
+        return order === -1 ? task : { ...task, status, sortOrder: order };
+      }),
+    );
+    try {
+      await reorderTasks(status, column);
+    } catch (error) {
+      showMessage("error", errorMessage(error, "動かせませんでした"));
+      load();
+    }
+  };
+
+  const counts = useMemo(() => {
+    const result = { todo: 0, doing: 0, done: 0, overdue: 0 };
+    for (const task of tasks ?? []) {
+      result[task.status] += 1;
+      if (dueInfo(task)?.state === "overdue") {
+        result.overdue += 1;
+      }
+    }
+    return result;
+  }, [tasks]);
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex flex-wrap items-center gap-3 border-b border-border px-6 py-3">
+        <h1 className="flex items-center gap-2 text-lg font-semibold">
+          <ListTodo size={20} className="text-brand" />
+          タスク
+        </h1>
+        <span className="text-xs text-muted-foreground">
+          未着手 {counts.todo}・進行中 {counts.doing}・完了 {counts.done}
+          {counts.overdue > 0 && <span className="ml-2 text-destructive">期限切れ {counts.overdue}</span>}
+        </span>
+        <span className="flex-1" />
+        <div role="radiogroup" aria-label="表示" className="flex rounded-md border border-border p-0.5">
+          {(
+            [
+              ["board", "ボード", Columns3],
+              ["list", "一覧", List],
+            ] as const
+          ).map(([value, label, Icon]) => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={view === value}
+              onClick={() => changeView(value)}
+              className={twMerge(
+                "flex items-center gap-1.5 rounded px-2.5 py-1 text-xs",
+                view === value ? "bg-accent font-medium text-foreground" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Icon size={14} />
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 追加の欄（Ctrl+N） */}
+      <form
+        className="flex flex-wrap items-center gap-2 border-b border-border px-6 py-2.5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void add();
+        }}
+      >
+        <Input
+          ref={titleRef}
+          aria-label="新しいタスクのタイトル"
+          value={title}
+          maxLength={100}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder={`新しいタスク（Enter で追加。${shortcutLabel(SHORTCUT.CREATE)} でここへ）`}
+          className="min-w-48 flex-1"
+        />
+        <div role="radiogroup" aria-label="優先度" className="flex gap-1">
+          {PRIORITIES.map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              role="radio"
+              aria-checked={priority === item.value}
+              title={`優先度: ${item.label}`}
+              onClick={() => setPriority(item.value)}
+              className={twMerge(
+                "h-9 w-9 rounded-md border text-sm",
+                priority === item.value
+                  ? twMerge("border-transparent font-medium", item.className)
+                  : "border-border text-muted-foreground hover:bg-accent",
+              )}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <Input
+          type="date"
+          aria-label="期限"
+          title="期限"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+          className="w-40"
+        />
+        <Button type="submit" disabled={!title.trim()}>
+          <Plus size={16} />
+          追加
+        </Button>
+      </form>
+
+      <div className="min-h-0 flex-1 overflow-auto">
+        {!tasks ? (
+          <Spinner />
+        ) : view === "board" ? (
+          <Board tasks={tasks} onOpen={setEditing} onMove={(id, status, index) => void move(id, status, index)} onRemoveDone={() => void removeDone()} />
+        ) : (
+          <TaskList
+            tasks={tasks}
+            hideDone={hideDone}
+            onHideDoneChange={setHideDone}
+            onOpen={setEditing}
+            onStatus={setStatus}
+            onRemoveDone={() => void removeDone()}
+          />
+        )}
+      </div>
+
+      <TaskDialog task={editing} onClose={() => setEditing(null)} onSave={save} onDelete={(task) => void remove(task)} />
+    </div>
+  );
+}
+
+const DRAG_TYPE = "application/x-ari-task";
+
+function PriorityBadge({ value }: { value: TaskPriority }) {
+  const item = priorityOf(value);
+  return (
+    <span className={twMerge("shrink-0 rounded px-1.5 py-0.5 text-[0.6875rem] font-medium", item.className)} title={`優先度: ${item.label}`}>
+      {item.label}
+    </span>
+  );
+}
+
+function DueLabel({ task }: { task: TaskItem }) {
+  const due = dueInfo(task);
+  if (!due) {
+    return null;
+  }
+  return (
+    <span className={twMerge("flex shrink-0 items-center gap-1 text-xs tabular-nums", DUE_CLASS[due.state])} title="期限">
+      <CalendarDays size={12} />
+      {due.label}
+      {due.note && <span className="font-medium">{due.note}</span>}
+    </span>
+  );
+}
+
+// カンバン。カードをドラッグして列（状態）と並びを変える。押すと詳細
+function Board({
+  tasks,
+  onOpen,
+  onMove,
+  onRemoveDone,
+}: {
+  tasks: TaskItem[];
+  onOpen: (task: TaskItem) => void;
+  onMove: (taskId: string, status: TaskStatus, index: number) => void;
+  onRemoveDone: () => void;
+}) {
+  // ドロップする場所（列と、その列の何番目に入れるか）
+  const [target, setTarget] = useState<{ status: TaskStatus; index: number } | null>(null);
+  const dragging = useRef<string | null>(null);
+
+  return (
+    <div className="grid h-full min-w-[720px] grid-cols-3 gap-4 p-4">
+      {STATUSES.map((column) => {
+        const items = tasks.filter((task) => task.status === column.value).sort((a, b) => a.sortOrder - b.sortOrder);
+        const over = target?.status === column.value;
+        return (
+          <section
+            key={column.value}
+            aria-label={column.label}
+            className={twMerge(
+              "flex min-h-0 flex-col rounded-xl border border-border bg-muted/40",
+              over && "border-brand bg-brand/5",
+            )}
+            onDragOver={(e) => {
+              if (!e.dataTransfer.types.includes(DRAG_TYPE)) {
+                return;
+              }
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              // カードの上でなければ列の最後
+              if (!(e.target as HTMLElement).closest("[data-task]")) {
+                setTarget({ status: column.value, index: items.length });
+              }
+            }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                setTarget(null);
+              }
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              const id = dragging.current;
+              if (id && target) {
+                onMove(id, target.status, target.index);
+              }
+              setTarget(null);
+              dragging.current = null;
+            }}
+          >
+            <header className="flex items-center gap-2 px-3 pt-3 pb-2 text-sm font-medium">
+              {column.label}
+              <span className="rounded-full bg-background px-2 text-xs font-normal text-muted-foreground">{items.length}</span>
+              <span className="flex-1" />
+              {column.value === "done" && items.length > 0 && (
+                <button
+                  type="button"
+                  onClick={onRemoveDone}
+                  title="完了したタスクをまとめて削除"
+                  className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-normal text-muted-foreground hover:bg-accent hover:text-foreground"
+                >
+                  <Trash2 size={12} />
+                  まとめて削除
+                </button>
+              )}
+            </header>
+            <ul className="min-h-16 flex-1 space-y-2 overflow-y-auto px-3 pb-3">
+              {items.map((task, index) => (
+                <li key={task.taskId} data-task>
+                  {over && target?.index === index && <div className="mb-2 h-0.5 rounded bg-brand" />}
+                  <button
+                    type="button"
+                    draggable
+                    onDragStart={(e) => {
+                      dragging.current = task.taskId;
+                      e.dataTransfer.setData(DRAG_TYPE, task.taskId);
+                      e.dataTransfer.effectAllowed = "move";
+                    }}
+                    onDragEnd={() => {
+                      dragging.current = null;
+                      setTarget(null);
+                    }}
+                    onDragOver={(e) => {
+                      if (!e.dataTransfer.types.includes(DRAG_TYPE)) {
+                        return;
+                      }
+                      e.preventDefault();
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const after = e.clientY > rect.top + rect.height / 2;
+                      setTarget({ status: column.value, index: index + (after ? 1 : 0) });
+                    }}
+                    onClick={() => onOpen(task)}
+                    className={twMerge(
+                      "block w-full cursor-grab rounded-lg border border-border bg-background p-3 text-left shadow-sm transition hover:border-brand/60 active:cursor-grabbing",
+                      task.status === "done" && "opacity-70",
+                    )}
+                  >
+                    <span className="flex items-start gap-2">
+                      <PriorityBadge value={task.priority} />
+                      <span className={twMerge("min-w-0 flex-1 text-sm break-words", task.status === "done" && "line-through")}>
+                        {task.title}
+                      </span>
+                    </span>
+                    {(task.dueDate || task.description) && (
+                      <span className="mt-2 flex items-center gap-2">
+                        <DueLabel task={task} />
+                        {task.description && (
+                          <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{task.description}</span>
+                        )}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              ))}
+              {over && target?.index === items.length && <li className="h-0.5 rounded bg-brand" />}
+              {items.length === 0 && !over && (
+                <li className="py-6 text-center text-xs text-muted-foreground">ここへドラッグ</li>
+              )}
+            </ul>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+// 一覧。状態 → 期限の近い順 → 優先度の高い順。チェックで完了・未着手を切り替える
+function TaskList({
+  tasks,
+  hideDone,
+  onHideDoneChange,
+  onOpen,
+  onStatus,
+  onRemoveDone,
+}: {
+  tasks: TaskItem[];
+  hideDone: boolean;
+  onHideDoneChange: (value: boolean) => void;
+  onOpen: (task: TaskItem) => void;
+  onStatus: (task: TaskItem, status: TaskStatus) => void;
+  onRemoveDone: () => void;
+}) {
+  const shown = tasks.filter((task) => !hideDone || task.status !== "done").sort(compareForList);
+  return (
+    <div className="mx-auto max-w-4xl p-4">
+      <div className="mb-2 flex items-center gap-3 text-xs text-muted-foreground">
+        <label className="flex items-center gap-1.5">
+          <input type="checkbox" checked={hideDone} onChange={(e) => onHideDoneChange(e.target.checked)} className="accent-brand" />
+          完了を隠す
+        </label>
+        <span className="flex-1" />
+        <button type="button" onClick={onRemoveDone} className="flex items-center gap-1 hover:text-foreground">
+          <Trash2 size={12} />
+          完了をまとめて削除
+        </button>
+      </div>
+      {shown.length === 0 ? (
+        <EmptyState icon={ListTodo} title="タスクはありません" description="上の欄に入力して Enter で追加できます" />
+      ) : (
+        <ul className="divide-y divide-border rounded-xl border border-border">
+          {shown.map((task) => {
+            const status = STATUSES.find((item) => item.value === task.status);
+            return (
+              <li key={task.taskId} className="flex items-center gap-3 px-3 py-2 hover:bg-accent/50">
+                <input
+                  type="checkbox"
+                  aria-label={task.status === "done" ? "未着手に戻す" : "完了にする"}
+                  title={task.status === "done" ? "未着手に戻す" : "完了にする"}
+                  checked={task.status === "done"}
+                  onChange={() => onStatus(task, task.status === "done" ? "todo" : "done")}
+                  className="size-4 shrink-0 cursor-pointer accent-brand"
+                />
+                <button type="button" onClick={() => onOpen(task)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                  <PriorityBadge value={task.priority} />
+                  <span className={twMerge("min-w-0 flex-1 truncate text-sm", task.status === "done" && "text-muted-foreground line-through")}>
+                    {task.title}
+                  </span>
+                  <DueLabel task={task} />
+                  <span className="w-14 shrink-0 text-right text-xs text-muted-foreground">{status?.label}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}

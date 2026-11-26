@@ -153,6 +153,7 @@ mod tests {
                 "search_exclusion",
                 "session",
                 "system_setting",
+                "task",
                 "trash",
                 "trash_description",
                 "trash_favorite",

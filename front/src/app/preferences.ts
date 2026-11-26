@@ -8,7 +8,7 @@ import { DEFAULT_VIM_SETTINGS, getVimSettings, replaceVimSettings, type VimSetti
 // この PC（ブラウザの localStorage）だけに保存する、画面の使い方の設定（FN0701）。
 // サーバーには送らないため、PC ごとに変えられる（家と会社で文字の大きさを変える、など）
 export type FontSize = "small" | "normal" | "large" | "xlarge";
-export type StartPage = "home" | "folder" | "note" | "wiki" | "docs" | "last";
+export type StartPage = "home" | "folder" | "note" | "wiki" | "task" | "docs" | "last";
 // system は OS の「アニメーションを減らす」（Windows の「アニメーション効果」など）に合わせる
 export type ReduceMotion = "system" | "on" | "off";
 export type UpdateCheck = "ask" | "on" | "off";
@@ -91,6 +91,7 @@ export const START_PAGES: { value: StartPage; label: string; path?: string }[] =
   { value: "folder", label: "Folder", path: "/folder" },
   { value: "note", label: "Note", path: "/note" },
   { value: "wiki", label: "Wiki", path: "/wiki" },
+  { value: "task", label: "Task", path: "/task" },
   { value: "docs", label: "Docs", path: "/docs" },
   { value: "last", label: "前回の画面" },
 ];
