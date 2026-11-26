@@ -188,6 +188,25 @@
   border-bottom-color: var(--border);
 }
 
+/* 箇条書きの点・番号を出す（Tailwind の初期化が list-style を消し、プレビューの CSS は戻さないため。
+   Note・Wiki・Docs・ファイルのプレビューの Markdown。チェックボックスの行は点を出さない） */
+.wmde-markdown ul {
+  list-style: disc;
+}
+.wmde-markdown ul ul {
+  list-style: circle;
+}
+.wmde-markdown ul ul ul {
+  list-style: square;
+}
+.wmde-markdown ol {
+  list-style: decimal;
+}
+.wmde-markdown ul.contains-task-list,
+.wmde-markdown li.task-list-item {
+  list-style: none;
+}
+
 /* 文字の大きさの設定（FN0701）に合わせて大きくなるよう rem で指定する。
    字体は等幅（日本語は半角 2 文字分）にし、整えた表（FN0404-BR03）の | が縦にそろって見えるようにする（Vim のエディタと同じ字体） */
 .w-md-editor-text .w-md-editor-text-pre > code,
