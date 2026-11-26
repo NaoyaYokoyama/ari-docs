@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, CalendarDays, Columns3, List, ListTodo, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, CalendarDays, Columns3, List, ListTodo, Plus, Repeat, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { twMerge } from "tailwind-merge";
@@ -20,6 +20,7 @@ import {
   type ListSort,
   PRIORITIES,
   priorityOf,
+  repeatLabel,
   STATUSES,
 } from "@/pages/task/taskView";
 import { SHORTCUT, shortcutLabel } from "@/shortcut/shortcut";
@@ -149,6 +150,10 @@ export default function Task() {
     try {
       const saved = await updateTask(task.taskId, input);
       setTasks((current) => current?.map((item) => (item.taskId === saved.taskId ? saved : item)) ?? null);
+      // 繰り返しのタスクを完了にしたら、サーバーが作った次の回を読み込む（FN0602-BR10）
+      if (saved.status === "done" && task.status !== "done" && (input.repeat ?? task.repeat)) {
+        load();
+      }
       setEditing(null);
       return true;
     } catch (error) {
@@ -204,6 +209,11 @@ export default function Task() {
     );
     try {
       await reorderTasks(status, column);
+      // 繰り返しのタスクを完了の列へ動かしたら、次の回を読み込む
+      const moved = tasks.find((task) => task.taskId === taskId);
+      if (status === "done" && moved && moved.status !== "done" && moved.repeat) {
+        load();
+      }
     } catch (error) {
       showMessage("error", errorMessage(error, "動かせませんでした"));
       load();
@@ -346,14 +356,20 @@ function PriorityBadge({ value }: { value: TaskPriority }) {
 
 function DueLabel({ task }: { task: TaskItem }) {
   const due = dueInfo(task);
+  const repeat = task.repeat ? (
+    <span className="flex shrink-0 items-center text-muted-foreground" title={`繰り返し: ${repeatLabel(task.repeat)}`}>
+      <Repeat size={12} />
+    </span>
+  ) : null;
   if (!due) {
-    return null;
+    return repeat;
   }
   return (
     <span className={twMerge("flex shrink-0 items-center gap-1 text-xs tabular-nums", DUE_CLASS[due.state])} title="期限">
       <CalendarDays size={12} />
       {due.label}
       {due.note && <span className="font-medium">{due.note}</span>}
+      {repeat}
     </span>
   );
 }
@@ -494,7 +510,7 @@ function Board({
                         {task.title}
                       </span>
                     </span>
-                    {(task.dueDate || task.description) && (
+                    {(task.dueDate || task.description || task.repeat) && (
                       <span className="mt-2 flex items-center gap-2">
                         <DueLabel task={task} />
                         {task.description && (

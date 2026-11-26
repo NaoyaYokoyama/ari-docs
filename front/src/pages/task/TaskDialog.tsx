@@ -4,8 +4,8 @@ import { twMerge } from "tailwind-merge";
 import Button from "@/components/common/Button";
 import Dialog from "@/components/common/Dialog";
 import Input from "@/components/common/Input";
-import { dateAfter, PRIORITIES, QUICK_DUES, STATUSES } from "@/pages/task/taskView";
-import type { Task, TaskInput, TaskPriority, TaskStatus } from "@/types/task";
+import { dateAfter, PRIORITIES, QUICK_DUES, REPEATS, STATUSES } from "@/pages/task/taskView";
+import type { Task, TaskInput, TaskPriority, TaskRepeat, TaskStatus } from "@/types/task";
 
 type Props = {
   // 変えるタスク（null なら閉じている）
@@ -24,6 +24,7 @@ export default function TaskDialog({ task, onClose, onSave, onDelete }: Props) {
   const [dueDate, setDueDate] = useState("");
   const [status, setStatus] = useState<TaskStatus>("todo");
   const [description, setDescription] = useState("");
+  const [repeat, setRepeat] = useState<TaskRepeat>("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -33,6 +34,7 @@ export default function TaskDialog({ task, onClose, onSave, onDelete }: Props) {
       setDueDate(task.dueDate);
       setStatus(task.status);
       setDescription(task.description);
+      setRepeat(task.repeat ?? "");
       setSaving(false);
     }
   }, [task]);
@@ -48,7 +50,7 @@ export default function TaskDialog({ task, onClose, onSave, onDelete }: Props) {
       return;
     }
     setSaving(true);
-    const saved = await onSave(task, { title: title.trim(), priority, dueDate, status, description });
+    const saved = await onSave(task, { title: title.trim(), priority, dueDate, status, description, repeat });
     if (!saved) {
       setSaving(false);
     }
@@ -178,6 +180,27 @@ export default function TaskDialog({ task, onClose, onSave, onDelete }: Props) {
                 なし
               </Button>
             )}
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="task-repeat" className="mb-1.5 block text-sm font-medium">
+            繰り返し
+          </label>
+          <div className="flex items-center gap-3">
+            <select
+              id="task-repeat"
+              value={repeat}
+              onChange={(e) => setRepeat(e.target.value as TaskRepeat)}
+              className="h-9 w-48 rounded-md border border-input bg-background px-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
+            >
+              {REPEATS.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+            {repeat && <span className="text-xs text-muted-foreground">完了にすると、次の回のタスクを作ります</span>}
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-import type { Task, TaskPriority, TaskStatus } from "@/types/task";
+import type { Task, TaskPriority, TaskRepeat, TaskStatus } from "@/types/task";
 
 // 表示に使う名前・色・並べ方（FN0602）
 
@@ -13,6 +13,18 @@ export const PRIORITIES: { value: TaskPriority; label: string; className: string
   { value: "medium", label: "中", className: "bg-warning/15 text-warning" },
   { value: "low", label: "低", className: "bg-muted text-muted-foreground" },
 ];
+
+export const REPEATS: { value: TaskRepeat; label: string }[] = [
+  { value: "", label: "なし" },
+  { value: "daily", label: "毎日" },
+  { value: "weekdays", label: "平日（月〜金）" },
+  { value: "weekly", label: "毎週" },
+  { value: "monthly", label: "毎月" },
+];
+
+export function repeatLabel(value: TaskRepeat) {
+  return REPEATS.find((item) => item.value === value)?.label ?? "";
+}
 
 export function priorityOf(value: TaskPriority) {
   return PRIORITIES.find((item) => item.value === value) ?? PRIORITIES[1];

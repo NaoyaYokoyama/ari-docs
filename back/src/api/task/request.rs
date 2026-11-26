@@ -13,6 +13,7 @@ pub struct TaskRequest {
     pub priority: Option<String>,
     pub due_date: Option<String>,
     pub status: Option<String>,
+    pub repeat: Option<String>,
 }
 
 impl TaskRequest {
@@ -23,6 +24,7 @@ impl TaskRequest {
             priority: self.priority,
             due_date: self.due_date,
             status: self.status,
+            repeat: self.repeat,
         }
     }
 }

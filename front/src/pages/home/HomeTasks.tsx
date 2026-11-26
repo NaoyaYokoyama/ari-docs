@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { twMerge } from "tailwind-merge";
 
-import { getTasks, onTasksChanged, updateTask } from "@/api/task";
+import { getTasks, notifyTasksChanged, onTasksChanged, updateTask } from "@/api/task";
 import { useApp } from "@/app/AppContext";
 import { errorMessage } from "@/lib/format";
 import { compareForList, DUE_CLASS, dueInfo, priorityOf, today } from "@/pages/task/taskView";
@@ -50,6 +50,10 @@ export default function HomeTasks() {
     setTasks((current) => current?.map((item) => (item.taskId === task.taskId ? { ...item, status: "done" } : item)) ?? null);
     try {
       await updateTask(task.taskId, { status: "done" });
+      // 繰り返しなら次の回ができるので読み直す（FN0602-BR10）
+      if (task.repeat) {
+        notifyTasksChanged();
+      }
       showMessage("info", `「${task.title}」を完了にしました`);
     } catch (error) {
       setTasks((current) => current?.map((item) => (item.taskId === task.taskId ? task : item)) ?? null);
