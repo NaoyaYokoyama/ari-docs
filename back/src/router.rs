@@ -123,6 +123,7 @@ pub fn create_router() -> Router<AppState> {
         .route("/api/nodes/move", post(node::move_nodes))
         .route("/api/nodes/copy", post(node::copy_nodes))
         .route("/api/nodes/lock", post(node::lock_node))
+        .route("/api/nodes/locks", get(node::get_locks))
         .route("/api/nodes/unlock", post(node::unlock_node))
         .route("/api/nodes/download", get(node::download_node))
         .route("/api/nodes/reveal", post(node::reveal_node))
@@ -254,7 +255,10 @@ pub fn create_router() -> Router<AppState> {
         .layer(cors)
         .layer(middleware::from_fn(
             |request: Request, next: Next| async move {
-                println!("{} {}", request.method(), request.uri().path(),);
+                // 受け取った要求は開発のときだけ出す（配布物では出さない。ログが膨らみ、ファイルのパスも残るため）
+                if cfg!(debug_assertions) {
+                    println!("{} {}", request.method(), request.uri().path());
+                }
 
                 next.run(request).await
             },

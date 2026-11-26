@@ -490,16 +490,14 @@ function Node() {
               onTogglePreview={() => setPreviewOpen((open) => !open)}
             />
 
-            {selected.size > 1 && (
-              <SelectionBar
-                count={selected.size}
-                onCut={() => actions.copyToClipboard("cut", selectedNodes)}
-                onCopy={() => actions.copyToClipboard("copy", selectedNodes)}
-                onZip={() => void actions.downloadAsZip(selectedNodes)}
-                onRemove={() => void actions.remove(selectedNodes)}
-                onClear={() => setSelected(new Set())}
-              />
-            )}
+            <SelectionBar
+              count={selected.size}
+              onCut={() => actions.copyToClipboard("cut", selectedNodes)}
+              onCopy={() => actions.copyToClipboard("copy", selectedNodes)}
+              onZip={() => void actions.downloadAsZip(selectedNodes)}
+              onRemove={() => void actions.remove(selectedNodes)}
+              onClear={() => setSelected(new Set())}
+            />
 
             <div className="flex min-h-0 flex-1">
               <div className="flex min-w-0 flex-1 flex-col">

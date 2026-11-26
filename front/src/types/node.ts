@@ -14,6 +14,14 @@ export interface Node {
   lock?: NodeLock;
 }
 
+// ロック中のファイルの一覧の 1 行
+export interface NodeLockItem {
+  path: string;
+  userName: string;
+  mine: boolean;
+  expiresAt: string;
+}
+
 export interface NodeLock {
   // ロックした人の表示名と、自分か
   userName: string;

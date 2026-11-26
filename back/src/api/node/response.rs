@@ -43,3 +43,13 @@ pub struct CopyNodesResponse {
     // コピーしてできた名前（同じ名前があれば「 - コピー」を付ける）
     pub names: Vec<String>,
 }
+
+// ロック中のファイルの一覧（FN0301-BR38）
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NodeLockItem {
+    pub path: String,
+    pub user_name: String,
+    pub mine: bool,
+    pub expires_at: String,
+}

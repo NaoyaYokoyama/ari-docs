@@ -8,6 +8,7 @@ import {
   Keyboard,
   KeyRound,
   Laptop,
+  Lock,
   type LucideIcon,
   MonitorCheck,
   MousePointerClick,
@@ -121,6 +122,14 @@ export const settingSections = [
     group: "管理",
     keywords: "ユーザー 登録 追加 削除 パスワード 再設定 管理者 権限",
     adminOnly: true,
+  },
+  {
+    id: "locks",
+    label: "ロック中のファイル",
+    icon: Lock,
+    group: "管理",
+    keywords: "ロック 鍵 編集 上書き 期限 外す 解除 ファイル Box",
+    sharedOnly: true,
   },
   {
     id: "adminDevices",

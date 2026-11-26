@@ -18,6 +18,7 @@ import { AboutSetting, TransferSetting } from "@/pages/setting/AboutSetting";
 import AdminDeviceSetting from "@/pages/setting/AdminDeviceSetting";
 import BackupSetting from "@/pages/setting/BackupSetting";
 import HostSetting from "@/pages/setting/HostSetting";
+import LockSetting from "@/pages/setting/LockSetting";
 import PlacesSetting from "@/pages/setting/PlacesSetting";
 import { AppearanceSetting, BehaviorSetting } from "@/pages/setting/PreferenceSetting";
 import SearchDictionary from "@/pages/setting/SearchDictionary";
@@ -70,6 +71,7 @@ export default function Setting() {
           {section === "exclusions" && <SearchExclusions />}
           {section === "formats" && <SupportedFiles />}
           {section === "users" && <UserManagement />}
+          {section === "locks" && <LockSetting />}
           {section === "adminDevices" && <AdminDeviceSetting />}
           {section === "server" && <ServerSetting />}
           {section === "backup" && <BackupSetting />}

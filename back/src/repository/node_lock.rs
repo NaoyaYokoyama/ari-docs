@@ -81,6 +81,17 @@ pub fn find_by_paths(
     Ok(result)
 }
 
+// 期限内のロックすべて（期限の近い順。ロック中のファイルの一覧）
+pub fn find_all(conn: &Connection, now: i64) -> Result<Vec<Lock>> {
+    let mut stmt = conn.prepare(&format!(
+        "{SELECT} ORDER BY node_lock.expires_at, node.path"
+    ))?;
+    let locks = stmt
+        .query_map(params![now, now], to_lock)?
+        .collect::<Result<Vec<_>>>()?;
+    Ok(locks)
+}
+
 pub fn upsert(
     conn: &Connection,
     node_id: &str,

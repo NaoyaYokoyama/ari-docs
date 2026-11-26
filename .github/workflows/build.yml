@@ -149,10 +149,41 @@ jobs:
     permissions:
       contents: write
     steps:
+      # 変更点を前のタグからのコミットで作るため、履歴とタグもすべて取る
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          path: repo
+
       - uses: actions/download-artifact@v5
         with:
           path: dist
           merge-multiple: true
+
+      # 変更点（アプリ・サーバーの更新の画面に出す。FN0904-BR13）。前の版のタグからのコミットの題を、
+      # 新しい機能（feat）・直したもの（fix）に分けて並べる。それ以外（chore・docs など）は出さない
+      - name: 変更点を作る
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          cd repo
+          prev="$(git describe --tags --abbrev=0 --match 'v*' "$TAG^" 2>/dev/null || true)"
+          range="${prev:+$prev..}$TAG"
+          section() {
+            local lines
+            lines="$(git log --no-merges --format='%s' "$range" | sed -n "s/^$1\(([^)]*)\)\?: */- /p")"
+            if [ -n "$lines" ]; then
+              printf '## %s\n\n%s\n\n' "$2" "$lines"
+            fi
+          }
+          {
+            section feat "新しい機能"
+            section fix "直したもの"
+          } > ../notes.md
+          if [ ! -s ../notes.md ]; then
+            if [ -n "$prev" ]; then echo "細かな手直し" > ../notes.md; else echo "最初の版です" > ../notes.md; fi
+          fi
+          cat ../notes.md
 
       # 成果物はリポジトリからのフォルダの形のまま届く（desktop/src-tauri/target/…・dist-server/）ので、dist の直下に並べ直す
       - name: 配布物と署名を確かめる
@@ -179,7 +210,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         # 下書きで作り、latest.json を載せてから公開する（latest.json の無い間に、アプリが更新を調べて失敗しないように）
-        run: gh release create "$TAG" dist/* --repo "${{ github.repository }}" --title "$TAG" --generate-notes --draft
+        run: gh release create "$TAG" dist/* --repo "${{ github.repository }}" --title "$TAG" --notes-file notes.md --draft
 
       # Releases の本文（自動で作った変更点）を notes に入れる。アプリの更新の画面に出す（FN0904-BR13）
       - name: latest.json を作って載せる

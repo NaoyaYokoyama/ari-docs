@@ -55,13 +55,25 @@ async function syncBack(watchId: number, { showMessage, showConfirm }: Callbacks
     const current = (await getNodes(file.parentPath)).nodes;
     const server = current.find((node) => node.name === file.name);
     let name = file.name;
-    // 開いたあとにほかの人がサーバーのファイルを更新していたら、上書きするか確かめる
-    if (server && (server.updatedAt !== file.updatedAt || server.size !== file.size)) {
+    const names = new Set(current.map((node) => node.name));
+    // ほかの人がロックしている（FN0301-BR38）なら上書きできないので、別の名前で保存するか確かめる
+    if (server?.lock && !server.lock.mine) {
+      const another = uniqueName(file.name, names);
+      const saveAs = await showConfirm(
+        `「${file.name}」は ${server.lock.userName}さんがロックしているため（${server.lock.expiresAt} まで）、サーバーのファイルには保存できません。変更を「${another}」として保存しますか？`,
+      );
+      if (!saveAs) {
+        showMessage("error", `「${file.name}」の変更はサーバーに保存していません（この PC で開いているファイルには残っています）`);
+        return;
+      }
+      name = another;
+    } else if (server && (server.updatedAt !== file.updatedAt || server.size !== file.size)) {
+      // 開いたあとにほかの人がサーバーのファイルを更新していたら、上書きするか確かめる
       const overwrite = await showConfirm(
         `サーバーの「${file.name}」は、開いたあとにほかの人が更新しています。上書きしますか？「キャンセル」を押すと、別の名前で保存します`,
       );
       if (!overwrite) {
-        name = uniqueName(file.name, new Set(current.map((node) => node.name)));
+        name = uniqueName(file.name, names);
       }
     }
     const bytes = await invoke<ArrayBuffer>("read_watched", { watchId });
@@ -69,6 +81,10 @@ async function syncBack(watchId: number, { showMessage, showConfirm }: Callbacks
     const after = (await getNodes(file.parentPath)).nodes.find((node) => node.name === name);
     if (name === file.name && after) {
       opened.set(watchId, { ...file, updatedAt: after.updatedAt, size: after.size });
+    } else if (after && server?.lock && !server.lock.mine) {
+      // ロックで別の名前にしたときは、次からもその名前に保存する（保存するたびに聞かない）
+      const path = file.parentPath ? `${file.parentPath}/${name}` : name;
+      opened.set(watchId, { ...file, path, name, updatedAt: after.updatedAt, size: after.size });
     }
     showMessage("info", `「${name}」の変更をサーバーに保存しました`);
     window.dispatchEvent(new Event(NODES_CHANGED_EVENT));

@@ -52,7 +52,12 @@ export function useNodeActions({ currentPath, remote, setSelected, refresh, navi
         const watchId = await openBlob(node.name, await downloadNode(node.path));
         if (watchId !== null) {
           watchOpened(watchId, openedFile(node.path, node.name, node.updatedAt, node.size));
-          showMessage("info", `「${node.name}」を開きました。保存すると、変更を自動でサーバーに保存します`);
+          showMessage(
+            "info",
+            node.lock && !node.lock.mine
+              ? `「${node.name}」は ${node.lock.userName}さんがロック中です（${node.lock.expiresAt} まで）。読むことはできますが、変えて保存したときは別の名前でサーバーに保存します`
+              : `「${node.name}」を開きました。保存すると、変更を自動でサーバーに保存します`,
+          );
         }
         return;
       }

@@ -287,8 +287,6 @@ pub async fn upload_node(
                 .await
                 .map_err(to_api_error)?;
         }
-
-        println!("uploaded = {:?}", file_path);
     }
 
     // 入れたフォルダ（中のフォルダへ入れたときも）にも記録する
@@ -649,4 +647,29 @@ pub async fn unlock_node(
     node_lock::unlock(&conn, &user.user_id, auth::is_admin(&user), &request.path)
         .map_err(to_lock_error)?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+// ロック中のファイルの一覧（FN0301-BR38）。だれでも見られる（一覧の鍵の印と同じ）。外せるのは本人と管理者
+pub async fn get_locks(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<Vec<NodeLockItem>>, ApiError> {
+    let conn = connection::connect();
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    require_shared(&state)?;
+    let locks = crate::repository::node_lock::find_all(&conn, node_lock::now()).map_err(|e| {
+        crate::elog!("node lock list error: {e:?}");
+        ApiError::from(StatusCode::INTERNAL_SERVER_ERROR)
+    })?;
+    Ok(Json(
+        locks
+            .into_iter()
+            .map(|lock| NodeLockItem {
+                mine: lock.user_id == user.user_id,
+                path: lock.path,
+                user_name: lock.display_name,
+                expires_at: node_lock::format_time(lock.expires_at),
+            })
+            .collect(),
+    ))
 }
