@@ -10,6 +10,8 @@ export interface SearchItem {
   nodeType: string;
   // ノードの一致した場所。name（ファイル名・パス）/ content（ファイルの中身）。Note・Wiki は空文字
   matchType: string;
+  // 更新日時（"YYYY/MM/DD HH:MM"。分からなければ空文字。FN0201-BR11）
+  updatedAt: string;
 }
 
 export interface SearchResponse {

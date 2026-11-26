@@ -8,6 +8,8 @@ import type { SearchItem } from "@/types/searchItem";
 
 type Props = {
   keyword: string;
+  // 更新日の期間の名前（指定なしは空文字。FN0201-BR11）
+  period: string;
   items: SearchItem[];
 };
 
@@ -33,7 +35,7 @@ function topFolder(path: string) {
   return index === -1 ? "" : path.slice(0, index);
 }
 
-function SearchResult({ keyword, items }: Props) {
+function SearchResult({ keyword, period, items }: Props) {
   const navigate = useNavigate();
   // ファイル・フォルダを場所（一番上のフォルダ）で絞り込む（FN0201-BR08）。null はすべて
   const [place, setPlace] = useState<string | null>(null);
@@ -48,11 +50,14 @@ function SearchResult({ keyword, items }: Props) {
     (item) => item.viewType !== "node" || place === null || topFolder(item.name) === place,
   );
 
+  // 「〇〇」（期間: 1 週間以内）のように、何で探したかを出す
+  const condition = [keyword && `「${keyword}」`, period && `更新日: ${period}`].filter(Boolean).join("・");
+
   if (items.length === 0) {
     return (
       <EmptyState
         icon={SearchX}
-        title={`「${keyword}」に一致するものはありません`}
+        title={`${condition}に一致するものはありません`}
         description="Note・Wiki はタイトルと本文、ファイル・フォルダは名前と中身（Excel・Word・PowerPoint・PDF・テキストなど）から探します。中身は数分前までに置いた・更新したファイルが対象です"
       />
     );
@@ -61,7 +66,7 @@ function SearchResult({ keyword, items }: Props) {
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted-foreground">
-        「{keyword}」の検索結果 {items.length} 件
+        {condition}の検索結果 {items.length} 件
       </p>
 
       {places.length > 1 && (
@@ -125,6 +130,11 @@ function SearchResult({ keyword, items }: Props) {
                           </span>
                         )}
                       </span>
+                      {item.updatedAt && (
+                        <span className="shrink-0 text-xs text-muted-foreground tabular-nums" title="更新日時">
+                          {item.updatedAt}
+                        </span>
+                      )}
                     </button>
                   </li>
                 );

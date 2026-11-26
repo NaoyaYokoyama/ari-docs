@@ -54,6 +54,20 @@ pub fn find_recent_files(conn: &Connection, limit: i64) -> Result<Vec<(String, i
     rows.collect()
 }
 
+// 更新日時（UNIX 秒）が from 以上・to 未満のノードを新しい順に（検索の期間。FN0201-BR11）
+pub fn find_modified_between(
+    conn: &Connection,
+    from: i64,
+    to: i64,
+    limit: i64,
+) -> Result<Vec<(String, String)>> {
+    let mut stmt = conn.prepare(
+        "SELECT node_id, path FROM node WHERE modified_at >= ?1 AND modified_at < ?2 ORDER BY modified_at DESC LIMIT ?3",
+    )?;
+    let rows = stmt.query_map([from, to, limit], |row| Ok((row.get(0)?, row.get(1)?)))?;
+    rows.collect()
+}
+
 pub fn find_node_id_by_node_path(conn: &Connection, path: &str) -> Result<Option<String>> {
     let sql = "
         SELECT

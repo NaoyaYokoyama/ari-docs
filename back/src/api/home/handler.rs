@@ -23,6 +23,8 @@ pub async fn search(
         &request.keyword,
         &request.types,
         request.name_only,
+        &home::Period::parse(&request.updated_from, &request.updated_to)
+            .ok_or(StatusCode::BAD_REQUEST)?,
         &state.config.folder_root,
     )
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;

@@ -3,12 +3,20 @@ import type { SearchType } from "@/app/preferences";
 import type { FavoriteListResponse } from "@/types/favorite";
 import type { SearchResponse } from "@/types/searchItem";
 
-// types は探す種類（空ならすべて。FN0201-BR09）。nameOnly はファイル名・フォルダ名だけで探す（BR10）
-export function search(keyword: string, types: SearchType[] = [], nameOnly = false) {
+// types は探す種類（空ならすべて。FN0201-BR09）。nameOnly はファイル名・フォルダ名だけで探す（BR10）。
+// updatedFrom・updatedTo は更新日の期間（YYYY-MM-DD、両端を含む、空なら区切らない。期間があれば keyword は空でもよい。BR11）
+export function search(
+  keyword: string,
+  types: SearchType[] = [],
+  nameOnly = false,
+  period: { from: string; to: string } = { from: "", to: "" },
+) {
   return post<SearchResponse>("/api/home/search", {
     keyword,
     types,
     nameOnly,
+    updatedFrom: period.from,
+    updatedTo: period.to,
   });
 }
 

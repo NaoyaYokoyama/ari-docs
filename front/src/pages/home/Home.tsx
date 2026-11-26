@@ -10,6 +10,7 @@ import FavoriteSidebar from "@/pages/home/FavoriteSidebar";
 import HomeTasks from "@/pages/home/HomeTasks";
 import RecentUpdates from "@/pages/home/RecentUpdates";
 import SearchBar from "@/pages/home/SearchBar";
+import SearchPeriodFilter, { NO_PERIOD, periodLabel, periodRange, type SearchPeriod } from "@/pages/home/SearchPeriodFilter";
 import SearchResult from "@/pages/home/SearchResult";
 import SearchTypeFilter from "@/pages/home/SearchTypeFilter";
 import { useNavigation } from "@/shortcut/useNavigation";
@@ -25,7 +26,9 @@ const tips = (pages: number): { keys: string[]; label: string }[] => [
 function Home() {
   const { showMessage } = useApp();
   const navigation = useNavigation();
-  const [result, setResult] = useState<{ keyword: string; items: SearchItem[] } | null>(null);
+  const [result, setResult] = useState<{ keyword: string; period: string; items: SearchItem[] } | null>(null);
+  // 更新日の期間（覚えない。FN0201-BR11）
+  const [period, setPeriod] = useState<SearchPeriod>(NO_PERIOD);
   const [searching, setSearching] = useState(false);
 
   // 探す種類（この PC に覚える。空ならすべて。FN0201-BR09）
@@ -37,17 +40,22 @@ function Home() {
     keyword: string,
     types: SearchType[] = searchTypes,
     nameOnly: boolean = searchNameOnly,
+    searchPeriod: SearchPeriod = period,
   ) => {
     // ari-docs の中のリンク（ari://…。FN0004）を貼って Enter なら、探さずにそこへ移る
-    const link = parseAriLink(keyword);
+    const link = keyword ? parseAriLink(keyword) : null;
     if (link) {
       openAriLink(link);
       return;
     }
     setSearching(true);
     try {
-      const response = await search(keyword, types, nameOnly);
-      setResult({ keyword, items: response.searchItems });
+      const response = await search(keyword, types, nameOnly, periodRange(searchPeriod));
+      setResult({
+        keyword,
+        period: searchPeriod.preset ? periodLabel(searchPeriod) : "",
+        items: response.searchItems,
+      });
     } catch (error) {
       console.error(error);
       showMessage("error", "検索に失敗しました");
@@ -68,10 +76,27 @@ function Home() {
               <SearchBar
                 searching={searching}
                 nameOnly={searchNameOnly}
+                allowEmpty={period.preset !== ""}
                 onSearch={(keyword) => void handleSearch(keyword)}
                 onClear={() => setResult(null)}
               />
             </div>
+            <SearchPeriodFilter
+              value={period}
+              onChange={(next) => {
+                setPeriod(next);
+                // 結果を出しているとき・期間だけで探すときは、選んだ期間で探し直す
+                if (result) {
+                  if (result.keyword || next.preset) {
+                    void handleSearch(result.keyword, searchTypes, searchNameOnly, next);
+                  } else {
+                    setResult(null);
+                  }
+                } else if (next.preset) {
+                  void handleSearch("", searchTypes, searchNameOnly, next);
+                }
+              }}
+            />
             <SearchTypeFilter
               value={searchTypes}
               nameOnly={searchNameOnly}
@@ -93,7 +118,7 @@ function Home() {
 
           {result ? (
             <div className="mx-auto mt-8 max-w-2xl">
-              <SearchResult keyword={result.keyword} items={result.items} />
+              <SearchResult keyword={result.keyword} period={result.period} items={result.items} />
             </div>
           ) : (
             <>

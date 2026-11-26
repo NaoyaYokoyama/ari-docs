@@ -10,6 +10,11 @@ pub struct HomeSearchRequest {
     // ファイル名・フォルダ名だけで探す（FN0201-BR10）
     #[serde(default)]
     pub name_only: bool,
+    // 更新日の期間（この PC の日付 YYYY-MM-DD。両端を含む。空なら区切らない。FN0201-BR11）
+    #[serde(default)]
+    pub updated_from: String,
+    #[serde(default)]
+    pub updated_to: String,
 }
 
 // 探して開く（FN0003）

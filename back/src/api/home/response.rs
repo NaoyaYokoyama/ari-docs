@@ -13,6 +13,8 @@ pub struct SearchItem {
     pub node_type: String,
     // ノードの一致した場所。name（ファイル名・パス）/ content（ファイルの中身。FN0202）。Note・Wiki は空文字
     pub match_type: String,
+    // 更新日時（この PC の時刻の "YYYY/MM/DD HH:MM"。分からなければ空文字。FN0201-BR11）
+    pub updated_at: String,
 }
 
 #[derive(Serialize)]
