@@ -31,6 +31,20 @@ export function today() {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
+// 今日から days 日後（YYYY-MM-DD）
+export function dateAfter(days: number) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+// 期限をすぐ選ぶボタン
+export const QUICK_DUES = [
+  { label: "今日", days: 0 },
+  { label: "明日", days: 1 },
+  { label: "1 週間後", days: 7 },
+];
+
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
 // 期限の見え方。過ぎた（完了でない）・今日・3 日以内・それ以外

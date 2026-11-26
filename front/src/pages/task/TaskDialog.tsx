@@ -4,7 +4,7 @@ import { twMerge } from "tailwind-merge";
 import Button from "@/components/common/Button";
 import Dialog from "@/components/common/Dialog";
 import Input from "@/components/common/Input";
-import { PRIORITIES, STATUSES } from "@/pages/task/taskView";
+import { dateAfter, PRIORITIES, QUICK_DUES, STATUSES } from "@/pages/task/taskView";
 import type { Task, TaskInput, TaskPriority, TaskStatus } from "@/types/task";
 
 type Props = {
@@ -159,9 +159,23 @@ export default function TaskDialog({ task, onClose, onSave, onDelete }: Props) {
               onChange={(e) => setDueDate(e.target.value)}
               className="w-48"
             />
+            {QUICK_DUES.map((item) => {
+              const value = dateAfter(item.days);
+              return (
+                <Button
+                  key={item.label}
+                  variant={dueDate === value ? "secondary" : "ghost"}
+                  size="sm"
+                  aria-pressed={dueDate === value}
+                  onClick={() => setDueDate(value)}
+                >
+                  {item.label}
+                </Button>
+              );
+            })}
             {dueDate && (
               <Button variant="ghost" size="sm" onClick={() => setDueDate("")}>
-                期限なしにする
+                なし
               </Button>
             )}
           </div>
