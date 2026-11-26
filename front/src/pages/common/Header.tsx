@@ -11,6 +11,7 @@ import {
   type LucideIcon,
   Monitor,
   Moon,
+  PanelsTopLeft,
   Search,
   Settings,
   Sun,
@@ -48,11 +49,14 @@ const THEMES: { value: ThemePreference; icon: typeof Sun; label: string }[] = [
 type Props = {
   displayName: string;
   onLogout: () => void;
+  // 今の画面を新しいウィンドウで開く（FN0301-BR36）
+  onNewWindow: () => void;
 };
 
 export default function Header({
   displayName,
   onLogout,
+  onNewWindow,
 }: Props) {
   const { user } = useApp();
   const shortcut = useContext(ShortcutContext);
@@ -125,6 +129,13 @@ export default function Header({
             <Kbd>{shortcutLabel(SHORTCUT.QUICK_OPEN)}</Kbd>
           </span>
         </button>
+
+        <IconButton
+          label={`新しいウィンドウで開く（${shortcutLabel(SHORTCUT.NEW_WINDOW)}）`}
+          onClick={onNewWindow}
+        >
+          <PanelsTopLeft size={17} />
+        </IconButton>
 
         <IconButton
           label={`配色: ${THEMES[themeIndex].label}（クリックで「${nextTheme.label}」）`}

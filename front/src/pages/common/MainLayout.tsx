@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useCallback, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { useApp } from "@/app/AppContext";
@@ -33,20 +33,25 @@ function MainLayout({
   const desktop = useDesktop();
   const placeId = desktop?.place.id;
 
-  // 今の画面を新しいウィンドウで開く（FN0301-BR36）。入力中でも効かせる
+  // 今の画面を新しいウィンドウで開く（FN0301-BR36）。ヘッダーの右上のボタンと Ctrl+Shift+N
+  const openNewWindow = useCallback(() => {
+    openCurrentInNewWindow(placeId).catch((error: unknown) => {
+      console.error(error);
+      showMessage("error", "新しいウィンドウを開けませんでした");
+    });
+  }, [placeId, showMessage]);
+
+  // キーは入力中でも効かせる
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       if (isShortcut(event, SHORTCUT.NEW_WINDOW) && !event.isComposing) {
         event.preventDefault();
-        openCurrentInNewWindow(placeId).catch((error: unknown) => {
-          console.error(error);
-          showMessage("error", "新しいウィンドウを開けませんでした");
-        });
+        openNewWindow();
       }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [placeId, showMessage]);
+  }, [openNewWindow]);
   const docsEnabled = !!user?.docsEnabled;
   // リンクに入れる今の場所と、場所を切り替えて開くリンク（FN0004-BR07）
   useAriLinkPlace();
@@ -87,6 +92,7 @@ function MainLayout({
       <Header
         displayName={displayName}
         onLogout={onLogout}
+        onNewWindow={openNewWindow}
       />
 
       <UpdateNotice />
