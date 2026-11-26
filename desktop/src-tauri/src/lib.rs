@@ -1084,6 +1084,19 @@ async fn check_endpoint(app: &AppHandle, endpoint: tauri::Url) -> Result<Option<
 // 新しいウィンドウの名前（label）に付ける番号
 static NEXT_WINDOW: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 
+// OS の通知を出す（タスクの期限。FN0602-BR13）。画面から権限なしで呼べるよう、プラグインの JS ではなくこのコマンドを通す
+#[tauri::command]
+fn notify(title: String, body: String, app: AppHandle) -> Result<(), String> {
+  use tauri_plugin_notification::NotificationExt;
+  app
+    .notification()
+    .builder()
+    .title(title)
+    .body(body)
+    .show()
+    .map_err(|error| format!("通知を出せませんでした: {error}"))
+}
+
 // 新しいウィンドウを開く（FN0301-BR36）。url は画面の中のパス（例: "/?page=%2Ffolder&place=local"。app/windows.ts）。
 // 窓は同じアプリの画面で、同じバックエンド・設定を使う。Windows で窓を作るときは非同期のコマンドにする（同期だと止まる）
 #[tauri::command]
@@ -1197,6 +1210,7 @@ pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_updater::Builder::new().build())
+    .plugin(tauri_plugin_notification::init())
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -1263,7 +1277,8 @@ pub fn run() {
       check_update,
       install_update,
       open_window,
-      other_window_count
+      other_window_count,
+      notify
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

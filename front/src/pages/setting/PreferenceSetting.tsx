@@ -1,3 +1,4 @@
+import { isTauri } from "@tauri-apps/api/core";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { useState } from "react";
 import { twMerge } from "tailwind-merge";
@@ -121,7 +122,14 @@ export function BehaviorSetting() {
   const { user } = useApp();
   // エディタの表示は Note・Wiki の画面でも切り替えるため、開いたときの値を出す
   const [editorMode, setMode] = useState(getEditorMode);
-  const keys: (keyof Preferences)[] = ["startPage", "confirmDelete", "showHidden", "folderPreviewPane", "buttonHints"];
+  const keys: (keyof Preferences)[] = [
+    "startPage",
+    "confirmDelete",
+    "showHidden",
+    "folderPreviewPane",
+    "buttonHints",
+    "taskNotify",
+  ];
   return (
     <SettingPanel title="操作" description={PC_ONLY} plain>
       <SettingCard title="全体">
@@ -214,6 +222,23 @@ export function BehaviorSetting() {
           />
         </SettingRow>
       </SettingCard>
+
+      {isTauri() && (
+        <SettingCard title="Task">
+          <SettingRow
+            label="期限を通知で知らせる"
+            description="アプリを起動したとき（開いたままなら毎朝 8 時すぎ）に、今日が期限のタスクと期限切れのタスクを OS の通知に出します。場所ごとに 1 日 1 回です"
+            htmlFor="task-notify"
+          >
+            <Toggle
+              id="task-notify"
+              label="期限を通知で知らせる"
+              checked={preferences.taskNotify}
+              onChange={(value) => setPreference("taskNotify", value)}
+            />
+          </SettingRow>
+        </SettingCard>
+      )}
 
       <div className="flex justify-end">
         <ResetButton visible={!isDefault(preferences, keys)} onClick={() => resetKeys(keys)} />

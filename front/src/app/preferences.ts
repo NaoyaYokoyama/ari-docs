@@ -45,6 +45,8 @@ export type Preferences = {
   searchNameOnly: boolean;
   // 自分の PC の場所で、起動したときに GitHub で新しい版を調べるか（ask はまだ選んでいない。FN0904-BR04）
   updateCheck: UpdateCheck;
+  // タスクの期限（今日・期限切れ）を OS の通知で知らせる（デスクトップアプリだけ。FN0602-BR13）
+  taskNotify: boolean;
 };
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -58,6 +60,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   searchTypes: [],
   searchNameOnly: false,
   updateCheck: "ask",
+  taskNotify: true,
 };
 
 export const SEARCH_TYPES: { value: SearchType; label: string; description: string }[] = [
@@ -136,6 +139,7 @@ function sanitize(value: unknown): Preferences {
     buttonHints: pick("buttonHints", [true, false]),
     updateCheck: pick("updateCheck", ["ask", "on", "off"]),
     searchNameOnly: pick("searchNameOnly", [true, false]),
+    taskNotify: pick("taskNotify", [true, false]),
     // 知らない種類・重なりは除く。すべて選んでいれば「すべて」（空）と同じ
     searchTypes: (() => {
       const known = SEARCH_TYPES.map((type) => type.value);

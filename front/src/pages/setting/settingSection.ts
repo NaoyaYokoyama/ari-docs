@@ -78,7 +78,7 @@ export const settingSections = [
     label: "操作",
     icon: MousePointerClick,
     group: "表示と操作",
-    keywords: "起動 最初 開く 画面 前回 エディタ 編集 プレビュー 分割 削除 確認 ゴミ箱 隠しファイル ドット プレビュー 右 中身 ボタン 説明 ヒント ツールチップ",
+    keywords: "起動 最初 開く 画面 前回 エディタ 編集 プレビュー 分割 削除 確認 ゴミ箱 隠しファイル ドット プレビュー 右 中身 ボタン 説明 ヒント ツールチップ タスク 期限 通知 お知らせ",
   },
   {
     id: "shortcuts",

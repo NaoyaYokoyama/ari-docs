@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useApp } from "@/app/AppContext";
 import { useDesktop } from "@/app/DesktopContext";
 import { rememberLastPage, startPath } from "@/app/preferences";
+import { startTaskNotice } from "@/app/taskNotice";
 import { hasPendingAriLink, useAriLinkPlace } from "@/app/useAriLink";
 import { openCurrentInNewWindow } from "@/app/windows";
 import Header from "@/pages/common/Header";
@@ -52,6 +53,8 @@ function MainLayout({
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [openNewWindow]);
+  // タスクの期限の通知（デスクトップアプリ。FN0602-BR13）
+  useEffect(() => startTaskNotice(), []);
   const docsEnabled = !!user?.docsEnabled;
   // リンクに入れる今の場所と、場所を切り替えて開くリンク（FN0004-BR07）
   useAriLinkPlace();

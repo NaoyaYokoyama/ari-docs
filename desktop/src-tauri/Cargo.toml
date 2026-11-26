@@ -31,6 +31,7 @@ toml = "1"
 # バックエンド（API・バッチ）を同じプロセスで動かす
 back = { path = "../../back" }
 tauri-plugin-updater = "2"
+tauri-plugin-notification = "2"
 
 # 開発用のビルドでも外部の部品は最適化する（文字認識・PDF の描画・単語の区切りは、最適化しないと数倍遅いため）
 [profile.dev.package."*"]
