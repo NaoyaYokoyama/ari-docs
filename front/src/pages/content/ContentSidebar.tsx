@@ -8,6 +8,7 @@ import {
   FolderOpen,
   FolderPlus,
   Link2,
+  ListPlus,
   Pencil,
   Plus,
   Search,
@@ -38,6 +39,7 @@ import {
   visibleRows,
 } from "@/pages/content/contentTree";
 import type { ContentFoldersState } from "@/pages/content/useContentFolders";
+import { useMakeTask } from "@/pages/task/useMakeTask";
 import { SHORTCUT, shortcutLabel } from "@/shortcut/shortcut";
 import type { ContentFolder } from "@/types/contentFolder";
 import { useVimHandlers } from "@/vim/vimHandlers";
@@ -397,6 +399,7 @@ const ContentSidebar = forwardRef<HTMLElement, Props>(function ContentSidebar(
 
   // ari-docs の中のリンク（FN0004）
   const copyAriLink = useCopyAriLink();
+  const makeTask = useMakeTask();
 
   const menuItems = (row: Row | null): ContextMenuItem[] => {
     if (!row) {
@@ -420,6 +423,7 @@ const ContentSidebar = forwardRef<HTMLElement, Props>(function ContentSidebar(
           icon: Link2,
           onSelect: () => void copyAriLink([{ kind: kind.kind, id: row.item.id }], row.item.title),
         },
+        { label: "タスクにする", icon: ListPlus, onSelect: () => void makeTask({ kind: kind.kind, id: row.item.id }, row.item.title) },
         { label: "移動...", icon: FolderInput, onSelect: () => onMoveRequest(moveTarget(row)) },
         "separator",
         { label: `新しい${kind.label}（同じ場所に）`, icon: Plus, onSelect: () => onCreate(row.folderId) },

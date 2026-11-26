@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, CalendarDays, Columns3, List, ListTodo, Plus, Repeat, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, CalendarDays, Columns3, Link2, List, ListTodo, Plus, Repeat, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { twMerge } from "tailwind-merge";
@@ -9,6 +9,7 @@ import Button from "@/components/common/Button";
 import EmptyState from "@/components/common/EmptyState";
 import Input from "@/components/common/Input";
 import Spinner from "@/components/common/Spinner";
+import { ariLinkLabel } from "@/lib/ariLink";
 import { errorMessage } from "@/lib/format";
 import TaskDialog from "@/pages/task/TaskDialog";
 import {
@@ -16,6 +17,7 @@ import {
   DEFAULT_LIST_SORT,
   DUE_CLASS,
   dueInfo,
+  findAriLinks,
   LIST_SORTS,
   type ListSort,
   parseTaskText,
@@ -380,6 +382,30 @@ function DueLabel({ task }: { task: TaskItem }) {
   );
 }
 
+// カードのメモの 1 行目。ari:// のリンクは名前と印にする（FN0602-BR12）
+function MemoSummary({ text }: { text: string }) {
+  if (!text) {
+    return null;
+  }
+  const links = findAriLinks(text);
+  let rest = text;
+  for (const { text: raw } of links) {
+    rest = rest.split(raw).join(" ");
+  }
+  rest = rest.replace(/\s+/g, " ").trim();
+  return (
+    <span className="flex min-w-0 flex-1 items-center gap-1.5 text-xs text-muted-foreground">
+      {links.length > 0 && (
+        <span className="flex shrink-0 items-center gap-0.5 text-brand" title={links.map((item) => item.text).join("\n")}>
+          <Link2 size={12} />
+          {!rest && <span className="truncate">{ariLinkLabel(links[0].link)}</span>}
+        </span>
+      )}
+      {rest && <span className="truncate">{rest}</span>}
+    </span>
+  );
+}
+
 // カンバン。カードをドラッグして列（状態）と並びを変える。押すと詳細
 function Board({
   tasks,
@@ -519,9 +545,7 @@ function Board({
                     {(task.dueDate || task.description || task.repeat) && (
                       <span className="mt-2 flex items-center gap-2">
                         <DueLabel task={task} />
-                        {task.description && (
-                          <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{task.description}</span>
-                        )}
+                        <MemoSummary text={task.description} />
                       </span>
                     )}
                   </button>
@@ -623,6 +647,9 @@ function TaskList({
                   <span className={twMerge("min-w-0 flex-1 truncate text-sm", task.status === "done" && "text-muted-foreground line-through")}>
                     {task.title}
                   </span>
+                  {findAriLinks(task.description).length > 0 && (
+                    <Link2 size={13} className="shrink-0 text-brand" aria-label="リンクあり" />
+                  )}
                   <DueLabel task={task} />
                   <span className="w-14 shrink-0 text-right text-xs text-muted-foreground">{status?.label}</span>
                 </button>

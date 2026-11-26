@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
+import { BookOpen, File, FileText, Folder } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
+import { useOpenAriLink } from "@/app/useAriLink";
 import Button from "@/components/common/Button";
 import Dialog from "@/components/common/Dialog";
 import Input from "@/components/common/Input";
-import { dateAfter, PRIORITIES, QUICK_DUES, REPEATS, STATUSES } from "@/pages/task/taskView";
+import { type AriLink, ariLinkLabel } from "@/lib/ariLink";
+import { dateAfter, findAriLinks, PRIORITIES, QUICK_DUES, REPEATS, STATUSES } from "@/pages/task/taskView";
 import type { Task, TaskInput, TaskPriority, TaskRepeat, TaskStatus } from "@/types/task";
 
 type Props = {
@@ -16,6 +19,15 @@ type Props = {
 };
 
 const TITLE_MAX = 100;
+
+const LINK_ICONS = { file: File, folder: Folder, note: FileText, wiki: BookOpen };
+
+function linkPlace(link: AriLink) {
+  if ("path" in link) {
+    return link.path.split("/").slice(0, -1).join("/") || "folder";
+  }
+  return "";
+}
 
 // タスクの詳細（FN0602）。タイトル・優先度・期限・状態・メモを変える
 export default function TaskDialog({ task, onClose, onSave, onDelete }: Props) {
@@ -47,12 +59,25 @@ export default function TaskDialog({ task, onClose, onSave, onDelete }: Props) {
 
   const save = async () => {
     if (!task || invalid || saving) {
-      return;
+      return false;
     }
     setSaving(true);
     const saved = await onSave(task, { title: title.trim(), priority, dueDate, status, description, repeat });
     if (!saved) {
       setSaving(false);
+    }
+    return saved;
+  };
+
+  // メモの ari:// のリンク（FN0602-BR12）。開くときは先に保存する（書いたものが消えないように）
+  const links = useMemo(() => findAriLinks(description), [description]);
+  const openAriLink = useOpenAriLink();
+  const openLink = async (link: AriLink) => {
+    if (invalid || (await save())) {
+      if (invalid) {
+        onClose();
+      }
+      openAriLink(link);
     }
   };
 
@@ -213,9 +238,31 @@ export default function TaskDialog({ task, onClose, onSave, onDelete }: Props) {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={5}
-            placeholder="やることの詳しいこと・リンクなど（Ctrl+Enter で保存）"
+            placeholder="やることの詳しいこと・ari:// のリンクなど（Ctrl+Enter で保存）"
             className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
           />
+          {links.length > 0 && (
+            <ul className="mt-2 space-y-1">
+              {links.map(({ text, link }) => {
+                const Icon = LINK_ICONS[link.kind];
+                return (
+                  <li key={text}>
+                    <button
+                      type="button"
+                      onClick={() => void openLink(link)}
+                      title={`${text}（保存して開く）`}
+                      className="flex w-full items-center gap-2 rounded-md border border-border px-2.5 py-1.5 text-left text-sm hover:bg-accent"
+                    >
+                      <Icon size={14} className="shrink-0 text-brand" />
+                      <span className="truncate">{ariLinkLabel(link)}</span>
+                      <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{linkPlace(link)}</span>
+                      <span className="shrink-0 text-xs text-brand">開く</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
       </div>
     </Dialog>

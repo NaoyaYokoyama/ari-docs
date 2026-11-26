@@ -1,3 +1,4 @@
+import { type AriLink, parseAriLink } from "@/lib/ariLink";
 import type { Task, TaskPriority, TaskRepeat, TaskStatus } from "@/types/task";
 
 // 表示に使う名前・色・並べ方（FN0602）
@@ -209,4 +210,16 @@ export function parseTaskText(text: string, now = new Date()) {
     words.pop();
   }
   return { title: words.join(" "), dueDate, priority };
+}
+
+// メモに書いた ari:// のリンク（FN0602-BR12）。同じものは 1 つ
+export function findAriLinks(text: string): { text: string; link: AriLink }[] {
+  const found = new Map<string, AriLink>();
+  for (const match of text.matchAll(/ari:\/\/[^\s<>)\]]+/gi)) {
+    const link = parseAriLink(match[0]);
+    if (link && !found.has(match[0])) {
+      found.set(match[0], link);
+    }
+  }
+  return [...found].map(([text, link]) => ({ text, link }));
 }

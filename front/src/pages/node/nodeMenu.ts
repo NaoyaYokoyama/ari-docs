@@ -16,6 +16,7 @@ import {
   Info,
   Link2,
   ListChecks,
+  ListPlus,
   Lock,
   LockOpen,
   PanelsTopLeft,
@@ -68,6 +69,8 @@ type MenuContext = {
   // ari-docs の中のリンク（FN0004）
   copyLink: (nodes: Node[]) => void;
   copyFolderLink: () => void;
+  // タスクにする（FN0602-BR12）
+  makeTask: (node: Node) => void;
   // 検索の対象外（FN0202-BR16・BR17）。全員の対象外にできる（ローカルモード、共有モードの管理者と許可を付けた利用者。FN0102-BR11）
   canExcludeForAll: boolean;
   excludeFromSearch: (path: string, forAll: boolean) => void;
@@ -234,6 +237,7 @@ export function nodeMenu(context: MenuContext): ContextMenuItem[] {
       },
       ...excludeItems(context, node.path, "検索の対象から外す"),
       { label: "詳細・説明", icon: Info, onSelect: () => context.openDetails(node) },
+      { label: "タスクにする", icon: ListPlus, onSelect: () => context.makeTask(node) },
     );
     if (!folder) {
       items.push({ label: "以前の版", icon: History, onSelect: () => context.versions(node) });

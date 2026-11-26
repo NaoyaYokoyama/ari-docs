@@ -33,6 +33,7 @@ import { useNodeActions } from "@/pages/node/useNodeActions";
 import { useNodeShortcuts } from "@/pages/node/useNodeShortcuts";
 import { useNodeUpload } from "@/pages/node/useNodeUpload";
 import VersionsDialog from "@/pages/node/VersionsDialog";
+import { useMakeTask } from "@/pages/task/useMakeTask";
 import { forgetOpened, rememberOpened } from "@/quickOpen/recent";
 import { isTyping, SHORTCUT } from "@/shortcut/shortcut";
 import { usePageShortcuts } from "@/shortcut/usePageShortcuts";
@@ -242,6 +243,7 @@ function Node() {
 
   // ari-docs の中のリンク（FN0004）。ほかの人が探して開く（Ctrl+P）に貼ると、ここへ移れる
   const copyAriLink = useCopyAriLink();
+  const makeTask = useMakeTask();
   const copyNodeLinks = (targets: NodeItem[]) =>
     void copyAriLink(
       targets.map((node) => ({ kind: node.nodeType === NodeType.Folder ? "folder" : "file", path: node.path })),
@@ -307,6 +309,8 @@ function Node() {
       }),
     copyLink: (targets: NodeItem[]) => copyNodeLinks(targets),
     copyFolderLink: () => copyFolderLink(),
+    makeTask: (node: NodeItem) =>
+      void makeTask({ kind: node.nodeType === NodeType.Folder ? "folder" : "file", path: node.path }, node.name),
     canExcludeForAll: hasPermission(user, "exclusion"),
     excludeFromSearch: (path: string, forAll: boolean) => void excludeFromSearch(path, forAll),
     compareBase,
