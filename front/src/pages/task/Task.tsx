@@ -431,7 +431,7 @@ function Board({
             </header>
             <ul className="min-h-16 flex-1 space-y-2 overflow-y-auto px-3 pb-3">
               {items.map((task, index) => (
-                <li key={task.taskId} data-task>
+                <li key={task.taskId} data-task={task.taskId}>
                   {over && target?.index === index && <div className="mb-2 h-0.5 rounded bg-brand" />}
                   <button
                     type="button"
@@ -455,6 +455,34 @@ function Board({
                       setTarget({ status: column.value, index: index + (after ? 1 : 0) });
                     }}
                     onClick={() => onOpen(task)}
+                    onKeyDown={(e) => {
+                      // キーで動かす（FN0602-BR04）。Alt+←→ で隣の列の一番上へ、Alt+↑↓ で列の中の並び
+                      if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) {
+                        return;
+                      }
+                      const columnIndex = STATUSES.findIndex((item) => item.value === column.value);
+                      let next: { status: TaskStatus; index: number } | null = null;
+                      if (e.key === "ArrowLeft" && columnIndex > 0) {
+                        next = { status: STATUSES[columnIndex - 1].value, index: 0 };
+                      } else if (e.key === "ArrowRight" && columnIndex < STATUSES.length - 1) {
+                        next = { status: STATUSES[columnIndex + 1].value, index: 0 };
+                      } else if (e.key === "ArrowUp" && index > 0) {
+                        next = { status: column.value, index: index - 1 };
+                      } else if (e.key === "ArrowDown" && index < items.length - 1) {
+                        next = { status: column.value, index: index + 1 };
+                      }
+                      if (!next) {
+                        return;
+                      }
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onMove(task.taskId, next.status, next.index);
+                      // 動かした先のカードにフォーカスを残す
+                      requestAnimationFrame(() =>
+                        document.querySelector<HTMLElement>(`[data-task="${task.taskId}"] button`)?.focus(),
+                      );
+                    }}
+                    title="押すと詳細。ドラッグか Alt+矢印で動かせます"
                     className={twMerge(
                       "block w-full cursor-grab rounded-lg border border-border bg-background p-3 text-left shadow-sm transition hover:border-brand/60 active:cursor-grabbing",
                       task.status === "done" && "opacity-70",
@@ -479,7 +507,9 @@ function Board({
               ))}
               {over && target?.index === items.length && <li className="h-0.5 rounded bg-brand" />}
               {items.length === 0 && !over && (
-                <li className="py-6 text-center text-xs text-muted-foreground">ここへドラッグ</li>
+                <li className="py-6 text-center text-xs text-muted-foreground">
+                  {tasks.length === 0 && column.value === "todo" ? "上の欄に入力して Enter で追加できます" : "ここへドラッグ"}
+                </li>
               )}
             </ul>
           </section>
