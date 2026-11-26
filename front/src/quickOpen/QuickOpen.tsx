@@ -1,6 +1,7 @@
 import {
   BookOpen,
   BookText,
+  CalendarCheck,
   CircleHelp,
   FilePlus,
   FileText,
@@ -33,6 +34,7 @@ import Kbd from "@/components/common/Kbd";
 import { ariLinkLabel, parseAriLink } from "@/lib/ariLink";
 import { fileKind } from "@/lib/fileType";
 import { errorMessage } from "@/lib/format";
+import { todayNoteId } from "@/pages/content/todayNote";
 import { visibleSettingSections } from "@/pages/setting/settingSection";
 import { dueInfo, priorityOf } from "@/pages/task/taskView";
 import { type FuzzyMatch, fuzzyMatch, parseQuery, type Query } from "@/quickOpen/fuzzy";
@@ -331,6 +333,19 @@ export default function QuickOpen({ initialQuery, onClose, onHelp }: Props) {
         keywords: "作成 新規 追加 ノート メモ",
         icon: FilePlus,
         run: () => void navigate("/note", { state: { create: true } }),
+      },
+      {
+        key: "command:today-note",
+        kind: "command",
+        name: "今日の Note を開く",
+        location: "",
+        keywords: "日報 日記 デイリー daily メモ 今日 日付",
+        icon: CalendarCheck,
+        run: () => {
+          todayNoteId()
+            .then((noteId) => navigate("/note", { state: { noteId } }))
+            .catch((error: unknown) => showMessage("error", errorMessage(error, "今日の Note を開けませんでした")));
+        },
       },
       {
         key: "command:new-wiki",

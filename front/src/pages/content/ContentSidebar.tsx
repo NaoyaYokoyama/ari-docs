@@ -1,5 +1,6 @@
 import {
   ArrowDownAZ,
+  CalendarCheck,
   CalendarClock,
   ChevronRight,
   Folder,
@@ -84,6 +85,8 @@ type Props = {
   onCurrentFolderChange: (folderId: string) => void;
   onSelect: (id: string) => void;
   onCreate: (folderId: string) => void;
+  // 今日の Note（Note だけ）
+  onOpenToday?: () => void;
   onCreateFolder: (parentId: string) => void;
   onRenameFolder: (folder: ContentFolder) => void;
   onMoveRequest: (target: MoveTarget) => void;
@@ -102,6 +105,7 @@ const ContentSidebar = forwardRef<HTMLElement, Props>(function ContentSidebar(
     onCurrentFolderChange,
     onSelect,
     onCreate,
+    onOpenToday,
     onCreateFolder,
     onRenameFolder,
     onMoveRequest,
@@ -461,6 +465,11 @@ const ContentSidebar = forwardRef<HTMLElement, Props>(function ContentSidebar(
       }
       actions={
         <span className="flex items-center">
+          {onOpenToday && (
+            <IconButton label="今日の Note（タイトルが今日の日付。無ければ作る）" onClick={onOpenToday}>
+              <CalendarCheck size={17} />
+            </IconButton>
+          )}
           <IconButton
             label={`新しいフォルダ${currentFolderId ? `（「${tree.folders.get(currentFolderId)?.name ?? ""}」の中に）` : ""}`}
             onClick={() => onCreateFolder(currentFolderId)}

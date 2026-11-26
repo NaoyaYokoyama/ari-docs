@@ -36,6 +36,7 @@ import { type MarkdownEditorHandle, textareaHandle } from "@/pages/content/markd
 import { resizeImage } from "@/pages/content/markdown/imageSize";
 import MarkdownToolbar from "@/pages/content/MarkdownToolbar";
 import MoveDialog from "@/pages/content/MoveDialog";
+import { todayNoteId } from "@/pages/content/todayNote";
 import { useContentFolders } from "@/pages/content/useContentFolders";
 import { useEditingNotice } from "@/pages/content/useEditingNotice";
 import { rememberOpened, syncRecent } from "@/quickOpen/recent";
@@ -275,6 +276,17 @@ export default function ContentPage({ kind }: Props) {
       return null;
     } catch (error) {
       return errorMessage(error, `${kind.label}の登録に失敗しました`);
+    }
+  };
+
+  // 今日の Note（タイトルが今日の日付）を開く。無ければ作る
+  const openToday = async () => {
+    try {
+      const id = await todayNoteId();
+      await loadItems();
+      await select(id);
+    } catch (error) {
+      showMessage("error", errorMessage(error, "今日の Note を開けませんでした"));
     }
   };
 
@@ -524,6 +536,7 @@ export default function ContentPage({ kind }: Props) {
         onCurrentFolderChange={setCurrentFolderId}
         onSelect={(id) => void select(id)}
         onCreate={(folderId) => void openCreate(folderId)}
+        onOpenToday={kind.kind === "note" ? () => void openToday() : undefined}
         onCreateFolder={(parentId) => setFolderDialog({ mode: "create", parentId })}
         onRenameFolder={(folder) => setFolderDialog({ mode: "rename", folder })}
         onMoveRequest={setMoveTarget}
