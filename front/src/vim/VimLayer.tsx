@@ -37,6 +37,7 @@ const GO_PATHS: Partial<Record<VimActionId, string>> = {
   goFolder: "/folder",
   goNote: "/note",
   goWiki: "/wiki",
+  goTask: "/task",
   goDocs: "/docs",
   goSetting: "/setting",
 };

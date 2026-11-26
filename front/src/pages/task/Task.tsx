@@ -1,8 +1,9 @@
 import { ArrowDown, ArrowUp, CalendarDays, Columns3, List, ListTodo, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { twMerge } from "tailwind-merge";
 
-import { createTask, deleteDoneTasks, deleteTask, getTasks, reorderTasks, updateTask } from "@/api/task";
+import { createTask, deleteDoneTasks, deleteTask, getTasks, onTasksChanged, reorderTasks, updateTask } from "@/api/task";
 import { useApp } from "@/app/AppContext";
 import Button from "@/components/common/Button";
 import EmptyState from "@/components/common/EmptyState";
@@ -75,6 +76,30 @@ export default function Task() {
   }, [showMessage]);
 
   useEffect(load, [load]);
+  useEffect(() => onTasksChanged(load), [load]);
+
+  // ホーム・探して開くから来たとき（FN0602-BR08）。taskId はそのタスクの詳細、create は追加の欄へ
+  const location = useLocation();
+  const state = location.state as { taskId?: string; create?: boolean } | null;
+  const loaded = tasks !== null;
+  const handledKey = useRef("");
+  useEffect(() => {
+    if (!loaded || handledKey.current === location.key) {
+      return;
+    }
+    handledKey.current = location.key;
+    if (state?.taskId) {
+      const task = tasks.find((item) => item.taskId === state.taskId);
+      if (task) {
+        setEditing(task);
+      } else {
+        showMessage("error", "タスクが見つかりませんでした（削除された可能性があります）");
+      }
+    } else if (state?.create) {
+      titleRef.current?.focus();
+    }
+    // 読み込んだとき・別の画面から開き直したときだけ動かす
+  }, [loaded, location.key]);
 
   const changeView = (next: View) => {
     setView(next);

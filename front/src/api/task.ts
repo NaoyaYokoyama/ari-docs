@@ -27,3 +27,15 @@ export function deleteTask(taskId: string) {
 export function deleteDoneTasks() {
   return post("/api/tasks/delete-done", {});
 }
+
+// ほかの画面（探して開くの「タスクに追加」など）でタスクを変えたことを、開いているタスクの一覧に知らせる
+const CHANGED = "ari-docs:tasks-changed";
+
+export function notifyTasksChanged() {
+  window.dispatchEvent(new Event(CHANGED));
+}
+
+export function onTasksChanged(handler: () => void) {
+  window.addEventListener(CHANGED, handler);
+  return () => window.removeEventListener(CHANGED, handler);
+}

@@ -7,6 +7,7 @@ import {
   Folder,
   Home,
   Link2,
+  ListPlus,
   ListTodo,
   LoaderCircle,
   type LucideIcon,
@@ -21,6 +22,7 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 import { quickOpen, type QuickOpenItem } from "@/api/quickOpen";
+import { createTask, getTasks, notifyTasksChanged } from "@/api/task";
 import { useApp } from "@/app/AppContext";
 import { useDesktop } from "@/app/DesktopContext";
 import { usePreferences } from "@/app/preferences";
@@ -30,14 +32,16 @@ import { useGuardedNavigate } from "@/app/useGuardedNavigate";
 import Kbd from "@/components/common/Kbd";
 import { ariLinkLabel, parseAriLink } from "@/lib/ariLink";
 import { fileKind } from "@/lib/fileType";
+import { errorMessage } from "@/lib/format";
 import { visibleSettingSections } from "@/pages/setting/settingSection";
+import { dueInfo, priorityOf } from "@/pages/task/taskView";
 import { type FuzzyMatch, fuzzyMatch, parseQuery, type Query } from "@/quickOpen/fuzzy";
 import { readRecent, type RecentEntry, recentKey, rememberOpened } from "@/quickOpen/recent";
 import { type NavigationPage, shortcutLabel } from "@/shortcut/shortcut";
 import { useNavigation } from "@/shortcut/useNavigation";
 import { setVimSettings, useVimSettings } from "@/vim/vimSettings";
 
-type Kind = RecentEntry["kind"] | "page" | "command" | "setting";
+type Kind = RecentEntry["kind"] | "page" | "command" | "setting" | "task";
 
 const KIND_LABELS: Record<Kind, string> = {
   note: "Note",
@@ -47,6 +51,7 @@ const KIND_LABELS: Record<Kind, string> = {
   page: "画面",
   command: "操作",
   setting: "設定",
+  task: "タスク",
 };
 
 type Entry = {
@@ -198,6 +203,8 @@ export default function QuickOpen({ initialQuery, onClose, onHelp }: Props) {
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
   const [recent] = useState(() => readRecent(user?.userId ?? ""));
+  // 自分の未完了のタスク（FN0602-BR09）。数は多くないので開いたときにまとめて読み、この画面で探す
+  const [tasks, setTasks] = useState<Entry[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const request = useRef(0);
@@ -216,6 +223,31 @@ export default function QuickOpen({ initialQuery, onClose, onHelp }: Props) {
       }
     };
   }, []);
+
+  useEffect(() => {
+    getTasks()
+      .then((items) =>
+        setTasks(
+          items
+            .filter((task) => task.status !== "done")
+            .map((task) => {
+              const due = dueInfo(task);
+              return {
+                key: `task:${task.taskId}`,
+                kind: "task",
+                name: task.title,
+                location: [`優先度 ${priorityOf(task.priority).label}`, task.status === "doing" ? "進行中" : "", due ? `期限 ${due.label}${due.note ? ` ${due.note}` : ""}` : ""]
+                  .filter(Boolean)
+                  .join("・"),
+                keywords: "タスク やること todo",
+                icon: ListTodo,
+                run: () => void navigate("/task", { state: { taskId: task.taskId } }),
+              } satisfies Entry;
+            }),
+        ),
+      )
+      .catch(console.error);
+  }, [navigate]);
 
   // ari-docs の中のリンク（ari://…。FN0004）を貼ったときは、そのリンクだけを出す（サーバーには探しに行かない）
   const ariLink = useMemo(() => parseAriLink(query), [query]);
@@ -309,6 +341,15 @@ export default function QuickOpen({ initialQuery, onClose, onHelp }: Props) {
         icon: FilePlus,
         run: () => void navigate("/wiki", { state: { create: true } }),
       },
+      {
+        key: "command:new-task",
+        kind: "command",
+        name: "新しいタスクを作る",
+        location: "",
+        keywords: "作成 新規 追加 タスク やること todo",
+        icon: ListPlus,
+        run: () => void navigate("/task", { state: { create: true } }),
+      },
       ...themes
         .filter((theme) => theme.value !== preference)
         .map<Entry>((theme) => ({
@@ -388,8 +429,27 @@ export default function QuickOpen({ initialQuery, onClose, onHelp }: Props) {
       const key = recentKey(content);
       byKey.set(key, contentEntry(content, byKey.get(key)?.recent));
     }
-    return rank(parsed, [...byKey.values(), ...commands, ...settings]);
-  }, [ariLink, openAriLink, parsed, recentEntries, remote, commands, settings]);
+    // 打った文字をそのままタスクにする項目は一番下（Enter で開くものを横取りしないため。FN0602-BR09）
+    const title = query.trim();
+    const addTask: Row = {
+      key: "command:add-task",
+      kind: "command",
+      name: `タスクに追加: ${title}`,
+      location: "優先度 中・期限なし",
+      icon: ListPlus,
+      run: () => {
+        createTask({ title, priority: "medium", dueDate: "" })
+          .then(() => {
+            notifyTasksChanged();
+            showMessage("info", `タスク「${title}」を追加しました`);
+          })
+          .catch((error: unknown) => showMessage("error", errorMessage(error, "タスクを追加できませんでした")));
+      },
+      match: null,
+    };
+    const ranked = rank(parsed, [...byKey.values(), ...tasks, ...commands, ...settings]);
+    return title.length <= 100 ? [...ranked, addTask] : ranked;
+  }, [ariLink, openAriLink, parsed, query, recentEntries, remote, tasks, commands, settings, showMessage]);
 
   const current = Math.min(active, Math.max(rows.length - 1, 0));
 

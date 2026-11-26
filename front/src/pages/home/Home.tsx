@@ -7,6 +7,7 @@ import { useOpenAriLink } from "@/app/useAriLink";
 import Kbd from "@/components/common/Kbd";
 import { parseAriLink } from "@/lib/ariLink";
 import FavoriteSidebar from "@/pages/home/FavoriteSidebar";
+import HomeTasks from "@/pages/home/HomeTasks";
 import RecentUpdates from "@/pages/home/RecentUpdates";
 import SearchBar from "@/pages/home/SearchBar";
 import SearchResult from "@/pages/home/SearchResult";
@@ -106,6 +107,7 @@ function Home() {
                 </li>
               ))}
             </ul>
+            <HomeTasks />
             <RecentUpdates />
             </>
           )}
