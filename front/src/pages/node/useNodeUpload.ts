@@ -4,6 +4,7 @@ import { getNodes, uploadNode } from "@/api/node";
 import { useApp } from "@/app/AppContext";
 import { uniqueName } from "@/lib/fileType";
 import { errorMessage } from "@/lib/format";
+import { beginTask } from "@/lib/runningTasks";
 import { baseName } from "@/pages/node/nodePath";
 import type { ConflictChoice } from "@/pages/node/UploadConflictDialog";
 import type { Node } from "@/types/node";
@@ -72,6 +73,7 @@ export function useNodeUpload({ currentPath, nodes, refresh }: Options) {
     }
 
     setProgress(0);
+    const endTask = beginTask("ファイルをアップロードしています。");
     try {
       await uploadNode(targets, destPath, setProgress);
       const where = destPath === currentPath ? "" : `「${baseName(destPath)}」に`;
@@ -79,6 +81,7 @@ export function useNodeUpload({ currentPath, nodes, refresh }: Options) {
     } catch (e) {
       showMessage("error", errorMessage(e, "アップロードに失敗しました"));
     } finally {
+      endTask();
       setProgress(null);
       await refresh();
     }

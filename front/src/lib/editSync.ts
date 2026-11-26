@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { getNodes, uploadNode } from "@/api/node";
 import { uniqueName } from "@/lib/fileType";
 import { errorMessage } from "@/lib/format";
+import { beginTask } from "@/lib/runningTasks";
 
 // 共有サーバーから開いたファイルを、保存されたら自動でサーバーに戻す（FN0301-BR28）。
 // デスクトップアプリが一時フォルダのファイルを見張り、保存されると ari-docs://file-changed で知らせる
@@ -51,6 +52,7 @@ async function syncBack(watchId: number, { showMessage, showConfirm }: Callbacks
   if (!file) {
     return;
   }
+  const endTask = beginTask("開いたファイルの変更をサーバーに保存しています。");
   try {
     const current = (await getNodes(file.parentPath)).nodes;
     const server = current.find((node) => node.name === file.name);
@@ -91,6 +93,8 @@ async function syncBack(watchId: number, { showMessage, showConfirm }: Callbacks
   } catch (error) {
     console.error(error);
     showMessage("error", errorMessage(error, `「${file.name}」の変更をサーバーに保存できませんでした`));
+  } finally {
+    endTask();
   }
 }
 

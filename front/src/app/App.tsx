@@ -10,6 +10,7 @@ import ConfirmDialog from "@/components/common/ConfirmDialog";
 import Spinner from "@/components/common/Spinner";
 import Toast from "@/components/common/Toast";
 import { hasOpenedFiles, startEditSync } from "@/lib/editSync";
+import { runningTasks } from "@/lib/runningTasks";
 import Login from "@/pages/common/Login";
 import MainLayout from "@/pages/common/MainLayout";
 import AppRoutes from "@/routes";
@@ -80,13 +81,15 @@ export default function App() {
     void getCurrentWindow()
       .onCloseRequested(async (event) => {
         const { isDirty, showConfirm } = closeState.current;
+        // 途中の作業があるときだけ確かめる（無ければ確かめずに閉じる。新しいウィンドウも同じ。FN0301-BR36）
         const reasons = [
+          ...runningTasks(),
           ...(isDirty ? ["保存していない変更があります。"] : []),
           ...(hasOpenedFiles()
             ? ["共有サーバーから開いたファイルがあります。閉じたあとに保存しても、サーバーには戻りません。"]
             : []),
         ];
-        if (reasons.length > 0 && !(await showConfirm(`${reasons.join("")}アプリを閉じますか？`))) {
+        if (reasons.length > 0 && !(await showConfirm(`${reasons.join("")}このウィンドウを閉じますか？`))) {
           event.preventDefault();
         }
       })

@@ -1117,6 +1117,12 @@ async fn open_window(url: String, app: AppHandle) -> Result<(), String> {
   builder.build().map(|_| ()).map_err(|e| format!("新しいウィンドウを開けません: {e}"))
 }
 
+// 呼んだウィンドウのほかに開いているウィンドウの数（更新で再起動する前に確かめる。FN0301-BR36）
+#[tauri::command]
+fn other_window_count(app: AppHandle) -> usize {
+  app.webview_windows().len().saturating_sub(1)
+}
+
 // 新しい版を調べる。共有サーバーは、サーバーに置いた更新ファイル（API0911）が無ければ、
 // サーバーと同じ版（server_version）を GitHub Releases から取る（サーバーより新しい版にはしない）
 #[tauri::command]
@@ -1256,7 +1262,8 @@ pub fn run() {
       read_watched,
       check_update,
       install_update,
-      open_window
+      open_window,
+      other_window_count
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

@@ -5,6 +5,7 @@ import { useCallback, useSyncExternalStore } from "react";
 import { getServerInfo } from "@/api/auth";
 import { useApp } from "@/app/AppContext";
 import { errorMessage } from "@/lib/format";
+import { beginTask } from "@/lib/runningTasks";
 
 // デスクトップアプリの更新（docs の FN0904）。お知らせ（UpdateNotice）と設定の「情報」で同じ状態を使う
 
@@ -93,14 +94,25 @@ async function installUpdate(): Promise<UpdateState> {
   return state;
 }
 
-// 「更新して再起動」。保存していない変更があれば先に確かめる（FN0904-BR10）
+// 「更新して再起動」。保存していない変更があれば先に確かめる（FN0904-BR10）。
+// ほかのウィンドウ（FN0301-BR36）があれば、それも閉じることを確かめる（中の保存していない変更は確かめられないため）
 export function useInstallUpdate() {
   const { isDirty, showConfirm, showMessage } = useApp();
   return useCallback(async () => {
     if (isDirty && !(await showConfirm("保存していない変更があります。更新して再起動しますか？"))) {
       return;
     }
-    const result = await installUpdate();
+    const others = await invoke<number>("other_window_count").catch(() => 0);
+    if (
+      others > 0 &&
+      !(await showConfirm(
+        `ほかのウィンドウ（${others} 個）も閉じて再起動します。そちらで保存していない変更があれば、先に保存してください。更新して再起動しますか？`,
+      ))
+    ) {
+      return;
+    }
+    const endTask = beginTask("新しい版を取ってきています。");
+    const result = await installUpdate().finally(endTask);
     if (result.kind === "error") {
       showMessage("error", result.message);
     }
