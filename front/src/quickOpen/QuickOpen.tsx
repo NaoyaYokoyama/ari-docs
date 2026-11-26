@@ -36,7 +36,7 @@ import { fileKind } from "@/lib/fileType";
 import { errorMessage } from "@/lib/format";
 import { todayNoteId } from "@/pages/content/todayNote";
 import { visibleSettingSections } from "@/pages/setting/settingSection";
-import { dueInfo, priorityOf } from "@/pages/task/taskView";
+import { dueInfo, parseTaskText, priorityOf } from "@/pages/task/taskView";
 import { type FuzzyMatch, fuzzyMatch, parseQuery, type Query } from "@/quickOpen/fuzzy";
 import { readRecent, type RecentEntry, recentKey, rememberOpened } from "@/quickOpen/recent";
 import { type NavigationPage, shortcutLabel } from "@/shortcut/shortcut";
@@ -445,15 +445,17 @@ export default function QuickOpen({ initialQuery, onClose, onHelp }: Props) {
       byKey.set(key, contentEntry(content, byKey.get(key)?.recent));
     }
     // 打った文字をそのままタスクにする項目は一番下（Enter で開くものを横取りしないため。FN0602-BR09）
-    const title = query.trim();
+    // 文の終わりの「明日」「!高」などは期限・優先度にする（FN0602-BR11）
+    const { title, dueDate, priority } = parseTaskText(query);
+    const due = dueInfo({ dueDate, status: "todo" });
     const addTask: Row = {
       key: "command:add-task",
       kind: "command",
       name: `タスクに追加: ${title}`,
-      location: "優先度 中・期限なし",
+      location: `優先度 ${priorityOf(priority ?? "medium").label}・${due ? `期限 ${due.label}` : "期限なし"}`,
       icon: ListPlus,
       run: () => {
-        createTask({ title, priority: "medium", dueDate: "" })
+        createTask({ title, priority: priority ?? "medium", dueDate })
           .then(() => {
             notifyTasksChanged();
             showMessage("info", `タスク「${title}」を追加しました`);

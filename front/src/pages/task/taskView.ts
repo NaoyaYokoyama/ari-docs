@@ -129,3 +129,84 @@ export function compareForList(sort: ListSort) {
     );
   };
 }
+
+// 足すときの文の終わりの言葉を期限・優先度にする（FN0602-BR11）。「資料を送る 明日」「定例 金曜 !高」など。
+// 空白で区切った最後の言葉から順に読み、読めない言葉が来たらそこまでをタイトルにする
+const WEEKDAY_WORDS = ["日", "月", "火", "水", "木", "金", "土"];
+const PRIORITY_WORDS: Record<string, TaskPriority> = { "!高": "high", "!中": "medium", "!低": "low", "！高": "high", "！中": "medium", "！低": "low" };
+
+function ymd(date: Date) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function toHalfWidth(text: string) {
+  return text.replace(/[０-９／]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0));
+}
+
+// 1 つの言葉を日付にする。読めなければ null
+export function parseDueWord(word: string, now = new Date()): string | null {
+  const base = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const after = (days: number) => {
+    const date = new Date(base);
+    date.setDate(date.getDate() + days);
+    return ymd(date);
+  };
+  const text = toHalfWidth(word);
+  const fixed: Record<string, number> = { 今日: 0, きょう: 0, 明日: 1, あした: 1, 明後日: 2, あさって: 2, 来週: 7 };
+  if (text in fixed) {
+    return after(fixed[text]);
+  }
+  let match = /^(\d{1,3})日後$/.exec(text);
+  if (match) {
+    return after(Number(match[1]));
+  }
+  // 金曜・金曜日（今日を含めて次のその曜日）・来週金曜（来週の月〜日のその曜日）
+  match = /^(来週)?([日月火水木金土])曜日?$/.exec(text);
+  if (match) {
+    const target = WEEKDAY_WORDS.indexOf(match[2]);
+    const today = base.getDay();
+    if (match[1]) {
+      // 来週の月曜からの日数（日曜は週の終わり）
+      const toNextMonday = ((8 - today) % 7) || 7;
+      return after(toNextMonday + ((target + 6) % 7));
+    }
+    return after((target - today + 7) % 7);
+  }
+  // 12/5・12月5日・2027/1/5（年が無く、今日より前なら来年）
+  match = /^(?:(\d{4})[/年])?(\d{1,2})[/月](\d{1,2})日?$/.exec(text);
+  if (match) {
+    const year = match[1] ? Number(match[1]) : base.getFullYear();
+    const month = Number(match[2]) - 1;
+    const day = Number(match[3]);
+    let date = new Date(year, month, day);
+    if (date.getMonth() !== month || date.getDate() !== day) {
+      return null;
+    }
+    if (!match[1] && date < base) {
+      date = new Date(year + 1, month, day);
+    }
+    return ymd(date);
+  }
+  return null;
+}
+
+export function parseTaskText(text: string, now = new Date()) {
+  const words = text.trim().split(/[\s\u3000]+/);
+  let dueDate = "";
+  let priority: TaskPriority | null = null;
+  // タイトルは 1 語は残す
+  while (words.length > 1) {
+    const last = words[words.length - 1];
+    if (!priority && PRIORITY_WORDS[last]) {
+      priority = PRIORITY_WORDS[last];
+    } else {
+      const due = dueDate ? null : parseDueWord(last, now);
+      if (!due) {
+        break;
+      }
+      dueDate = due;
+    }
+    words.pop();
+  }
+  return { title: words.join(" "), dueDate, priority };
+}

@@ -18,6 +18,7 @@ import {
   dueInfo,
   LIST_SORTS,
   type ListSort,
+  parseTaskText,
   PRIORITIES,
   priorityOf,
   repeatLabel,
@@ -130,13 +131,18 @@ export default function Task() {
     },
   ]);
 
+  // 文の終わりの「明日」「金曜」「!高」などを期限・優先度にする（FN0602-BR11）。選んだ期限があればそちらが先
+  const parsed = useMemo(() => parseTaskText(title), [title]);
+  const effectiveDue = dueDate || parsed.dueDate;
+  const effectivePriority = parsed.priority ?? priority;
+
   const add = async () => {
-    const text = title.trim();
+    const text = parsed.title.trim();
     if (!text) {
       return;
     }
     try {
-      const task = await createTask({ title: text, priority, dueDate });
+      const task = await createTask({ title: text, priority: effectivePriority, dueDate: effectiveDue });
       setTasks((current) => [task, ...(current ?? [])]);
       setTitle("");
       setDueDate("");
@@ -282,7 +288,7 @@ export default function Task() {
           value={title}
           maxLength={100}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder={`新しいタスク（Enter で追加。${shortcutLabel(SHORTCUT.CREATE)} でここへ）`}
+          placeholder={`新しいタスク（例: 資料を送る 明日 !高）。Enter で追加・${shortcutLabel(SHORTCUT.CREATE)} でここへ`}
           className="min-w-48 flex-1"
         />
         <div role="radiogroup" aria-label="優先度" className="flex gap-1">
@@ -291,12 +297,12 @@ export default function Task() {
               key={item.value}
               type="button"
               role="radio"
-              aria-checked={priority === item.value}
+              aria-checked={effectivePriority === item.value}
               title={`優先度: ${item.label}`}
               onClick={() => setPriority(item.value)}
               className={twMerge(
                 "h-9 w-9 rounded-md border text-sm",
-                priority === item.value
+                effectivePriority === item.value
                   ? twMerge("border-transparent font-medium", item.className)
                   : "border-border text-muted-foreground hover:bg-accent",
               )}
@@ -309,9 +315,9 @@ export default function Task() {
           type="date"
           aria-label="期限"
           title="期限"
-          value={dueDate}
+          value={effectiveDue}
           onChange={(e) => setDueDate(e.target.value)}
-          className="w-40"
+          className={twMerge("w-40", !dueDate && parsed.dueDate && "border-brand")}
         />
         <Button type="submit" disabled={!title.trim()}>
           <Plus size={16} />
