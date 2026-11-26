@@ -18,7 +18,7 @@ export const PRIORITIES: { value: TaskPriority; label: string; className: string
 export const REPEATS: { value: TaskRepeat; label: string }[] = [
   { value: "", label: "なし" },
   { value: "daily", label: "毎日" },
-  { value: "weekdays", label: "平日（月〜金）" },
+  { value: "weekdays", label: "平日（土日・祝日を除く）" },
   { value: "weekly", label: "毎週" },
   { value: "monthly", label: "毎月" },
 ];

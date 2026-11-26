@@ -174,14 +174,15 @@ pub fn next_due(
     due_date: &str,
     today: chrono::NaiveDate,
 ) -> Option<chrono::NaiveDate> {
-    use chrono::{Datelike, Days, Months, Weekday};
+    use chrono::{Days, Months};
     let base = chrono::NaiveDate::parse_from_str(due_date, "%Y-%m-%d").unwrap_or(today);
     let step = |date: chrono::NaiveDate| -> Option<chrono::NaiveDate> {
         match repeat {
             "daily" => date.checked_add_days(Days::new(1)),
             "weekdays" => {
                 let mut next = date.checked_add_days(Days::new(1))?;
-                while matches!(next.weekday(), Weekday::Sat | Weekday::Sun) {
+                // 土日・祝日は飛ばす
+                while !crate::common::holiday::is_business_day(next) {
                     next = next.checked_add_days(Days::new(1))?;
                 }
                 Some(next)
@@ -433,6 +434,11 @@ mod tests {
         assert_eq!(
             next("weekdays", "2026-11-27").as_deref(),
             Some("2026-11-30")
+        );
+        // 祝日も飛ばす（1/1 は元日）
+        assert_eq!(
+            next("weekdays", "2026-12-31").as_deref(),
+            Some("2027-01-04")
         );
         // 期限が無ければ今日から
         assert_eq!(next("daily", "").as_deref(), Some("2026-11-27"));
