@@ -18,8 +18,6 @@ import type { SearchItem } from "@/types/searchItem";
 const tips = (pages: number): { keys: string[]; label: string }[] => [
   { keys: ["Ctrl", "P"], label: "探して開く" },
   { keys: ["Alt", `1〜${pages}`], label: "画面の移動" },
-  { keys: ["Ctrl", "N"], label: "新規作成" },
-  { keys: ["Ctrl", "S"], label: "保存" },
   { keys: ["?"], label: "ショートカット一覧" },
 ];
 

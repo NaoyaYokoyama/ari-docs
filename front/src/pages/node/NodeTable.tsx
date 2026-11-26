@@ -75,6 +75,43 @@ const LASSO_EDGE = 32;
 
 type Lasso = { x0: number; y0: number; x1: number; y1: number };
 
+// 選ぶためのチェックボックス（FN0301-BR37）。見出しのものは、一部だけ選んでいるとき「－」
+function SelectBox({
+  checked,
+  indeterminate = false,
+  label,
+  onToggle,
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+  label: string;
+  onToggle: (event: React.MouseEvent<HTMLInputElement>) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.indeterminate = indeterminate;
+    }
+  }, [indeterminate]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      aria-label={label}
+      title={label}
+      checked={checked}
+      // 選ぶのはクリックで行う（Shift の範囲選択のため。行のクリック・ダブルクリックには渡さない）
+      onChange={() => {}}
+      onClick={(event) => {
+        event.stopPropagation();
+        onToggle(event);
+      }}
+      onDoubleClick={(event) => event.stopPropagation()}
+      className="size-4 cursor-pointer align-middle accent-brand"
+    />
+  );
+}
+
 // 一覧が狭いとき（右のプレビューを出したとき・ウィンドウが狭いとき）に出さない列。名前の幅を残すため。
 // 説明はプレビュー・詳細でも見られる。幅は一覧（@container）の幅で決める
 const NARROW_HIDDEN: Record<string, string> = {
@@ -116,6 +153,34 @@ function NodeTable({
 
   const columns = useMemo<ColumnDef<Node>[]>(
     () => [
+      // チェックボックスで選ぶ（FN0301-BR37）。キーを押さずに足す・外す。Shift で起点からの範囲を足す
+      {
+        id: "select",
+        size: 36,
+        enableSorting: false,
+        header: () => {
+          const count = nodes.filter((node) => selected.has(node.path)).length;
+          const all = nodes.length > 0 && count === nodes.length;
+          return (
+            <SelectBox
+              label={all ? "すべての選択を外す" : "すべて選ぶ"}
+              checked={all}
+              indeterminate={count > 0 && !all}
+              onToggle={() => onSelectionChange(all ? new Set() : new Set(nodes.map((node) => node.path)))}
+            />
+          );
+        },
+        cell: ({ row }) => {
+          const path = row.original.path;
+          return (
+            <SelectBox
+              label={`「${row.original.name}」を選ぶ`}
+              checked={selected.has(path)}
+              onToggle={(event) => toggleRef.current(path, event.shiftKey)}
+            />
+          );
+        },
+      },
       // 操作のボタンは左端（名前のすぐ横で、幅が広くても目で追いやすい）
       {
         id: "actions",
@@ -233,7 +298,7 @@ function NodeTable({
         ),
       },
     ],
-    [user?.mode, renamingPath, onRenameEnd, onMenu, onPreview, selected, onSelectionChange],
+    [user?.mode, nodes, renamingPath, onRenameEnd, onMenu, onPreview, selected, onSelectionChange],
   );
 
   const table = useReactTable({
@@ -270,6 +335,26 @@ function NodeTable({
     }
     onSelectionChange(new Set([node.path]));
   };
+
+  // チェックボックス（FN0301-BR37）: 1 つを足す・外す。Shift なら起点からの範囲を足す
+  const toggleCheck = (path: string, range: boolean) => {
+    if (range && anchor.current && orderedPaths.includes(anchor.current)) {
+      const from = orderedPaths.indexOf(anchor.current);
+      const to = orderedPaths.indexOf(path);
+      onSelectionChange(new Set([...selected, ...orderedPaths.slice(Math.min(from, to), Math.max(from, to) + 1)]));
+      return;
+    }
+    anchor.current = path;
+    const next = new Set(selected);
+    if (next.has(path)) {
+      next.delete(path);
+    } else {
+      next.add(path);
+    }
+    onSelectionChange(next);
+  };
+  const toggleRef = useRef(toggleCheck);
+  toggleRef.current = toggleCheck;
 
   // ↑↓ で選ぶ（Shift で範囲を広げる）。Vim モードの j・k・gg・G なども同じ動き（FN0702）
   const keyState = useRef({ orderedPaths, selected, onSelectionChange });
@@ -567,6 +652,7 @@ function NodeTable({
                         "h-9 px-3 text-left text-xs font-medium text-muted-foreground",
                         header.column.id === "size" && "text-right",
                         header.column.id === "actions" && "pr-0 pl-1.5",
+                        header.column.id === "select" && "pr-0 pl-3",
                         NARROW_HIDDEN[header.column.id],
                         // 並べ替えられる列は、見出しのセル全体をボタンにする（文字の外も押せるように）
                         header.column.getCanSort() && "p-0",
@@ -670,6 +756,7 @@ function NodeTable({
                       className={twMerge(
                         "h-10 px-3",
                         cell.column.id === "actions" && "pr-0 pl-1.5",
+                        cell.column.id === "select" && "pr-0 pl-3",
                         NARROW_HIDDEN[cell.column.id],
                       )}
                     >
