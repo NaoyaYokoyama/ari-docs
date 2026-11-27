@@ -55,6 +55,7 @@
 - ユーザーは管理者（`user.role_id = 'admin'`）が設定画面で登録・削除・パスワード再設定する。権限は `role_id` の `admin` / `user` だけ（`role` テーブルは T022 で消した）。ユーザーが 1 人もいなければログイン画面で最初の管理者を登録できる。ほかの PC からは登録用のコードが要る（ユーザーか管理者の PC が無い共有サーバーが起動したときに作り、標準出力と `<データのフォルダ>/setup-code.txt` に出す。`127.0.0.1` からは不要。`service/setup_code.rs`。FN0102-BR02）。画面の無い Linux でもサーバーは起動するだけでよい
 - 利用者に付ける許可（FN0102-BR11。`user_permission`）: `dictionary`（検索の辞書）・`exclusion`（全員の検索の対象外）・`backup`（バックアップを取る・一覧・設定。ダウンロード・復元・削除は管理者だけ）。既定は無し。判定は `auth::has_permission`、画面は `/api/me` の `permissions` と `hasPermission`
 - 管理者の PC（FN0102-BR12。`admin_device`）: 管理者の操作は登録した PC からだけ。画面は場所（URL）ごとの鍵を `X-Ari-Device` で送り（`api/client.ts`。個人の設定には入れない。サーバーを呼ぶときは必ず `api/client.ts` を通す）、サーバーは SHA-256 だけを残す。登録していない PC の管理者は `get_login_user` で利用者に落とす（`service/admin_device.rs` の `apply`、`/api/me` の `adminElsewhere`）。PC を足すのは登録した PC で発行するコード（10 分・1 回）、すべて失ったら登録用のコード。サーバーの PC の中でまだ 1 台も無ければログインで自動登録（FN0005 のため）。管理者の判定に `auth::is_admin` を使えば、この仕組みに乗る
+- フォルダごとに見られる人・書ける人を分ける仕組み（フォルダの権限）は作らない（2026-11-27 のユーザーの判断「あまりしたくない」）。提案もしない
 - ユーザー削除ではその人の Note・お気に入り・設定も消し、Wiki は残す。自分は削除できない。管理者はほかの人の管理者・利用者を切り替えられる（自分は不可。`/api/users/role`。FN0102-BR10）
 - 画面移動の `Alt+数字` はヘッダーに出ているメニューへ左から順に振る（Home・Folder・Note・Wiki・Task の順で Setting は一番右。Docs を出さなければ Setting が `Alt+6`、出せば Docs が `Alt+6`・Setting が `Alt+7`。`front/src/shortcut/shortcut.ts` の `navigationItems`）。`?` でショートカット一覧
 - 個人のタスク（docs の FN0602）: 本人だけ（Note と同じ）。優先度 high/medium/low・期限（YYYY-MM-DD）・状態 todo/doing/done・列の並び（`task.sort_order`）・繰り返し（`task.repeat`。完了にしたらサーバーが次の回を作る。`service/task.rs` の `spawn_next`）。画面は `pages/task/`（ボードと一覧）、API は `/api/tasks/…`（`service/task.rs`）。ホームの「やること」（`pages/home/HomeTasks.tsx`）・探して開くの検索とその場の追加・Vim の `gk`。ほかの画面で変えたら `notifyTasksChanged()`。WBS（FN0602-BR14。`parent_id`・`start_date`・`wbs_order`、`pages/task/WbsView.tsx`・`/api/tasks/move`。個人の設定 `taskWbs` で隠せる。Excel への書き出しは作らない）。期限の OS の通知（デスクトップアプリ、`app/taskNotice.ts`・Tauri の `notify`。個人の設定 `taskNotify`。FN0602-BR13）
@@ -151,7 +152,7 @@
 
 ## 作業ルール
 
-- 作業がまとまったらコミットして push してよい。版を出すときは `v<版>` のタグも付けてよい（2026-11-25 のユーザーの許可）。秘密（鍵・.env など）は入れない
+- 作業がまとまったらコミットして push してよい（2026-11-25 のユーザーの許可）。版を出す（`v<版>` のタグ）のはユーザーの合図があったときだけ（2026-11-27）。秘密（鍵・.env など）は入れない
 - `back/data/ari.db` は開発用の使い捨て DB（将来は exe の初期化時に作成する）。バックアップは不要
 - `folder/` はテスト用のデータなので、中のファイル操作は確認不要
 - 意図しない変化を指摘されたら、すぐ差し戻さず原因を説明して「戻すか」を確認する
