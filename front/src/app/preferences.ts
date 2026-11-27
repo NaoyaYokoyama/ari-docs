@@ -1,3 +1,5 @@
+import { isTauri } from "@tauri-apps/api/core";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { useSyncExternalStore } from "react";
 
 import { personalSettingsChanged } from "@/app/personalSettings";
@@ -49,6 +51,8 @@ export type Preferences = {
   taskNotify: boolean;
   // タスクの画面に WBS の表示を出す（FN0602-BR14）
   taskWbs: boolean;
+  // 画面の拡大・縮小（%。デスクトップアプリだけ。Ctrl++・Ctrl+-・Ctrl+0。FN0701-BR17）
+  zoom: number;
 };
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -64,7 +68,11 @@ export const DEFAULT_PREFERENCES: Preferences = {
   updateCheck: "ask",
   taskNotify: true,
   taskWbs: true,
+  zoom: 100,
 };
+
+// 拡大・縮小の段階（ブラウザと同じ刻み）
+export const ZOOM_LEVELS = [50, 67, 75, 80, 90, 100, 110, 125, 150, 175, 200];
 
 export const SEARCH_TYPES: { value: SearchType; label: string; description: string }[] = [
   { value: "excel", label: "Excel・CSV", description: "xlsx・xlsm・xlsb・xls・ods・csv・tsv" },
@@ -144,6 +152,7 @@ function sanitize(value: unknown): Preferences {
     searchNameOnly: pick("searchNameOnly", [true, false]),
     taskNotify: pick("taskNotify", [true, false]),
     taskWbs: pick("taskWbs", [true, false]),
+    zoom: pick("zoom", ZOOM_LEVELS),
     // 知らない種類・重なりは除く。すべて選んでいれば「すべて」（空）と同じ
     searchTypes: (() => {
       const known = SEARCH_TYPES.map((type) => type.value);
@@ -156,6 +165,8 @@ function sanitize(value: unknown): Preferences {
 }
 
 let preferences = read();
+// デスクトップアプリの画面に当てた倍率（同じなら当て直さない）
+let appliedZoom = 100;
 const motionMedia = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 function apply() {
@@ -163,6 +174,13 @@ function apply() {
   const size = FONT_SIZES.find((item) => item.value === preferences.fontSize) ?? FONT_SIZES[1];
   // Tailwind の大きさは rem なので、根元の文字の大きさを変えると画面全体が大きくなる
   root.style.fontSize = `${size.px}px`;
+  // 拡大・縮小は画面全体（文字・画像・アイコン）をそのまま大きくする。ブラウザではブラウザの拡大を使う
+  if (isTauri() && preferences.zoom !== appliedZoom) {
+    appliedZoom = preferences.zoom;
+    getCurrentWebview()
+      .setZoom(preferences.zoom / 100)
+      .catch((error: unknown) => console.error("拡大できませんでした", error));
+  }
   root.classList.toggle(
     "reduce-motion",
     preferences.reduceMotion === "on" ||
@@ -187,6 +205,19 @@ function save() {
 export function setPreference<K extends keyof Preferences>(key: K, value: Preferences[K]) {
   preferences = { ...preferences, [key]: value };
   save();
+}
+
+// 拡大・縮小を 1 段階変える（1 で拡大、-1 で縮小、0 で 100% に戻す）。変えたあとの倍率を返す
+export function stepZoom(direction: 1 | -1 | 0) {
+  const index = ZOOM_LEVELS.indexOf(preferences.zoom);
+  const next =
+    direction === 0
+      ? 100
+      : ZOOM_LEVELS[Math.min(Math.max(index + direction, 0), ZOOM_LEVELS.length - 1)];
+  if (next !== preferences.zoom) {
+    setPreference("zoom", next);
+  }
+  return next;
 }
 
 export function getPreferences() {

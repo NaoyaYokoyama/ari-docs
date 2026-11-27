@@ -1,3 +1,4 @@
+import { isTauri } from "@tauri-apps/api/core";
 import { RotateCcw } from "lucide-react";
 import { Fragment, useState } from "react";
 
@@ -46,6 +47,13 @@ const baseGroups = (navigation: NavigationItem[]): { title: string; rows: Row[] 
       row("NEW_WINDOW", SHORTCUT.NEW_WINDOW),
       row("QUICK_OPEN", SHORTCUT.QUICK_OPEN),
       { keys: ["?"], description: SHORTCUT.HELP.description },
+      ...(isTauri()
+        ? [
+            { keys: ["Ctrl", "+"], description: "拡大（デスクトップアプリ）" },
+            { keys: ["Ctrl", "-"], description: "縮小（デスクトップアプリ）" },
+            { keys: ["Ctrl", "0"], description: "拡大・縮小を 100% に戻す（デスクトップアプリ）" },
+          ]
+        : []),
     ],
   },
   {

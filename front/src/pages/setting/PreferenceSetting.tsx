@@ -1,5 +1,5 @@
 import { isTauri } from "@tauri-apps/api/core";
-import { Monitor, Moon, Sun } from "lucide-react";
+import { Minus, Monitor, Moon, Plus, Sun } from "lucide-react";
 import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 
@@ -14,7 +14,9 @@ import {
   setEditorMode,
   setPreference,
   START_PAGES,
+  stepZoom,
   usePreferences,
+  ZOOM_LEVELS,
 } from "@/app/preferences";
 import { type ThemePreference, useTheme } from "@/app/theme";
 import {
@@ -54,7 +56,7 @@ function resetKeys(keys: (keyof Preferences)[]) {
 export function AppearanceSetting() {
   const { preference, setPreference: setTheme } = useTheme();
   const preferences = usePreferences();
-  const keys: (keyof Preferences)[] = ["fontSize", "reduceMotion"];
+  const keys: (keyof Preferences)[] = ["fontSize", "reduceMotion", "zoom"];
   return (
     <SettingPanel title="表示" description={PC_ONLY} plain>
       <SettingCard title="配色">
@@ -96,6 +98,42 @@ export function AppearanceSetting() {
             onChange={(value) => setPreference("fontSize", value)}
           />
         </SettingRow>
+        {isTauri() && (
+          <SettingRow
+            label="拡大・縮小"
+            description="画面全体（文字・画像・アイコン）を大きく・小さくします。画面共有のときなどに。Ctrl++ で拡大、Ctrl+- で縮小、Ctrl+0 で 100% に戻せます"
+          >
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                aria-label="縮小"
+                disabled={preferences.zoom === ZOOM_LEVELS[0]}
+                onClick={() => stepZoom(-1)}
+                className="flex size-8 items-center justify-center rounded-md border border-border hover:bg-accent disabled:opacity-40"
+              >
+                <Minus size={15} />
+              </button>
+              <button
+                type="button"
+                aria-label="100% に戻す"
+                title="100% に戻す"
+                onClick={() => stepZoom(0)}
+                className="h-8 w-16 rounded-md border border-border text-sm tabular-nums hover:bg-accent"
+              >
+                {preferences.zoom}%
+              </button>
+              <button
+                type="button"
+                aria-label="拡大"
+                disabled={preferences.zoom === ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
+                onClick={() => stepZoom(1)}
+                className="flex size-8 items-center justify-center rounded-md border border-border hover:bg-accent disabled:opacity-40"
+              >
+                <Plus size={15} />
+              </button>
+            </div>
+          </SettingRow>
+        )}
         <SettingRow
           label="画面の動きを減らす"
           description="ダイアログを開くときなどの動きを止めます。動きで酔いやすい方や、動作の遅い PC に。「OS に合わせる」は Windows の「アニメーション効果」などの設定に従います"

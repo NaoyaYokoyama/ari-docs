@@ -1,12 +1,14 @@
+import { isTauri } from "@tauri-apps/api/core";
 import { type ReactNode, useCallback, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { useApp } from "@/app/AppContext";
 import { useDesktop } from "@/app/DesktopContext";
-import { rememberLastPage, startPath } from "@/app/preferences";
+import { rememberLastPage, startPath, stepZoom } from "@/app/preferences";
 import { startTaskNotice } from "@/app/taskNotice";
 import { hasPendingAriLink, useAriLinkPlace } from "@/app/useAriLink";
 import { openCurrentInNewWindow } from "@/app/windows";
+import { zoomDirection } from "@/app/zoomKeys";
 import Header from "@/pages/common/Header";
 import UpdateNotice from "@/pages/common/UpdateNotice";
 import { isShortcut, SHORTCUT } from "@/shortcut/shortcut";
@@ -53,6 +55,23 @@ function MainLayout({
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [openNewWindow]);
+  // 画面の拡大・縮小（デスクトップアプリ。画面共有のときなどに。FN0701-BR17）。ブラウザではブラウザの拡大に任せる
+  useEffect(() => {
+    if (!isTauri()) {
+      return;
+    }
+    const handleKey = (event: KeyboardEvent) => {
+      const direction = zoomDirection(event);
+      if (direction === null || event.isComposing) {
+        return;
+      }
+      event.preventDefault();
+      const zoom = stepZoom(direction);
+      showMessage("info", zoom === 100 ? "表示の大きさを 100% に戻しました" : `表示の大きさ: ${zoom}%（Ctrl+0 で 100% に戻す）`);
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [showMessage]);
   // タスクの期限の通知（デスクトップアプリ。FN0602-BR13）
   useEffect(() => startTaskNotice(), []);
   const docsEnabled = !!user?.docsEnabled;
