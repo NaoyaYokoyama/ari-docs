@@ -37,6 +37,7 @@
 ### 共通
 
 - ユーザーのデータを扱う API はログイン必須（`auth::get_login_user` → 未ログインは 401）
+- 安全（2026-11-27。docs の 0020_非機能要件 3）: SQL に利用者から来る値（タイトル・本文・ファイル名・パス・検索語など）を混ぜず必ず「?」で渡す。`format!` で SQL を組み立ててよいのは `database/sql_guard.rs` の `ALLOWED` の名前（決まった値か数）だけで、テストが見張る。DB は `connection::connect` で開き（`harden` が ATTACH などを断る。`VACUUM INTO` は `connection::vacuum_into`）。Markdown を表示するときは `lib/safeMarkdown.ts` の `safeRehypePlugins` を必ず渡す（本文の HTML を絞る）。`dangerouslySetInnerHTML` は使わない（mermaid の SVG だけ）。デスクトップアプリは `tauri.conf.json` の CSP。外から読み込むものを足したら CSP も直す
 - 動作モード: ローカルモード（個人用。ユーザー `local`、ログインなし、**`127.0.0.1` だけで待ち受ける**）と共有モード（`back <config.toml>` でサーバーとして起動。`bind_address`・`port`。docs の OP0007）
 - セッションは DB（`session`）に保存し、最後に使ってから 30 日で切れる。5 回続けてログインに失敗すると 15 分ロック（`login_failure`）。日数・回数・分数と変更履歴の数は管理者が「サーバーの設定」で変えられる（`service/server_settings.rs`、`system_setting` の `server_settings`。docs の FN0902）。共有モードは `tls_cert`・`tls_key` で HTTPS
 - ログイン中の端末は設定画面で見てログアウトさせられる。トークンは画面に返さず `rowid` で指す（FN0101-BR15）

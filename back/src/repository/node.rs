@@ -97,9 +97,8 @@ pub fn find_by_node_ids(conn: &Connection, node_ids: &[String]) -> Result<Vec<No
         FROM
           node
         WHERE
-          node_id IN ({})
-        ",
-        placeholders
+          node_id IN ({placeholders})
+        "
     );
 
     let mut stmt = conn.prepare(&sql)?;

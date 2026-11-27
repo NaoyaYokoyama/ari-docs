@@ -976,11 +976,29 @@ fn remove_old_downloads(root: &Path, limit: Duration) -> usize {
   removed
 }
 
+// 開くと中身が実行されるファイルの拡張子。共有サーバーのファイルはだれでも置けるので、OS で直接は開かない（保存はできる）。
+// 一時フォルダに書いたファイルには「インターネットから来た」印が付かず、Windows の警告も出ないため
+const EXECUTABLE_EXTENSIONS: [&str; 34] = [
+  "exe", "com", "scr", "pif", "bat", "cmd", "ps1", "psm1", "ps1xml", "psc1", "vbs", "vbe", "js", "jse", "wsf",
+  "wsh", "hta", "msi", "msp", "msc", "cpl", "lnk", "url", "scf", "reg", "inf", "jar", "chm", "application",
+  "appimage", "sh", "run", "desktop", "iso",
+];
+
+fn is_executable(name: &str) -> bool {
+  Path::new(name)
+    .extension()
+    .map(|ext| ext.to_string_lossy().to_ascii_lowercase())
+    .is_some_and(|ext| EXECUTABLE_EXTENSIONS.contains(&ext.as_str()))
+}
+
 // 共有サーバーのファイルを一時フォルダに保存し、OS の既定のアプリで開く（FN0301-BR21）。
 // 保存されたら知らせるよう見張り、見張りの ID を返す（FN0301-BR28）
 #[tauri::command]
 async fn open_download(request: Request<'_>, watches: State<'_, Watches>) -> Result<u64, String> {
   let (name, data) = downloaded_file(&request)?;
+  if is_executable(&name) {
+    return Err("実行するファイルはここからは開けません。ダウンロードして中身を確かめてから開いてください".into());
+  }
   // 同じ名前のファイルを続けて開いても上書きしないよう、開くたびにフォルダを分ける
   let dir = std::env::temp_dir()
     .join("ari-docs")
@@ -1293,6 +1311,17 @@ mod tests {
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
     canonicalize(&dir).unwrap()
+  }
+
+  #[test]
+  fn executable_files_are_not_opened() {
+    assert!(is_executable("setup.EXE"));
+    assert!(is_executable("run.bat"));
+    assert!(is_executable("a.b.ps1"));
+    assert!(is_executable("tool.AppImage"));
+    assert!(!is_executable("memo.xlsx"));
+    assert!(!is_executable("readme"));
+    assert!(!is_executable("exe"));
   }
 
   #[test]

@@ -8,6 +8,7 @@ import { CONTENT_IMAGE_PREFIX, contentImageUrl } from "@/api/contentImage";
 import { useOpenAriLink } from "@/app/useAriLink";
 import ContextMenu from "@/components/common/ContextMenu";
 import { ARI_LINK_PREFIX, parseAriLink } from "@/lib/ariLink";
+import { safeRehypePlugins } from "@/lib/safeMarkdown";
 import { IMAGE_SIZES } from "@/pages/content/markdown/imageSize";
 
 // Note・Wiki の本文の表示。貼り付けた画像（/api/content-image/…）はログインして読み込む（FN0404）
@@ -150,6 +151,8 @@ function urlTransform(value: string) {
 
 export const contentMarkdownOptions = {
   remarkPlugins: [remarkBreaks],
+  // 本文に書いた HTML は安全なものだけにする（ほかの人が書いた Wiki を開いただけでプログラムが動かないように）
+  rehypePlugins: [...safeRehypePlugins],
   components: { img: ContentImage, a: ContentLink },
   urlTransform,
 };

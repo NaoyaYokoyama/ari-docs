@@ -286,8 +286,7 @@ fn snapshot_db(config: &AppConfig) -> Result<PathBuf, String> {
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).map_err(|e| format!("DB の写しの場所を作れません: {e}"))?;
     let path = dir.join(format!("ari-{}.db", current_version()));
-    connection::connect()
-        .execute("VACUUM INTO ?1", [path.to_string_lossy().to_string()])
+    connection::vacuum_into(&connection::connect(), &path)
         .map_err(|e| format!("DB の写しを作れませんでした: {e}"))?;
     Ok(path)
 }

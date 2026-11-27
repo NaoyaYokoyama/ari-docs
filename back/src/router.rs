@@ -2,10 +2,11 @@ use axum::{
     Router,
     extract::{DefaultBodyLimit, Request},
     http::{
-        HeaderName, HeaderValue, Method,
-        header::{AUTHORIZATION, CONTENT_TYPE},
+        HeaderName, HeaderValue, Method, StatusCode,
+        header::{AUTHORIZATION, CONTENT_TYPE, ORIGIN},
     },
     middleware::{self, Next},
+    response::IntoResponse,
     routing::{get, post},
 };
 
@@ -29,14 +30,25 @@ use crate::api::{
 // 受け取る大きさの上限（1 GB）。ファイルのアップロードはサーバーの設定の上限を使う（FN0902-BR07）
 pub const MAX_BODY_BYTES: usize = 1024 * 1024 * 1024;
 
+// 画面の置き場所（オリジン）。開発時の画面（Vite）と、デスクトップアプリの画面（Linux・macOS は tauri://localhost、Windows は http://tauri.localhost）
+const APP_ORIGINS: [&str; 3] = [
+    "http://localhost:5173",
+    "tauri://localhost",
+    "http://tauri.localhost",
+];
+
+// ほかのサイトの画面から送られた書き換えの要求を断る（CSRF）。
+// ブラウザは別のサイトへの POST に Origin を付ける。ファイルのアップロード（multipart）は事前の確認（CORS）なしで送れてしまうため、ここで止める。
+// Origin の無い要求（インストーラーの確認・サーバーどうし）はそのまま通す
+fn origin_allowed(method: &Method, origin: Option<&HeaderValue>) -> bool {
+    if matches!(*method, Method::GET | Method::HEAD | Method::OPTIONS) {
+        return true;
+    }
+    origin.is_none_or(|origin| APP_ORIGINS.iter().any(|allowed| origin == *allowed))
+}
+
 pub fn create_router() -> Router<AppState> {
-    // 開発時の画面（Vite）と、デスクトップアプリの画面（Linux・macOS は tauri://localhost、Windows は http://tauri.localhost）
-    let origins = [
-        "http://localhost:5173",
-        "tauri://localhost",
-        "http://tauri.localhost",
-    ]
-    .map(|origin| origin.parse::<HeaderValue>().unwrap());
+    let origins = APP_ORIGINS.map(|origin| origin.parse::<HeaderValue>().unwrap());
     let cors = CorsLayer::new()
         .allow_origin(origins)
         .allow_methods([Method::GET, Method::POST])
@@ -272,7 +284,36 @@ pub fn create_router() -> Router<AppState> {
                     println!("{} {}", request.method(), request.uri().path());
                 }
 
-                next.run(request).await
+                if !origin_allowed(request.method(), request.headers().get(ORIGIN)) {
+                    return StatusCode::FORBIDDEN.into_response();
+                }
+                let mut response = next.run(request).await;
+                // 返した中身をブラウザに推測させない（ファイルや画像を HTML として動かさない）
+                response.headers_mut().insert(
+                    axum::http::header::X_CONTENT_TYPE_OPTIONS,
+                    axum::http::HeaderValue::from_static("nosniff"),
+                );
+                response
             },
         ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn writes_from_other_sites_are_refused() {
+        let other = HeaderValue::from_static("https://evil.example");
+        let app = HeaderValue::from_static("http://tauri.localhost");
+        assert!(!origin_allowed(&Method::POST, Some(&other)));
+        assert!(!origin_allowed(
+            &Method::POST,
+            Some(&HeaderValue::from_static("null"))
+        ));
+        assert!(origin_allowed(&Method::POST, Some(&app)));
+        assert!(origin_allowed(&Method::POST, None));
+        // 読むだけの要求は CORS で中身を読めないので通す
+        assert!(origin_allowed(&Method::GET, Some(&other)));
+    }
 }

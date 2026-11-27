@@ -3,7 +3,10 @@ use argon2::{
     password_hash::{SaltString, rand_core::OsRng},
 };
 
-use axum::http::{HeaderMap, header::AUTHORIZATION};
+use axum::http::{
+    HeaderMap,
+    header::{AUTHORIZATION, HOST},
+};
 use rusqlite::Connection;
 
 use crate::{
@@ -90,6 +93,9 @@ pub fn login(
 
 pub fn get_login_user(conn: &Connection, state: &AppState, headers: &HeaderMap) -> Option<User> {
     match state.config.mode {
+        // ローカルモードはログインが無いので、この PC の中（127.0.0.1・localhost）宛ての要求だけを受ける。
+        // ほかのサイトが自分の名前をこの PC に向けて読ませる手口（DNS リバインディング）を防ぐ
+        AppMode::Local if !is_loopback_host(headers) => None,
         AppMode::Local => user::find_by_user_id(conn, "local").ok(),
         AppMode::Shared => {
             let session_id = get_session_id(headers)?;
@@ -105,6 +111,22 @@ pub fn get_login_user(conn: &Connection, state: &AppState, headers: &HeaderMap) 
             Some(user)
         }
     }
+}
+
+// 要求の宛先（Host）がこの PC の中か。Host が無ければ（HTTP/1.0 など）通す
+pub fn is_loopback_host(headers: &HeaderMap) -> bool {
+    let Some(host) = headers.get(HOST).and_then(|value| value.to_str().ok()) else {
+        return headers.get(HOST).is_none();
+    };
+    let name = if let Some(rest) = host.strip_prefix('[') {
+        rest.split(']').next().unwrap_or("")
+    } else {
+        host.rsplit_once(':').map_or(host, |(name, _)| name)
+    };
+    matches!(
+        name.to_ascii_lowercase().as_str(),
+        "127.0.0.1" | "localhost" | "::1"
+    )
 }
 
 // セッション ID。デスクトップアプリは Authorization: Bearer で送る（画面とサーバーのオリジンが違い Cookie が届かないため）。
@@ -167,6 +189,23 @@ pub fn permissions(conn: &Connection, mode: &AppMode, user: &User) -> Vec<String
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn local_mode_accepts_only_this_pc() {
+        let host = |value: &str| {
+            let mut headers = HeaderMap::new();
+            headers.insert(HOST, value.parse().unwrap());
+            headers
+        };
+        assert!(is_loopback_host(&host("127.0.0.1:8080")));
+        assert!(is_loopback_host(&host("localhost:8081")));
+        assert!(is_loopback_host(&host("[::1]:8080")));
+        assert!(is_loopback_host(&host("LOCALHOST")));
+        assert!(is_loopback_host(&HeaderMap::new()));
+        assert!(!is_loopback_host(&host("evil.example:8080")));
+        assert!(!is_loopback_host(&host("localhost.evil.example")));
+        assert!(!is_loopback_host(&host("192.168.0.5:8080")));
+    }
+
     use super::*;
 
     #[test]

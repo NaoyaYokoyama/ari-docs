@@ -212,6 +212,7 @@ pub fn find_nodes_by_words(
         .map(|i| format!("?{i}"))
         .collect::<Vec<_>>()
         .join(",");
+    let conditions = parts.join(" INTERSECT ");
     let sql = format!(
         "
         SELECT
@@ -220,7 +221,7 @@ pub fn find_nodes_by_words(
         FROM
           node
         WHERE
-          node.node_id IN ({})
+          node.node_id IN ({conditions})
         ORDER BY
           (
             SELECT COUNT(*) FROM node_keyword
@@ -229,9 +230,7 @@ pub fn find_nodes_by_words(
           ) DESC,
           node.path ASC
         LIMIT {limit}
-        ",
-        parts.join(" INTERSECT ")
-    );
+        ");
     let patterns: Vec<String> = words
         .iter()
         .map(|word| format!("%{}%", escape_like(word)))

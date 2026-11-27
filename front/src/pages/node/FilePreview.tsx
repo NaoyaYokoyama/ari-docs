@@ -13,6 +13,7 @@ import {
   PREVIEW_FORMATS,
   type PreviewKind,
 } from "@/lib/previewFormats";
+import { safeRehypePlugins } from "@/lib/safeMarkdown";
 import type { Node } from "@/types/node";
 
 const MAX_CSV_ROWS = 500;
@@ -199,7 +200,7 @@ export default function FilePreview({ node, fill = false }: Props) {
         }
         return (
           <div data-color-mode={resolved} className={`${box} overflow-y-auto`}>
-            <MDEditor.Markdown source={text ?? ""} remarkPlugins={[remarkBreaks]} />
+            <MDEditor.Markdown source={text ?? ""} remarkPlugins={[remarkBreaks]} rehypePlugins={[...safeRehypePlugins]} />
           </div>
         );
       case "csv": {

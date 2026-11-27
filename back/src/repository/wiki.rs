@@ -71,9 +71,8 @@ pub fn find_by_wiki_ids(conn: &Connection, wiki_ids: &[String]) -> Result<Vec<Wi
             FROM
               wiki
             WHERE
-              wiki_id IN ({})
-            ",
-        placeholders
+              wiki_id IN ({placeholders})
+            "
     );
     let mut stmt = conn.prepare(&sql)?;
     let wikis = stmt

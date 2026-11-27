@@ -103,9 +103,8 @@ pub fn find_by_note_ids(
         FROM
           note
         WHERE user_id = ?
-              AND note_id in ({})
-        ",
-        placeholders
+              AND note_id in ({placeholders})
+        "
     );
     let mut stmt = conn.prepare(&sql)?;
     let params = std::iter::once(user_id).chain(note_ids.iter().map(String::as_str));

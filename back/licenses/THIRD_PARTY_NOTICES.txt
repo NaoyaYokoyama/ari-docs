@@ -3808,7 +3808,7 @@ zvariant_utils 4.2.0
    全文: [L4]
 
 ========================================================================
-画面に組み込んでいる JavaScript の部品（npm。650 個）
+画面に組み込んでいる JavaScript の部品（npm。652 個）
 ========================================================================
 @antfu/install-pkg 2.1.0
    License: MIT
@@ -5367,6 +5367,11 @@ hast-util-raw 9.1.0
    Authors: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
    syntax-tree/hast-util-raw
    全文: [L478]
+hast-util-sanitize 5.0.2
+   License: MIT
+   Authors: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+   syntax-tree/hast-util-sanitize
+   全文: [L478]
 hast-util-select 6.0.4
    License: MIT
    Authors: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
@@ -6401,6 +6406,11 @@ rehype-rewrite 4.0.4
    Authors: Kenny Wong <wowohoo@qq.com>
    https://github.com/jaywcjlove/rehype-rewrite
    全文: [L606]
+rehype-sanitize 6.0.0
+   License: MIT
+   Authors: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+   rehypejs/rehype-sanitize
+   全文: [L440]
 rehype-slug 6.0.0
    License: MIT
    Authors: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)

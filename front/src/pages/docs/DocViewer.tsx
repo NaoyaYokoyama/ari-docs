@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { getDoc, getDocImage } from "@/api/docs";
 import { useTheme } from "@/app/theme";
+import { safeRehypePlugins } from "@/lib/safeMarkdown";
 import {
   baseId,
   linkifyIds,
@@ -205,6 +206,7 @@ function DocViewer({ root, doc, warnings, idIndex, onSelect }: Props) {
         <div data-color-mode={colorMode}>
           <MDEditor.Markdown
             source={body}
+            rehypePlugins={[...safeRehypePlugins]}
             components={{
               img: ({ src, alt }) => (
                 <DocImage root={root} docPath={doc.path} src={typeof src === "string" ? src : undefined} alt={alt} />

@@ -221,9 +221,8 @@ pub fn find_node_favorite_ids_by_paths(
           INNER JOIN node ON node.node_id = favorite.node_id
         WHERE
           favorite.user_id = ?
-          AND node.path IN ({})
-        ",
-        placeholders
+          AND node.path IN ({placeholders})
+        "
     );
 
     let mut stmt = conn.prepare(&sql)?;

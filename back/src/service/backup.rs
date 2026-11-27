@@ -185,7 +185,7 @@ fn create_backup_locked(
 
     let result = (|| -> Result<u64, String> {
         // DB は使っている途中でも壊れない写しを作る
-        conn.execute("VACUUM INTO ?1", [snapshot.to_string_lossy().to_string()])
+        crate::database::connection::vacuum_into(conn, &snapshot)
             .map_err(|e| format!("DB の写しを作れませんでした: {e}"))?;
         let file =
             fs::File::create(&partial).map_err(|e| format!("バックアップを書けません: {e}"))?;
