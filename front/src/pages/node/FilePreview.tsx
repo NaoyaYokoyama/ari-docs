@@ -4,6 +4,7 @@ import remarkBreaks from "remark-breaks";
 
 import { downloadNode } from "@/api/node";
 import { useTheme } from "@/app/theme";
+import { MermaidPre } from "@/components/common/Mermaid";
 import Spinner from "@/components/common/Spinner";
 import { extensionOf } from "@/lib/fileType";
 import { errorMessage } from "@/lib/format";
@@ -200,7 +201,7 @@ export default function FilePreview({ node, fill = false }: Props) {
         }
         return (
           <div data-color-mode={resolved} className={`${box} overflow-y-auto`}>
-            <MDEditor.Markdown source={text ?? ""} remarkPlugins={[remarkBreaks]} rehypePlugins={[...safeRehypePlugins]} />
+            <MDEditor.Markdown source={text ?? ""} remarkPlugins={[remarkBreaks]} rehypePlugins={[...safeRehypePlugins]} components={{ pre: MermaidPre }} />
           </div>
         );
       case "csv": {

@@ -7,6 +7,7 @@ import remarkBreaks from "remark-breaks";
 import { CONTENT_IMAGE_PREFIX, contentImageUrl } from "@/api/contentImage";
 import { useOpenAriLink } from "@/app/useAriLink";
 import ContextMenu from "@/components/common/ContextMenu";
+import { MermaidPre } from "@/components/common/Mermaid";
 import { ARI_LINK_PREFIX, parseAriLink } from "@/lib/ariLink";
 import { safeRehypePlugins } from "@/lib/safeMarkdown";
 import { IMAGE_SIZES } from "@/pages/content/markdown/imageSize";
@@ -153,7 +154,7 @@ export const contentMarkdownOptions = {
   remarkPlugins: [remarkBreaks],
   // 本文に書いた HTML は安全なものだけにする（ほかの人が書いた Wiki を開いただけでプログラムが動かないように）
   rehypePlugins: [...safeRehypePlugins],
-  components: { img: ContentImage, a: ContentLink },
+  components: { img: ContentImage, a: ContentLink, pre: MermaidPre },
   urlTransform,
 };
 

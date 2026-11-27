@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { getDoc, getDocImage } from "@/api/docs";
 import { useTheme } from "@/app/theme";
+import { MermaidPre } from "@/components/common/Mermaid";
 import { safeRehypePlugins } from "@/lib/safeMarkdown";
 import {
   baseId,
@@ -13,33 +14,7 @@ import {
   showGuides,
   stripFrontMatter,
 } from "@/pages/docs/checkDocs";
-import Mermaid from "@/pages/docs/Mermaid";
 import type { DocEntry } from "@/types/docs";
-
-type HastNode = {
-  type: string;
-  value?: string;
-  tagName?: string;
-  properties?: { className?: unknown };
-  children?: HastNode[];
-};
-
-// コードブロックの文字列を取り出す（ハイライト済みでも元の文字列に戻す）
-function hastText(node: HastNode): string {
-  if (node.type === "text") {
-    return node.value ?? "";
-  }
-  return (node.children ?? []).map(hastText).join("");
-}
-
-// ```mermaid のコードブロックなら、その code 要素を返す
-function mermaidCode(pre: HastNode | undefined) {
-  const code = pre?.children?.find((child) => child.tagName === "code");
-  const className = code?.properties?.className;
-  return Array.isArray(className) && className.includes("language-mermaid")
-    ? code
-    : undefined;
-}
 
 // 本文の画像（FN0801-BR16）。相対パスの画像は、表示しているフォルダから読み込む（ログインが要るため img の src に直接書かない）。
 // http などの URL・data: はそのまま
@@ -211,13 +186,7 @@ function DocViewer({ root, doc, warnings, idIndex, onSelect }: Props) {
               img: ({ src, alt }) => (
                 <DocImage root={root} docPath={doc.path} src={typeof src === "string" ? src : undefined} alt={alt} />
               ),
-              pre: ({ node, children, ...props }) => {
-                const code = mermaidCode(node as HastNode | undefined);
-                if (code) {
-                  return <Mermaid chart={hastText(code).trim()} />;
-                }
-                return <pre {...props}>{children}</pre>;
-              },
+              pre: MermaidPre,
               a: ({ href, children }) => {
                 if (href?.startsWith("#doc:")) {
                   return (
