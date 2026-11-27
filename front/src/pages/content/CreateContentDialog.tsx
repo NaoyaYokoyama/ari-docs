@@ -109,7 +109,8 @@ export default function CreateContentDialog({ kind, open, place, onClose, onCrea
         })}
       </div>
       <p className="mb-4 text-xs text-muted-foreground">
-        {kind.label}の一番上の「{TEMPLATE_FOLDER}」フォルダに入れた{kind.label}もひな形になります。
+        {kind.label}を開いた画面の「ひな形として登録」で、自分のひな形を足せます（一番上の「{TEMPLATE_FOLDER}」フォルダに入ります
+        {kind.kind === "note" ? "。自分だけ" : "。全員が使えます"}）。
         {"{{日付}}・{{曜日}}・{{時刻}}・{{今週}}"} は作るときに置き換えます
       </p>
       <label className="mb-1.5 block text-sm font-medium" htmlFor="content-title">

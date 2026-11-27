@@ -68,15 +68,132 @@ const PROCEDURE = `## 目的
 最後に確かめた日: {{日付}}
 `;
 
+const RETRO = `- 日付: {{日付}}
+- 対象の期間:
+
+## Keep（続けること）
+
+
+## Problem（困ったこと）
+
+
+## Try（次に試すこと）
+
+- [ ] 
+`;
+
+const ONE_ON_ONE = `- 日付: {{日付}}
+- 相手:
+
+## 最近のこと・気になっていること
+
+
+## 相談したいこと
+
+
+## 次までにやること
+
+- [ ] 
+`;
+
+const INVESTIGATION = `## 調べること
+
+
+## わかったこと
+
+
+## 試したこと
+
+| 試したこと | 結果 |
+| --- | --- |
+|  |  |
+
+## 次にやること
+
+- [ ] 
+`;
+
+const INCIDENT = `- 起きた日時: {{日付}} {{時刻}}
+- 直った日時:
+- 影響の範囲:
+- 対応した人:
+
+## 何が起きたか
+
+
+## 経緯
+
+| 時刻 | できごと |
+| --- | --- |
+| {{時刻}} |  |
+
+## 原因
+
+
+## 直したこと
+
+
+## 二度と起こさないために
+
+- [ ] 
+`;
+
+const DESIGN = `- 書いた日: {{日付}}
+- 状態: 検討中
+
+## 背景・困っていること
+
+
+## 決めたこと
+
+
+## 図
+
+\`\`\`mermaid
+flowchart LR
+  A[画面] --> B[サーバー] --> C[(DB)]
+\`\`\`
+
+## ほかの案と、選ばなかった理由
+
+| 案 | よい所 | 困る所 |
+| --- | --- | --- |
+|  |  |  |
+`;
+
+const HANDOVER = `- 引き継ぐ日: {{日付}}
+- 前の担当:
+- 次の担当:
+
+## 担当していること
+
+
+## 今動いていること・やりかけのこと
+
+- [ ] 
+
+## 気をつけること
+
+
+## 聞く相手・資料
+
+`;
+
 const BUILTIN: Record<ContentKind["kind"], ContentTemplate[]> = {
   note: [
     { id: "daily", name: "日報", title: "日報 {{日付}}", body: DAILY },
     { id: "minutes", name: "議事録", title: "議事録 {{日付}}", body: MINUTES },
     { id: "weekly", name: "週報", title: "週報 {{今週}}", body: WEEKLY },
+    { id: "retro", name: "ふりかえり（KPT）", title: "ふりかえり {{日付}}", body: RETRO },
+    { id: "one-on-one", name: "1on1", title: "1on1 {{日付}}", body: ONE_ON_ONE },
+    { id: "investigation", name: "調査メモ", title: "", body: INVESTIGATION },
   ],
   wiki: [
     { id: "procedure", name: "手順書", title: "", body: PROCEDURE },
     { id: "minutes", name: "議事録", title: "議事録 {{日付}}", body: MINUTES },
+    { id: "incident", name: "障害の報告", title: "障害 {{日付}}", body: INCIDENT },
+    { id: "design", name: "設計メモ", title: "", body: DESIGN },
+    { id: "handover", name: "引き継ぎ", title: "引き継ぎ {{日付}}", body: HANDOVER },
   ],
 };
 

@@ -84,7 +84,7 @@
 - 本文の編集の手助け（docs の FN0404）: 書式のボタン（`pages/content/MarkdownToolbar.tsx`）・キー（Ctrl+B など。`shortcut.ts` の `MD_*`）・表の挿入と整形（`pages/content/markdown/`。書き換えはエディタに依存しない関数にし、`editorHandle.ts` で textarea と Vim のエディタに当てる）。Vim のエディタは書式のキーを挿入モードのときだけ受ける。本文の字体は等幅
 - Note・Wiki のボタンには一言の説明（`components/common/Hint.tsx`、`IconButton` の `hint`）。マウスを乗せたとき・キーで選んだときに出す。この PC の設定 `buttonHints`（既定オン）で消せる
 - 本文の画像は貼り付け・ドロップで入れ、画面で縮小（長い辺 1920 画素・WebP）してから `content_image`（DB）に保存する（サーバーの容量のため）。本文には `/api/content-image/{id}` と書き、表示は `ContentMarkdown.tsx` がトークンを付けて読み込む。Note の画像は本人（と使っている Wiki を読める人）だけ。使われなくなった画像は 1 日後に消す（毎時 15 分）。幅は `![名前|300](…)`、編集の画面では仕上がりの画像を右クリックして小・中・大・元の大きさを選べる（`markdown/imageSize.ts`。FN0404-BR07）
-- ひな形（docs の FN0401-BR16）: 作るダイアログで選ぶ。入っているものは `pages/content/contentTemplates.ts`、自分のものは一番上の「ひな形」フォルダの Note・Wiki（`{{日付}}` などを置き換える）。今日の Note は「ひな形」の「今日の Note」で作る
+- ひな形（docs の FN0401-BR16・BR17）: 作るダイアログで選ぶ。入っているものは `pages/content/contentTemplates.ts`、自分のものは一番上の「ひな形」フォルダの Note・Wiki（`{{日付}}` などを置き換える。Note は自分だけ、Wiki は全員）。開いた画面の「ひな形として登録」で写しをそこへ作る。書式のボタンの「図」は mermaid のひな形（FN0404-BR09）。今日の Note は「ひな形」の「今日の Note」で作る
 - Note・Wiki はフォルダ（入れ子あり）で分ける（docs の FN0403）。一覧は Ctrl・Shift+クリックでまとめて選んで移せる（FN0403-BR10）。フォルダは `content_folder`、入れ場所は別の表 `content_folder_item`（行が無ければ一番上。Note・Wiki の表は変えない）。Note のフォルダは本人だけ、Wiki のフォルダは全員で使う。削除できるのは中が空のフォルダだけ（Note・Wiki にはゴミ箱が無いため）。画面は `pages/content/`（`contentTree.ts`・`useContentFolders.ts`）
 
 ### ノード（ファイル・フォルダ）

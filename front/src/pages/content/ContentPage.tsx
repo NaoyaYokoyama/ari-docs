@@ -1,11 +1,11 @@
 import MDEditor from "@uiw/react-md-editor";
-import { CircleCheck, History, Link2, Plus, Save, Star, Trash2, Users } from "lucide-react";
+import { CircleCheck, History, LayoutTemplate, Link2, Plus, Save, Star, Trash2, Users } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { twMerge } from "tailwind-merge";
 
 import { HttpError } from "@/api/client";
-import { moveToContentFolder } from "@/api/contentFolder";
+import { createContentFolder, moveToContentFolder } from "@/api/contentFolder";
 import { uploadContentImage } from "@/api/contentImage";
 import { deleteFavorite } from "@/api/favorite";
 import { getNote } from "@/api/note";
@@ -27,6 +27,7 @@ import { compressImage } from "@/lib/imageCompress";
 import type { ContentDetail, ContentItem, ContentKind } from "@/pages/content/contentKinds";
 import ContentMarkdown, { contentMarkdownOptions, ImageResizeContext } from "@/pages/content/ContentMarkdown";
 import ContentSidebar, { type MoveTarget } from "@/pages/content/ContentSidebar";
+import { TEMPLATE_FOLDER } from "@/pages/content/contentTemplates";
 import { folderPath } from "@/pages/content/contentTree";
 import CreateContentDialog from "@/pages/content/CreateContentDialog";
 import FolderNameDialog from "@/pages/content/FolderNameDialog";
@@ -460,6 +461,42 @@ export default function ContentPage({ kind }: Props) {
     }
   };
 
+  // 一番上の「ひな形」フォルダ（FN0401-BR16）と、開いているものがその中にあるか
+  const templateFolderId =
+    folders.data?.folders.find((folder) => folder.parentId === "" && folder.name === TEMPLATE_FOLDER)?.folderId ?? "";
+  const inTemplateFolder =
+    !!selected &&
+    !!templateFolderId &&
+    !!folders.data?.items.some((item) => item.itemId === selected.id && item.folderId === templateFolderId);
+
+  // 開いているものの写しを「ひな形」フォルダに作る（無ければフォルダも作る。FN0401-BR17）。元はそのまま残す
+  const registerTemplate = async () => {
+    if (!selected) {
+      return;
+    }
+    if (!selected.title.trim()) {
+      showMessage("error", "タイトルを入力してください（ひな形の名前になります）");
+      titleRef.current?.focus();
+      return;
+    }
+    try {
+      const folderId =
+        templateFolderId || (await createContentFolder(kind.kind, "", TEMPLATE_FOLDER)).data.folderId;
+      const copy = await kind.create(selected.title);
+      await kind.update(copy.id, selected.title, selected.content, undefined, true);
+      await moveToContentFolder(kind.kind, [], [copy.id], folderId);
+      await Promise.all([loadItems(), folders.reload()]);
+      showMessage(
+        "info",
+        kind.kind === "note"
+          ? `「${TEMPLATE_FOLDER}」フォルダに写しを作りました。新しい Note を作るときに選べます（自分だけ）`
+          : `「${TEMPLATE_FOLDER}」フォルダに写しを作りました。新しい Wiki を作るときに、全員が選べます`,
+      );
+    } catch (error) {
+      showMessage("error", errorMessage(error, "ひな形に登録できませんでした"));
+    }
+  };
+
   const toggleFavorite = async () => {
     if (!selected) {
       return;
@@ -649,6 +686,17 @@ export default function ContentPage({ kind }: Props) {
                 >
                   <History size={17} />
                 </IconButton>
+                {!inTemplateFolder && (
+                  <IconButton
+                    label="ひな形として登録"
+                    hint={`この${kind.label}の写しを「${TEMPLATE_FOLDER}」フォルダに作り、新しい${kind.label}を作るときに選べるようにします${
+                      kind.kind === "note" ? "（自分だけ）" : "（全員が使えます）"
+                    }。{{日付}} と書いた所は作る日の日付になります`}
+                    onClick={() => void registerTemplate()}
+                  >
+                    <LayoutTemplate size={17} />
+                  </IconButton>
+                )}
                 <IconButton
                   label="削除"
                   hint={`この${kind.label}を削除します。ゴミ箱は無いので元に戻せません`}
