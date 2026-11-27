@@ -1,5 +1,5 @@
 import { RotateCcw, Trash2, TriangleAlert } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 import { deleteTrash, emptyTrash, getTrash, restoreTrash } from "@/api/trash";
@@ -10,6 +10,8 @@ import EmptyState from "@/components/common/EmptyState";
 import Spinner from "@/components/common/Spinner";
 import { fileKind, formatSize } from "@/lib/fileType";
 import { errorMessage, formatDateTime } from "@/lib/format";
+import RestoreDestinationDialog from "@/pages/node/RestoreDestinationDialog";
+import { isShortcut, SHORTCUT } from "@/shortcut/shortcut";
 import type { TrashResponse } from "@/types/trash";
 
 type Props = {
@@ -23,12 +25,20 @@ export default function TrashView({ onRestored }: Props) {
   const [trash, setTrash] = useState<TrashResponse | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  // Shift で範囲を選ぶときの起点と、キーで動かしている行
+  const [anchor, setAnchor] = useState<string | null>(null);
+  const [cursor, setCursor] = useState<string | null>(null);
+  // 元のフォルダが無いものを戻すとき、戻す場所を選ぶ（FN0302-BR10）
+  const [asking, setAsking] = useState<string[] | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(() => {
     getTrash()
       .then((response) => {
         setTrash(response);
         setSelected(new Set());
+        setAnchor(null);
+        setCursor(null);
       })
       .catch((error) => {
         console.error(error);
@@ -40,12 +50,20 @@ export default function TrashView({ onRestored }: Props) {
 
   const ids = [...selected];
 
-  const restore = async (targets: string[]) => {
+  const restore = async (targets: string[], destination?: string | null) => {
     if (targets.length === 0) {
       return;
     }
+    // 元のフォルダが無いものがあれば、先に戻す場所を聞く
+    if (destination === undefined) {
+      const missing = (trash?.items ?? []).filter((item) => targets.includes(item.trashId) && !item.parentExists);
+      if (missing.length > 0) {
+        setAsking(targets);
+        return;
+      }
+    }
     try {
-      const response = await restoreTrash(targets);
+      const response = await restoreTrash(targets, destination ?? undefined);
       showMessage("info", response.message);
       onRestored(response.data);
     } catch (error) {
@@ -81,6 +99,65 @@ export default function TrashView({ onRestored }: Props) {
     load();
   };
 
+  const order = (trash?.items ?? []).map((item) => item.trashId);
+
+  // クリックで選ぶ。Ctrl で 1 つずつ足し引き、Shift で起点からの範囲（Folder の一覧と同じ。FN0302-BR02）
+  const select = (trashId: string, event: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }) => {
+    const toggle = event.ctrlKey || event.metaKey;
+    if (event.shiftKey && anchor && order.includes(anchor)) {
+      const [from, to] = [order.indexOf(anchor), order.indexOf(trashId)].sort((a, b) => a - b);
+      const range = order.slice(from, to + 1);
+      setSelected(new Set(toggle ? [...selected, ...range] : range));
+    } else if (toggle) {
+      const next = new Set(selected);
+      if (next.has(trashId)) {
+        next.delete(trashId);
+      } else {
+        next.add(trashId);
+      }
+      setSelected(next);
+      setAnchor(trashId);
+    } else {
+      setSelected(new Set([trashId]));
+      setAnchor(trashId);
+    }
+    setCursor(trashId);
+  };
+
+  // 一覧のキー（↑↓ で選ぶ、Shift+↑↓ で広げる、Ctrl+A ですべて、Enter で元に戻す、Delete で完全に削除）
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.defaultPrevented || order.length === 0) {
+      return;
+    }
+    const key = event.key;
+    if (isShortcut(event.nativeEvent, SHORTCUT.FOLDER_SELECT_ALL)) {
+      event.preventDefault();
+      setSelected(new Set(order));
+      return;
+    }
+    if (key === "ArrowDown" || key === "ArrowUp") {
+      event.preventDefault();
+      const at = cursor ? order.indexOf(cursor) : -1;
+      const next = order[Math.min(Math.max(at + (key === "ArrowDown" ? 1 : -1), 0), order.length - 1)];
+      select(next, { ctrlKey: false, metaKey: false, shiftKey: event.shiftKey });
+      if (!event.shiftKey) {
+        setAnchor(next);
+      }
+      document.getElementById(`trash-row-${next}`)?.scrollIntoView({ block: "nearest" });
+      return;
+    }
+    if (key === "Enter" && ids.length > 0) {
+      event.preventDefault();
+      void restore(ids);
+    } else if (isShortcut(event.nativeEvent, SHORTCUT.FOLDER_DELETE) && ids.length > 0 && trash?.canDelete) {
+      event.preventDefault();
+      void remove(ids);
+    } else if (key === "Escape" && ids.length > 0) {
+      event.preventDefault();
+      setSelected(new Set());
+    }
+  };
+
   const menuItems: ContextMenuItem[] = [
     { label: "元に戻す", icon: RotateCcw, onSelect: () => void restore(ids) },
     ...(trash?.canDelete
@@ -101,7 +178,9 @@ export default function TrashView({ onRestored }: Props) {
         <Trash2 size={16} className="text-muted-foreground" />
         <h2 className="text-sm font-semibold">ゴミ箱</h2>
         <span className="text-xs text-muted-foreground">
-          削除したものは {trash.retentionDays} 日たつと自動で消えます
+          {ids.length > 1
+            ? `${ids.length} 件を選んでいます`
+            : `削除したものは ${trash.retentionDays} 日たつと自動で消えます`}
         </span>
         <div className="ml-auto flex items-center gap-1.5">
           <Button variant="secondary" size="sm" disabled={ids.length === 0} onClick={() => void restore(ids)}>
@@ -132,7 +211,15 @@ export default function TrashView({ onRestored }: Props) {
       {trash.items.length === 0 ? (
         <EmptyState icon={Trash2} title="ゴミ箱は空です" description="フォルダ画面で削除したファイル・フォルダはここに入り、元に戻せます" />
       ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div
+          ref={listRef}
+          tabIndex={0}
+          role="grid"
+          aria-label="ゴミ箱の中のもの"
+          aria-multiselectable
+          onKeyDown={handleKeyDown}
+          className="min-h-0 flex-1 overflow-y-auto outline-none"
+        >
           <table className="w-full table-fixed border-collapse text-sm">
             <thead className="sticky top-0 z-10 bg-background">
               <tr className="border-b border-border text-left text-xs text-muted-foreground">
@@ -154,29 +241,23 @@ export default function TrashView({ onRestored }: Props) {
                 return (
                   <tr
                     key={item.trashId}
+                    id={`trash-row-${item.trashId}`}
                     aria-selected={isSelected}
                     className={twMerge(
                       "cursor-default border-b border-border/60 select-none",
                       isSelected ? "bg-selected" : "hover:bg-accent",
                     )}
                     onClick={(event) => {
-                      if (event.ctrlKey || event.metaKey) {
-                        const next = new Set(selected);
-                        if (next.has(item.trashId)) {
-                          next.delete(item.trashId);
-                        } else {
-                          next.add(item.trashId);
-                        }
-                        setSelected(next);
-                      } else {
-                        setSelected(new Set([item.trashId]));
-                      }
+                      listRef.current?.focus();
+                      select(item.trashId, event);
                     }}
                     onDoubleClick={() => void restore([item.trashId])}
                     onContextMenu={(event) => {
                       event.preventDefault();
                       if (!isSelected) {
                         setSelected(new Set([item.trashId]));
+                        setAnchor(item.trashId);
+                        setCursor(item.trashId);
                       }
                       setMenu({ x: event.clientX, y: event.clientY });
                     }}
@@ -190,7 +271,14 @@ export default function TrashView({ onRestored }: Props) {
                       </span>
                     </td>
                     <td className="truncate px-3 text-muted-foreground" title={`folder/${parent}`}>
-                      folder/{parent}
+                      {item.parentExists ? (
+                        `folder/${parent}`
+                      ) : (
+                        <span className="flex min-w-0 items-center gap-1">
+                          <TriangleAlert size={13} className="shrink-0 text-warning" aria-label="元のフォルダがありません" />
+                          <span className="truncate">folder/{parent}</span>
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 text-muted-foreground tabular-nums">{formatDateTime(item.deletedAt)}</td>
                     <td className="truncate px-3 text-muted-foreground">{item.deletedBy}</td>
@@ -204,6 +292,22 @@ export default function TrashView({ onRestored }: Props) {
       )}
 
       <ContextMenu position={menu} items={menuItems} onClose={() => setMenu(null)} />
+
+      <RestoreDestinationDialog
+        missing={
+          asking &&
+          trash.items
+            .filter((item) => asking.includes(item.trashId) && !item.parentExists)
+            .map((item) => item.originalPath)
+        }
+        total={asking?.length ?? 0}
+        onClose={() => setAsking(null)}
+        onChoose={(destination) => {
+          const targets = asking ?? [];
+          setAsking(null);
+          void restore(targets, destination);
+        }}
+      />
     </div>
   );
 }

@@ -26,6 +26,8 @@ pub struct TrashItemResponse {
     pub size: i64,
     pub deleted_by: String,
     pub deleted_at: String,
+    // 元のフォルダが今もある（無ければ、元に戻すときに戻す場所を選ぶ。FN0302-BR10）
+    pub parent_exists: bool,
 }
 
 #[derive(Serialize)]
@@ -42,6 +44,15 @@ pub struct TrashResponse {
 #[serde(rename_all = "camelCase")]
 pub struct TrashIdsRequest {
     pub trash_ids: Vec<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RestoreRequest {
+    pub trash_ids: Vec<String>,
+    // 元のフォルダが無いものを戻す場所（folder/ からの相対パス。一番上は空）。無ければ元のフォルダを作り直す
+    #[serde(default)]
+    pub destination: Option<String>,
 }
 
 fn login(state: &AppState, headers: &HeaderMap) -> Result<(Connection, User), ApiError> {
@@ -78,6 +89,7 @@ pub async fn get_trash(
         .map_err(db_error)?
         .into_iter()
         .map(|item| TrashItemResponse {
+            parent_exists: trash::parent_exists(&state.config, &item.original_path),
             trash_id: item.trash_id,
             original_path: item.original_path,
             name: item.name,
@@ -102,15 +114,20 @@ pub async fn get_trash(
 pub async fn restore(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Json(request): Json<TrashIdsRequest>,
+    Json(request): Json<RestoreRequest>,
 ) -> Result<Json<ApiResponse<Vec<String>>>, ApiError> {
     let (conn, _) = login(&state, &headers)?;
+    let destination = request.destination.as_deref();
     let mut paths = Vec::new();
     for trash_id in &request.trash_ids {
-        paths.push(trash::restore(&conn, &state.config, trash_id).map_err(io_error)?);
+        paths.push(trash::restore(&conn, &state.config, trash_id, destination).map_err(io_error)?);
     }
     Ok(Json(ApiResponse {
-        message: Some(format!("{} 件を元の場所に戻しました", paths.len())),
+        message: Some(if destination.is_some() {
+            format!("{} 件を戻しました", paths.len())
+        } else {
+            format!("{} 件を元の場所に戻しました", paths.len())
+        }),
         data: Some(paths),
     }))
 }

@@ -9,6 +9,8 @@ export interface TrashItem {
   deletedBy: string;
   // 削除した日時（UTC の "YYYY-MM-DD HH:MM:SS"）
   deletedAt: string;
+  // 元のフォルダが今もある（無ければ、元に戻すときに戻す場所を選ぶ）
+  parentExists: boolean;
 }
 
 export interface TrashResponse {

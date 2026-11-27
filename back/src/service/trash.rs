@@ -82,8 +82,28 @@ pub fn move_to_trash(
     Ok(())
 }
 
-// 元の場所に戻す（FN0302-BR03）。元のフォルダが無ければ作り、同じ名前があれば「名前 (2)」にする。戻した場所を返す
-pub fn restore(conn: &Connection, config: &AppConfig, trash_id: &str) -> io::Result<String> {
+// 元のフォルダ（folder/ からの相対パス。一番上は空）
+fn original_parent(original_path: &str) -> String {
+    Path::new(original_path)
+        .parent()
+        .map(|parent| parent.to_string_lossy().to_string())
+        .unwrap_or_default()
+}
+
+// 元のフォルダが今もあるか（無ければ、元に戻すときに戻す場所を選べる。FN0302-BR10）
+pub fn parent_exists(config: &AppConfig, original_path: &str) -> bool {
+    resolve(&config.folder_root, &original_parent(original_path)).is_ok_and(|path| path.is_dir())
+}
+
+// 元の場所に戻す（FN0302-BR03）。元のフォルダが無ければ、destination（folder/ からの相対パス。一番上は空）を
+// 指定されたらそこへ、無ければ元のフォルダを作り直して戻す（FN0302-BR10）。
+// 同じ名前があれば「名前 (2)」にする。戻した場所を返す
+pub fn restore(
+    conn: &Connection,
+    config: &AppConfig,
+    trash_id: &str,
+    destination: Option<&str>,
+) -> io::Result<String> {
     let item = trash_repo::find_by_id(conn, trash_id)
         .map_err(db_error)?
         .ok_or_else(|| not_found("ゴミ箱に見つかりません"))?;
@@ -92,10 +112,15 @@ pub fn restore(conn: &Connection, config: &AppConfig, trash_id: &str) -> io::Res
         trash_repo::delete(conn, trash_id).map_err(db_error)?;
         return Err(not_found("ゴミ箱の中のファイルが見つかりません"));
     }
-    let parent_relative = Path::new(&item.original_path)
-        .parent()
-        .map(|parent| parent.to_string_lossy().to_string())
-        .unwrap_or_default();
+    let mut parent_relative = original_parent(&item.original_path);
+    if let Some(destination) = destination.filter(|_| !parent_exists(config, &item.original_path)) {
+        // 選んだ場所は今あるフォルダだけ（folder/ の外・..・絶対パスは resolve が断る）
+        let chosen = destination.trim_matches('/').to_string();
+        if !resolve(&config.folder_root, &chosen)?.is_dir() {
+            return Err(not_found("戻す場所のフォルダが見つかりません"));
+        }
+        parent_relative = chosen;
+    }
     let parent = resolve(&config.folder_root, &parent_relative)?;
     std::fs::create_dir_all(&parent)?;
     let name = unique_name(&parent, &item.name);
@@ -245,7 +270,10 @@ mod tests {
 
         // 元のフォルダが消えていても作り直し、同じ名前があれば (2) を付ける
         fs::remove_dir_all(dir.join("folder/a")).unwrap();
-        assert_eq!(restore(&conn, &config, &items[0].trash_id).unwrap(), "a/b");
+        assert_eq!(
+            restore(&conn, &config, &items[0].trash_id, None).unwrap(),
+            "a/b"
+        );
         // お気に入りも戻る（FN0302-BR08）
         assert_eq!(
             favorites(&conn),
@@ -265,9 +293,50 @@ mod tests {
         move_to_trash(&conn, &config, "", "file", "keep.txt", "local").unwrap();
         fs::write(dir.join("folder/keep.txt"), "new").unwrap();
         let id = trash_repo::find_all(&conn).unwrap()[0].trash_id.clone();
-        assert_eq!(restore(&conn, &config, &id).unwrap(), "keep (2).txt");
+        assert_eq!(restore(&conn, &config, &id, None).unwrap(), "keep (2).txt");
         assert!(trash_repo::find_all(&conn).unwrap().is_empty());
         assert!(move_to_trash(&conn, &config, "", "file", "..", "local").is_err());
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn restore_to_chosen_folder_when_original_is_gone() {
+        let (dir, config, conn) = setup("chosen");
+        fs::create_dir_all(dir.join("folder/other")).unwrap();
+        move_to_trash(&conn, &config, "a/b", "file", "memo.txt", "local").unwrap();
+        move_to_trash(&conn, &config, "", "file", "keep.txt", "local").unwrap();
+        let id_of = |conn: &Connection, name: &str| {
+            trash_repo::find_all(conn)
+                .unwrap()
+                .into_iter()
+                .find(|item| item.name == name)
+                .unwrap()
+                .trash_id
+        };
+        // 元のフォルダがあれば、場所を選んでいても元へ戻す
+        let keep = id_of(&conn, "keep.txt");
+        assert!(parent_exists(&config, "keep.txt"));
+        assert_eq!(
+            restore(&conn, &config, &keep, Some("other")).unwrap(),
+            "keep.txt"
+        );
+
+        fs::remove_dir_all(dir.join("folder/a")).unwrap();
+        assert!(!parent_exists(&config, "a/b/memo.txt"));
+        let memo = id_of(&conn, "memo.txt");
+        // 無いフォルダ・folder/ の外は選べない
+        assert!(restore(&conn, &config, &memo, Some("nothing")).is_err());
+        assert!(restore(&conn, &config, &memo, Some("../data")).is_err());
+        assert!(!dir.join("folder/a").exists());
+        assert_eq!(
+            restore(&conn, &config, &memo, Some("other")).unwrap(),
+            "other/memo.txt"
+        );
+        assert!(!dir.join("folder/a").exists());
+        assert_eq!(
+            fs::read_to_string(dir.join("folder/other/memo.txt")).unwrap(),
+            "memo"
+        );
         fs::remove_dir_all(&dir).unwrap();
     }
 
