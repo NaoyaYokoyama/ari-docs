@@ -1,5 +1,5 @@
 import MDEditor from "@uiw/react-md-editor";
-import { CircleCheck, FileDown, History, LayoutTemplate, Link2, Plus, Printer, Save, Star, Trash2, Users } from "lucide-react";
+import { CircleCheck, FileCode, FileDown, History, LayoutTemplate, Link2, Plus, Printer, Save, Star, Trash2, Users } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { twMerge } from "tailwind-merge";
@@ -22,16 +22,18 @@ import IconButton from "@/components/common/IconButton";
 import Kbd from "@/components/common/Kbd";
 import Spinner from "@/components/common/Spinner";
 import { type AriLink, ariLinkLabel, parseAriLink, toAriLink } from "@/lib/ariLink";
+import { openBlob, saveBlob } from "@/lib/download";
 import { formatSize } from "@/lib/fileType";
 import { errorMessage, formatDateTime } from "@/lib/format";
 import { compressImage } from "@/lib/imageCompress";
-import { saveAsMarkdown } from "@/pages/content/contentExport";
+import { buildHtml, exportFileName, htmlBlob, saveAsMarkdown } from "@/pages/content/contentExport";
 import type { ContentDetail, ContentItem, ContentKind } from "@/pages/content/contentKinds";
 import ContentMarkdown, { contentMarkdownOptions, ImageResizeContext } from "@/pages/content/ContentMarkdown";
 import ContentSidebar, { type MoveTarget } from "@/pages/content/ContentSidebar";
 import { TEMPLATE_FOLDER } from "@/pages/content/contentTemplates";
 import { folderPath } from "@/pages/content/contentTree";
 import CreateContentDialog from "@/pages/content/CreateContentDialog";
+import ExportView from "@/pages/content/ExportView";
 import FolderNameDialog from "@/pages/content/FolderNameDialog";
 import HistoryDialog from "@/pages/content/HistoryDialog";
 import { insertImages, type MarkdownCommandId, runMarkdownCommand } from "@/pages/content/markdown/commands";
@@ -39,7 +41,6 @@ import { type MarkdownEditorHandle, textareaHandle } from "@/pages/content/markd
 import { resizeImage } from "@/pages/content/markdown/imageSize";
 import MarkdownToolbar from "@/pages/content/MarkdownToolbar";
 import MoveDialog from "@/pages/content/MoveDialog";
-import PrintView from "@/pages/content/PrintView";
 import { todayNoteId } from "@/pages/content/todayNote";
 import { useContentFolders } from "@/pages/content/useContentFolders";
 import { useEditingNotice } from "@/pages/content/useEditingNotice";
@@ -464,20 +465,34 @@ export default function ContentPage({ kind }: Props) {
     }
   };
 
-  // 印刷・書き出し（FN0401-BR18）。メニューを開く位置と、印刷する中身を描いているか
+  // 印刷・書き出し（FN0401-BR18）。メニューを開く位置と、HTML にするために本文を描いているか（print: ブラウザで開いて印刷、save: 保存）
   const [exportMenu, setExportMenu] = useState<{ x: number; y: number } | null>(null);
-  const [printing, setPrinting] = useState(false);
+  const [exporting, setExporting] = useState<"print" | "save" | null>(null);
 
-  // 印刷する中身（PrintView）を描き終えたら、印刷の画面を出す（Windows は「Microsoft Print to PDF」で PDF にもできる）
-  const printReady = useCallback(() => {
-    document.body.classList.add("ari-printing");
-    try {
-      window.print();
-    } finally {
-      document.body.classList.remove("ari-printing");
-      setPrinting(false);
-    }
-  }, []);
+  // 本文（ExportView）を描き終えたら、1 つの HTML にして、既定のブラウザで開く（開くと印刷の画面が出る。PDF にも保存できる）か保存する
+  const exportReady = useCallback(
+    (rendered: HTMLElement) => {
+      const target = selected;
+      const mode = exporting;
+      if (!target || !mode) {
+        return;
+      }
+      const meta = `${kind.label} ／ 更新: ${formatDateTime(target.updatedAt)} ／ 書き出し: ${formatDateTime(new Date().toISOString())}`;
+      buildHtml(target.title, meta, rendered, mode === "print")
+        .then(async (html) => {
+          const name = exportFileName(target.title, "html");
+          if (mode === "print") {
+            await openBlob(name, htmlBlob(html));
+            showMessage("info", "ブラウザで開きました。印刷の画面で、プリンターか「PDF に保存」を選んでください");
+          } else if (await saveBlob(name, htmlBlob(html))) {
+            showMessage("info", "HTML のファイルで保存しました（図・画像も入っています。ブラウザ・Word で開けます）");
+          }
+        })
+        .catch((error) => showMessage("error", errorMessage(error, "書き出せませんでした")))
+        .finally(() => setExporting(null));
+    },
+    [selected, exporting, kind.label, showMessage],
+  );
 
   const exportMarkdown = async () => {
     if (!selected) {
@@ -719,7 +734,7 @@ export default function ContentPage({ kind }: Props) {
                 </IconButton>
                 <IconButton
                   label="印刷・書き出し"
-                  hint={`この${kind.label}を印刷します（PDF にも保存できます）。Markdown のファイルでも保存できます`}
+                  hint={`この${kind.label}をブラウザで開いて印刷します（PDF にも保存できます）。HTML・Markdown のファイルでも保存できます`}
                   aria-haspopup="menu"
                   onClick={(event) => {
                     const rect = event.currentTarget.getBoundingClientRect();
@@ -732,18 +747,12 @@ export default function ContentPage({ kind }: Props) {
                   position={exportMenu}
                   onClose={() => setExportMenu(null)}
                   items={[
-                    { label: "印刷（PDF にも保存できます）", icon: Printer, onSelect: () => setPrinting(true) },
+                    { label: "ブラウザで開いて印刷（PDF にも保存できます）", icon: Printer, onSelect: () => setExporting("print") },
+                    { label: "HTML のファイルで保存", icon: FileCode, onSelect: () => setExporting("save") },
                     { label: "Markdown のファイルで保存", icon: FileDown, onSelect: () => void exportMarkdown() },
                   ]}
                 />
-                {printing && (
-                  <PrintView
-                    title={selected.title}
-                    content={selected.content}
-                    meta={`${kind.label} ／ 更新: ${formatDateTime(selected.updatedAt)} ／ 印刷: ${formatDateTime(new Date().toISOString())}`}
-                    onReady={printReady}
-                  />
-                )}
+                {exporting && <ExportView content={selected.content} onReady={exportReady} />}
                 {!inTemplateFolder && (
                   <IconButton
                     label="ひな形として登録"
