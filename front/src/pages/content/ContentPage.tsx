@@ -1,5 +1,5 @@
 import MDEditor from "@uiw/react-md-editor";
-import { CircleCheck, History, LayoutTemplate, Link2, Plus, Save, Star, Trash2, Users } from "lucide-react";
+import { CircleCheck, FileDown, History, LayoutTemplate, Link2, Plus, Printer, Save, Star, Trash2, Users } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { twMerge } from "tailwind-merge";
@@ -15,6 +15,7 @@ import { type EditorMode, getEditorMode, setEditorMode } from "@/app/preferences
 import { useTheme } from "@/app/theme";
 import { useCopyAriLink } from "@/app/useAriLink";
 import Button from "@/components/common/Button";
+import ContextMenu from "@/components/common/ContextMenu";
 import EmptyState from "@/components/common/EmptyState";
 import Hint from "@/components/common/Hint";
 import IconButton from "@/components/common/IconButton";
@@ -24,6 +25,7 @@ import { type AriLink, ariLinkLabel, parseAriLink, toAriLink } from "@/lib/ariLi
 import { formatSize } from "@/lib/fileType";
 import { errorMessage, formatDateTime } from "@/lib/format";
 import { compressImage } from "@/lib/imageCompress";
+import { saveAsMarkdown } from "@/pages/content/contentExport";
 import type { ContentDetail, ContentItem, ContentKind } from "@/pages/content/contentKinds";
 import ContentMarkdown, { contentMarkdownOptions, ImageResizeContext } from "@/pages/content/ContentMarkdown";
 import ContentSidebar, { type MoveTarget } from "@/pages/content/ContentSidebar";
@@ -37,6 +39,7 @@ import { type MarkdownEditorHandle, textareaHandle } from "@/pages/content/markd
 import { resizeImage } from "@/pages/content/markdown/imageSize";
 import MarkdownToolbar from "@/pages/content/MarkdownToolbar";
 import MoveDialog from "@/pages/content/MoveDialog";
+import PrintView from "@/pages/content/PrintView";
 import { todayNoteId } from "@/pages/content/todayNote";
 import { useContentFolders } from "@/pages/content/useContentFolders";
 import { useEditingNotice } from "@/pages/content/useEditingNotice";
@@ -461,6 +464,34 @@ export default function ContentPage({ kind }: Props) {
     }
   };
 
+  // 印刷・書き出し（FN0401-BR18）。メニューを開く位置と、印刷する中身を描いているか
+  const [exportMenu, setExportMenu] = useState<{ x: number; y: number } | null>(null);
+  const [printing, setPrinting] = useState(false);
+
+  // 印刷する中身（PrintView）を描き終えたら、印刷の画面を出す（Windows は「Microsoft Print to PDF」で PDF にもできる）
+  const printReady = useCallback(() => {
+    document.body.classList.add("ari-printing");
+    try {
+      window.print();
+    } finally {
+      document.body.classList.remove("ari-printing");
+      setPrinting(false);
+    }
+  }, []);
+
+  const exportMarkdown = async () => {
+    if (!selected) {
+      return;
+    }
+    try {
+      if (await saveAsMarkdown(selected.title, selected.content)) {
+        showMessage("info", "Markdown のファイルで保存しました（貼り付けた画像もファイルの中に入っています）");
+      }
+    } catch (error) {
+      showMessage("error", errorMessage(error, "保存できませんでした"));
+    }
+  };
+
   // 一番上の「ひな形」フォルダ（FN0401-BR16）と、開いているものがその中にあるか
   const templateFolderId =
     folders.data?.folders.find((folder) => folder.parentId === "" && folder.name === TEMPLATE_FOLDER)?.folderId ?? "";
@@ -686,6 +717,33 @@ export default function ContentPage({ kind }: Props) {
                 >
                   <History size={17} />
                 </IconButton>
+                <IconButton
+                  label="印刷・書き出し"
+                  hint={`この${kind.label}を印刷します（PDF にも保存できます）。Markdown のファイルでも保存できます`}
+                  aria-haspopup="menu"
+                  onClick={(event) => {
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    setExportMenu({ x: rect.right - 240, y: rect.bottom + 4 });
+                  }}
+                >
+                  <Printer size={17} />
+                </IconButton>
+                <ContextMenu
+                  position={exportMenu}
+                  onClose={() => setExportMenu(null)}
+                  items={[
+                    { label: "印刷（PDF にも保存できます）", icon: Printer, onSelect: () => setPrinting(true) },
+                    { label: "Markdown のファイルで保存", icon: FileDown, onSelect: () => void exportMarkdown() },
+                  ]}
+                />
+                {printing && (
+                  <PrintView
+                    title={selected.title}
+                    content={selected.content}
+                    meta={`${kind.label} ／ 更新: ${formatDateTime(selected.updatedAt)} ／ 印刷: ${formatDateTime(new Date().toISOString())}`}
+                    onReady={printReady}
+                  />
+                )}
                 {!inTemplateFolder && (
                   <IconButton
                     label="ひな形として登録"

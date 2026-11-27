@@ -1,4 +1,4 @@
-import { type ComponentProps, useEffect, useId, useRef, useState } from "react";
+import { type ComponentProps, createContext, useContext, useEffect, useId, useRef, useState } from "react";
 
 import { useTheme } from "@/app/theme";
 
@@ -18,6 +18,9 @@ function loadMermaid() {
   return mermaidPromise;
 }
 
+// 図の配色を画面の配色と変えるとき（印刷は紙に合わせて明るい配色。FN0401-BR18）
+export const MermaidThemeContext = createContext<"light" | "dark" | null>(null);
+
 // 編集中のプレビューで、打つたびに描き直して誤りの表示が点滅しないよう、少し待ってから描く
 const RENDER_DELAY_MS = 300;
 
@@ -25,7 +28,8 @@ function Mermaid({ chart }: Props) {
   const id = `mermaid-${useId().replace(/:/g, "")}`;
   const [svg, setSvg] = useState("");
   const [error, setError] = useState("");
-  const { resolved: colorMode } = useTheme();
+  const { resolved } = useTheme();
+  const colorMode = useContext(MermaidThemeContext) ?? resolved;
   const drawn = useRef(false);
 
   useEffect(() => {
