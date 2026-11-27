@@ -140,6 +140,8 @@ jobs:
             dist-server/*.tar.gz
             dist-server/*.tar.gz.sig
           if-no-files-found: error
+          # 次の release の仕事に渡すだけなので 1 日で消す（1 回で約 250 MB。非公開のリポジトリは置き場所が 500 MB までのため）
+          retention-days: 1
 
   # タグのとき: 配布用の公開リポジトリ（RELEASE_REPO）の GitHub Releases に配布物・署名・latest.json を載せる。
   # ソースのリポジトリは非公開にするため、アプリは RELEASE_REPO の releases/latest/download/latest.json を読む（FN0904-BR02）。
