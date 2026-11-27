@@ -132,6 +132,8 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM t", [], |row| row.get(0))
             .unwrap();
         assert_eq!(count, 1);
+        // Windows は開いたままの DB のファイルを消せないので、先に閉じる
+        drop(conn);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }
