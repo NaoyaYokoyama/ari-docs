@@ -54,7 +54,8 @@
     },
     "resources": {
       "../../back/models/": "models/",
-      "../../back/licenses/THIRD_PARTY_NOTICES.txt": "THIRD_PARTY_NOTICES.txt"
+      "../../back/licenses/THIRD_PARTY_NOTICES.txt": "THIRD_PARTY_NOTICES.txt",
+      "../../LICENSE": "LICENSE.txt"
     }
   }
 }

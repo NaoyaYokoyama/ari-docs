@@ -1,9 +1,9 @@
 [package]
 name = "app"
 version = "0.4.0"
-description = "A Tauri App"
-authors = ["you"]
-license = "AGPL-3.0-only"
+description = "ari-docs"
+authors = ["Naoya Yokoyama"]
+license-file = "../../LICENSE"
 repository = ""
 edition = "2021"
 rust-version = "1.77.2"

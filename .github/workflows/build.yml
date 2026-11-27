@@ -121,6 +121,7 @@ jobs:
           cp target/release/back ../dist-server/pkg/
           cp -r models ../dist-server/pkg/
           cp licenses/THIRD_PARTY_NOTICES.txt ../dist-server/pkg/
+          cp ../LICENSE ../dist-server/pkg/LICENSE.txt
           archive="../dist-server/ari-docs-server_${version}_linux-x86_64.tar.gz"
           tar -czf "$archive" -C ../dist-server/pkg .
           if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
@@ -140,15 +141,29 @@ jobs:
             dist-server/*.tar.gz.sig
           if-no-files-found: error
 
-  # タグのとき: GitHub Releases に配布物・署名・latest.json を載せる。
-  # 自分の PC のアプリは releases/latest/download/latest.json を読んで新しい版を調べる（FN0904-BR02）
+  # タグのとき: 配布用の公開リポジトリ（RELEASE_REPO）の GitHub Releases に配布物・署名・latest.json を載せる。
+  # ソースのリポジトリは非公開にするため、アプリは RELEASE_REPO の releases/latest/download/latest.json を読む（FN0904-BR02）。
+  # RELEASE_REPO に書き込むトークン（Secrets の RELEASE_TOKEN。その公開リポジトリの Contents を書ける細かい権限のトークン）が要る。
+  # 移る途中の版のため、このリポジトリの Releases にも同じものを載せる（前の版のアプリはここを見て更新する）
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+    env:
+      RELEASE_REPO: NaoyaYokoyama/ari-docs-releases
     steps:
+      - name: 配布用のリポジトリに書き込めるかを確かめる
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Secrets に RELEASE_TOKEN がありません（$RELEASE_REPO に書き込めるトークンを入れてください）"
+            exit 1
+          fi
+          gh repo view "$RELEASE_REPO" --json name -q .name
+
       # 変更点を前のタグからのコミットで作るため、履歴とタグもすべて取る
       - uses: actions/checkout@v5
         with:
@@ -205,39 +220,46 @@ jobs:
             fi
           done
 
-      - name: GitHub Releases に載せる
+      # 下書きで作り、latest.json を載せてから公開する（latest.json の無い間に、アプリが更新を調べて失敗しないように）。
+      # latest.json の中の取り先は、どちらのリポジトリに載せたものも公開の RELEASE_REPO にする
+      - name: latest.json を作る
         env:
-          GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
-        # 下書きで作り、latest.json を載せてから公開する（latest.json の無い間に、アプリが更新を調べて失敗しないように）
-        run: gh release create "$TAG" dist/* --repo "${{ github.repository }}" --title "$TAG" --notes-file notes.md --draft
-
-      # Releases の本文（自動で作った変更点）を notes に入れる。アプリの更新の画面に出す（FN0904-BR13）
-      - name: latest.json を作って載せる
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
-          REPO: ${{ github.repository }}
         run: |
           cd dist
           version="${TAG#v}"
           windows="ari-docs_${version}_x64-setup.exe"
           linux="ari-docs_${version}_amd64.AppImage"
           server="ari-docs-server_${version}_linux-x86_64.tar.gz"
-          base="https://github.com/${REPO}/releases/download/${TAG}"
-          notes="$(gh release view "$TAG" --repo "$REPO" --json body -q .body)"
+          base="https://github.com/${RELEASE_REPO}/releases/download/${TAG}"
           jq -n \
             --arg version "$version" \
-            --arg notes "$notes" \
+            --rawfile notes ../notes.md \
             --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --arg wsig "$(cat "$windows.sig")" --arg wurl "$base/$windows" \
             --arg lsig "$(cat "$linux.sig")" --arg lurl "$base/$linux" \
             --arg ssig "$(cat "$server.sig")" --arg surl "$base/$server" \
-            '{version: $version, notes: $notes, pub_date: $date, platforms: {
+            '{version: $version, notes: ($notes | rtrimstr("\n")), pub_date: $date, platforms: {
               "windows-x86_64": {signature: $wsig, url: $wurl},
               "linux-x86_64": {signature: $lsig, url: $lurl},
               "server-linux-x86_64": {signature: $ssig, url: $surl}
-            }}' > latest.json
-          cat latest.json
-          gh release upload "$TAG" latest.json --repo "$REPO"
-          gh release edit "$TAG" --repo "$REPO" --draft=false
+            }}' > ../latest.json
+          cat ../latest.json
+
+      - name: 配布用のリポジトリの Releases に載せる
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" dist/* --repo "$RELEASE_REPO" --title "$TAG" --notes-file notes.md --draft
+          gh release upload "$TAG" latest.json --repo "$RELEASE_REPO"
+          gh release edit "$TAG" --repo "$RELEASE_REPO" --draft=false
+
+      - name: このリポジトリの Releases にも載せる
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" dist/* --repo "${{ github.repository }}" --title "$TAG" --notes-file notes.md --draft
+          gh release upload "$TAG" latest.json --repo "${{ github.repository }}"
+          gh release edit "$TAG" --repo "${{ github.repository }}" --draft=false

@@ -63,7 +63,7 @@ ari-docs/
 ├── docker-compose.yml
 └── README.md
 
-## License
+## 利用規約
 
-This project is licensed under the MIT License.
-See the LICENSE file for details.
+無料のソフトウェアです（OSS ではありません）。利用規約は LICENSE を見てください。
+v0.4.0 までの版は、配布したときのライセンス（MIT License または GNU AGPL v3）のままです。

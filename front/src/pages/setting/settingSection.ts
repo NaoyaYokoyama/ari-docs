@@ -4,6 +4,7 @@ import {
   FileCheck,
   FolderCog,
   FolderX,
+  Heart,
   Info,
   Keyboard,
   KeyRound,
@@ -201,6 +202,13 @@ export const settingSections = [
     icon: Info,
     group: "その他",
     keywords: "バージョン 情報 問い合わせ 容量 DB 件数 場所",
+  },
+  {
+    id: "credit",
+    label: "クレジット",
+    icon: Heart,
+    group: "その他",
+    keywords: "クレジット 作成者 作者 コントリビューター 協力 スポンサー 支援 ライセンス 著作権",
   },
 ] as const satisfies readonly Section[];
 

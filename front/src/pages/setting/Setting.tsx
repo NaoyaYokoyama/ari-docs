@@ -17,6 +17,7 @@ import { errorMessage } from "@/lib/format";
 import { AboutSetting, TransferSetting } from "@/pages/setting/AboutSetting";
 import AdminDeviceSetting from "@/pages/setting/AdminDeviceSetting";
 import BackupSetting from "@/pages/setting/BackupSetting";
+import { CreditSetting } from "@/pages/setting/CreditSetting";
 import HostSetting from "@/pages/setting/HostSetting";
 import LockSetting from "@/pages/setting/LockSetting";
 import PlacesSetting from "@/pages/setting/PlacesSetting";
@@ -80,6 +81,7 @@ export default function Setting() {
           {section === "workspace" && <WorkspaceSetting />}
           {section === "transfer" && <TransferSetting />}
           {section === "about" && <AboutSetting />}
+          {section === "credit" && <CreditSetting />}
         </div>
       </main>
     </div>

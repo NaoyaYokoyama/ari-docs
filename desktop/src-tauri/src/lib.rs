@@ -1008,9 +1008,9 @@ async fn open_download(request: Request<'_>, watches: State<'_, Watches>) -> Res
 
 // ---- アプリの更新（docs の FN0904） ----
 
-// 自分の PC のときの取り先（GitHub Releases の最新の版。FN0904-BR02）
+// 自分の PC のときの取り先（配布用の公開リポジトリ ari-docs-releases の最新の版。ソースは非公開。FN0904-BR02）
 const RELEASE_ENDPOINT: &str =
-  "https://github.com/NaoyaYokoyama/ari-docs/releases/latest/download/latest.json";
+  "https://github.com/NaoyaYokoyama/ari-docs-releases/releases/latest/download/latest.json";
 // 新しい版を調べるときの時間切れ（ファイルを取ってくるときは時間を切らない）
 const UPDATE_CHECK_TIMEOUT: Duration = Duration::from_secs(30);
 
@@ -1063,7 +1063,7 @@ fn updater_pubkey(app: &AppHandle) -> String {
 
 // その版の更新の情報（GitHub Releases の版ごとの latest.json。共有サーバーの版にそろえるとき。FN0904-BR02）
 fn release_endpoint_for(version: &str) -> Result<tauri::Url, String> {
-  format!("https://github.com/NaoyaYokoyama/ari-docs/releases/download/v{version}/latest.json")
+  format!("https://github.com/NaoyaYokoyama/ari-docs-releases/releases/download/v{version}/latest.json")
     .parse()
     .map_err(|e| format!("URL が正しくありません: {e}"))
 }
@@ -1583,7 +1583,7 @@ mod tests {
   fn release_endpoint_points_to_the_tag_of_the_server_version() {
     assert_eq!(
       release_endpoint_for("0.2.0").unwrap().as_str(),
-      "https://github.com/NaoyaYokoyama/ari-docs/releases/download/v0.2.0/latest.json"
+      "https://github.com/NaoyaYokoyama/ari-docs-releases/releases/download/v0.2.0/latest.json"
     );
   }
 

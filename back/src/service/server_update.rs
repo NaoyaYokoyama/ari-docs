@@ -22,7 +22,7 @@ use crate::{config::app::AppConfig, database::connection};
 
 // GitHub Releases の最新の版の情報（Actions が作る。アプリの更新と同じファイル。FN0904-BR02）
 const RELEASE_LATEST: &str =
-    "https://github.com/NaoyaYokoyama/ari-docs/releases/latest/download/latest.json";
+    "https://github.com/NaoyaYokoyama/ari-docs-releases/releases/latest/download/latest.json";
 // latest.json の platforms の中の、サーバー一式の名前
 pub const PLATFORM: &str = "server-linux-x86_64";
 // サーバー一式の中の実行ファイルの名前
@@ -351,10 +351,10 @@ pub fn apply(
             }
             return Err(e);
         }
-        let _ = fs::copy(
-            staging.join("THIRD_PARTY_NOTICES.txt"),
-            dir.join("THIRD_PARTY_NOTICES.txt"),
-        );
+        // ライセンスと利用規約（無い版でも更新は止めない）
+        for name in ["THIRD_PARTY_NOTICES.txt", "LICENSE.txt"] {
+            let _ = fs::copy(staging.join(name), dir.join(name));
+        }
         println!(
             "サーバーを {current} から {version} に入れ替えました（前の版: {}、DB の写し: {}）",
             sibling(&exe, ".old").display(),

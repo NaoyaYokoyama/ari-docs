@@ -2,7 +2,7 @@
 name = "back"
 version = "0.4.0"
 edition = "2024"
-license = "AGPL-3.0-only"
+license-file = "../LICENSE"
 
 # デスクトップアプリ（desktop/src-tauri）から同じプロセスで起動するためのライブラリ
 [lib]
