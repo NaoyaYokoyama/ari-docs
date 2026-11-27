@@ -1,5 +1,5 @@
 // Folder でプレビュー（Space）できる形式（FN0301-BR30）。PreviewDialog と設定の「対応するファイル」で使う
-export type PreviewKind = "image" | "pdf" | "markdown" | "csv" | "text";
+export type PreviewKind = "image" | "pdf" | "markdown" | "csv" | "text" | "office";
 
 export const PREVIEW_FORMATS: { kind: PreviewKind; name: string; extensions: string[]; note?: string }[] = [
   { kind: "image", name: "画像", extensions: ["png", "jpg", "jpeg", "gif", "bmp", "webp", "svg"] },
@@ -10,6 +10,14 @@ export const PREVIEW_FORMATS: { kind: PreviewKind; name: string; extensions: str
     extensions: ["md", "markdown"],
     note: "見出し・表などを整えて表示（1 MB を超えると整えずに先頭だけ）",
   },
+  {
+    kind: "office",
+    name: "Excel",
+    extensions: ["xlsx", "xlsm", "xlsb", "xls", "ods"],
+    note: "シートごとにセルの値を表で表示（500 行・50 列まで。色・罫線・図は出ません）",
+  },
+  { kind: "office", name: "Word", extensions: ["docx", "docm", "doc"], note: "文章を表示（色・表の枠・図は出ません）" },
+  { kind: "office", name: "PowerPoint", extensions: ["pptx", "pptm", "ppt"], note: "スライドごとの文字を表示（図・画像は出ません）" },
   { kind: "csv", name: "CSV・TSV", extensions: ["csv", "tsv"], note: "表で表示（先頭 1 MB・500 行まで）" },
   {
     kind: "text",

@@ -141,6 +141,7 @@ pub fn create_router() -> Router<AppState> {
         .route("/api/nodes/versions/restore", post(node::restore_version))
         .route("/api/nodes/unlock", post(node::unlock_node))
         .route("/api/nodes/download", get(node::download_node))
+        .route("/api/nodes/preview-office", get(node::preview_office))
         .route("/api/nodes/reveal", post(node::reveal_node))
         .route("/api/nodes/download-zip", post(node::download_zip))
         // Trash（FN0302）

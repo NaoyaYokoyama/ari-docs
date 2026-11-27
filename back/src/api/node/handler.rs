@@ -444,6 +444,36 @@ pub async fn download_node(
     Ok(attachment(&name, "application/octet-stream", body))
 }
 
+// Office のファイル（Excel・Word・PowerPoint）のプレビュー（FN0301-BR41）。文字とセルの値だけを返す。
+// 大きなファイルでサーバーが重くならないよう、同時に作るのは 2 つまで（ほかは順番を待つ）
+static OFFICE_PREVIEW_SLOTS: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(2);
+
+pub async fn preview_office(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<NodeQuery>,
+) -> Result<Json<crate::service::office_preview::OfficePreview>, ApiError> {
+    use crate::service::office_preview;
+    require_login(&state, &headers)?;
+    let path =
+        node::file_for_download(&state.config.folder_root, &query.path).map_err(to_api_error)?;
+    if !office_preview::is_office(&path) {
+        return Err(ApiError::new(
+            StatusCode::BAD_REQUEST,
+            "この種類のファイルはプレビューできません",
+        ));
+    }
+    let _slot = OFFICE_PREVIEW_SLOTS
+        .acquire()
+        .await
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    let preview = tokio::task::spawn_blocking(move || office_preview::preview(&path))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .map_err(|message| ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, &message))?;
+    Ok(Json(preview))
+}
+
 // エクスプローラー（Finder など）で、そのファイル・フォルダの場所を開く（ローカルモードだけ。FN0301-BR22）
 pub async fn reveal_node(
     State(state): State<AppState>,

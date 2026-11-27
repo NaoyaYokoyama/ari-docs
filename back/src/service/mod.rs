@@ -16,6 +16,7 @@ pub mod node;
 pub mod node_lock;
 pub mod node_version;
 pub mod note;
+pub mod office_preview;
 pub mod quick_open;
 pub mod search;
 pub mod search_exclusion;

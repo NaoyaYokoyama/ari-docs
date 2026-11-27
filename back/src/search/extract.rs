@@ -315,7 +315,7 @@ fn extract_office_xml(path: &Path, parts: &[&str]) -> Result<String, String> {
     Ok(text)
 }
 
-fn xml_text(xml: &str, out: &mut String) {
+pub(crate) fn xml_text(xml: &str, out: &mut String) {
     let mut reader = quick_xml::Reader::from_str(xml);
     loop {
         match reader.read_event() {
@@ -330,6 +330,8 @@ fn xml_text(xml: &str, out: &mut String) {
             }
             // 段落（Word の w:p、PowerPoint の a:p）・セルの終わりで改行する
             Ok(Event::End(e)) if matches!(e.local_name().as_ref(), "p" | "tc") => out.push('\n'),
+            // 空の段落（行を空けるのに使う）
+            Ok(Event::Empty(e)) if e.local_name().as_ref() == "p" => out.push('\n'),
             // 改行・タブ
             Ok(Event::Empty(e)) if matches!(e.local_name().as_ref(), "br" | "tab") => out.push(' '),
             Ok(Event::Eof) | Err(_) => break,

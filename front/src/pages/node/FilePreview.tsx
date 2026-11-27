@@ -15,6 +15,7 @@ import {
   type PreviewKind,
 } from "@/lib/previewFormats";
 import { safeRehypePlugins } from "@/lib/safeMarkdown";
+import OfficePreview from "@/pages/node/OfficePreview";
 import type { Node } from "@/types/node";
 
 const MAX_CSV_ROWS = 500;
@@ -91,7 +92,7 @@ type Props = {
   fill?: boolean;
 };
 
-// ファイルの中身の表示（FN0301-BR30）。画像・PDF・テキスト・Markdown・CSV。プレビューのダイアログと右の領域で使う
+// ファイルの中身の表示（FN0301-BR30）。画像・PDF・テキスト・Markdown・CSV・Office（BR41）。プレビューのダイアログと右の領域で使う
 export default function FilePreview({ node, fill = false }: Props) {
   const { resolved } = useTheme();
   const [url, setUrl] = useState("");
@@ -109,7 +110,8 @@ export default function FilePreview({ node, fill = false }: Props) {
     setText(null);
     setError("");
     setLoading(false);
-    if (kind === "none" || tooLarge) {
+    // Office はサーバーが中身の文字を取り出す（OfficePreview が読み込む）
+    if (kind === "none" || kind === "office" || tooLarge) {
       return;
     }
     let objectUrl = "";
@@ -185,6 +187,8 @@ export default function FilePreview({ node, fill = false }: Props) {
       </div>
     );
     switch (kind) {
+      case "office":
+        return <OfficePreview node={node} fill={fill} />;
       case "image":
         return url ? <img src={url} alt={node.name} className={`mx-auto ${fill ? "max-h-full" : "max-h-[70vh]"} max-w-full object-contain`} /> : null;
       case "pdf":

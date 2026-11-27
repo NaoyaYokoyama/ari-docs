@@ -112,6 +112,16 @@ export function downloadNode(path: string) {
   return getBlob(`/api/nodes/download?path=${encodeURIComponent(path)}`);
 }
 
+// Office のファイルのプレビュー（FN0301-BR41）。文字とセルの値だけ
+export type OfficePreview =
+  | { type: "sheets"; sheets: { name: string; rows: string[][]; truncated: boolean }[]; moreSheets: boolean }
+  | { type: "document"; text: string; truncated: boolean }
+  | { type: "slides"; slides: string[]; truncated: boolean };
+
+export function previewOffice(path: string) {
+  return get<OfficePreview>(`/api/nodes/preview-office?path=${encodeURIComponent(path)}`);
+}
+
 // エクスプローラーなどでその場所を開く（ローカルモードだけ）
 export function revealNode(path: string) {
   return post("/api/nodes/reveal", { path });
