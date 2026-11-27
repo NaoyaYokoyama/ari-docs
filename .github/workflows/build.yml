@@ -145,8 +145,7 @@ jobs:
 
   # タグのとき: 配布用の公開リポジトリ（RELEASE_REPO）の GitHub Releases に配布物・署名・latest.json を載せる。
   # ソースのリポジトリは非公開にするため、アプリは RELEASE_REPO の releases/latest/download/latest.json を読む（FN0904-BR02）。
-  # RELEASE_REPO に書き込むトークン（Secrets の RELEASE_TOKEN。その公開リポジトリの Contents を書ける細かい権限のトークン）が要る。
-  # 移る途中の版のため、このリポジトリの Releases にも同じものを載せる（前の版のアプリはここを見て更新する）
+  # RELEASE_REPO に書き込むトークン（Secrets の RELEASE_TOKEN。その公開リポジトリの Contents を書ける細かい権限のトークン）が要る
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build
@@ -256,12 +255,3 @@ jobs:
           gh release create "$TAG" dist/* --repo "$RELEASE_REPO" --title "$TAG" --notes-file notes.md --draft
           gh release upload "$TAG" latest.json --repo "$RELEASE_REPO"
           gh release edit "$TAG" --repo "$RELEASE_REPO" --draft=false
-
-      - name: このリポジトリの Releases にも載せる
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
-        run: |
-          gh release create "$TAG" dist/* --repo "${{ github.repository }}" --title "$TAG" --notes-file notes.md --draft
-          gh release upload "$TAG" latest.json --repo "${{ github.repository }}"
-          gh release edit "$TAG" --repo "${{ github.repository }}" --draft=false

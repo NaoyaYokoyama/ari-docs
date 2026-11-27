@@ -52,6 +52,7 @@
         "installerHooks": "./installer-hooks.nsh"
       }
     },
+    "licenseFile": "../../LICENSE",
     "resources": {
       "../../back/models/": "models/",
       "../../back/licenses/THIRD_PARTY_NOTICES.txt": "THIRD_PARTY_NOTICES.txt",

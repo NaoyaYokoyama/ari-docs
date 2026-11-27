@@ -237,6 +237,7 @@ pub fn create_router() -> Router<AppState> {
         .route("/api/system/settings", get(system::get_settings))
         .route("/api/system/settings/update", post(system::update_settings))
         .route("/api/system/info", get(system::get_info))
+        .route("/api/system/licenses", get(system::get_licenses))
         // User（共有モードの管理者だけ）
         .route("/api/users", get(user::get_users))
         .route("/api/users/create", post(user::create_user))

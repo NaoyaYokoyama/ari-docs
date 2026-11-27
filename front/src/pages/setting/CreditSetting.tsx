@@ -1,3 +1,11 @@
+import { FileText } from "lucide-react";
+import { useEffect, useState } from "react";
+
+import { getLicenses } from "@/api/system";
+import { useApp } from "@/app/AppContext";
+import Button from "@/components/common/Button";
+import Spinner from "@/components/common/Spinner";
+import { errorMessage } from "@/lib/format";
 import { AUTHOR, CONTRIBUTORS, type CreditPerson, SPONSORS, THIRD_PARTY } from "@/pages/setting/credits";
 import { SettingCard, SettingPanel } from "@/pages/setting/SettingPanel";
 
@@ -17,8 +25,26 @@ function People({ people, empty }: { people: CreditPerson[]; empty: string }) {
   );
 }
 
-// クレジット（FN0903-BR05）。作った人・協力してくれた人・支援してくれた人と、使っている部品のライセンス
+function LicenseText({ text }: { text: string }) {
+  return (
+    <pre className="max-h-96 overflow-auto rounded-md bg-muted p-3 font-mono text-xs whitespace-pre-wrap break-all">
+      {text}
+    </pre>
+  );
+}
+
+// クレジット（FN0903-BR05）。作った人・協力してくれた人・支援してくれた人と、利用規約・使っている部品のライセンス
 export function CreditSetting() {
+  const { showMessage } = useApp();
+  const [licenses, setLicenses] = useState<{ terms: string; notices: string } | null>(null);
+  const [showNotices, setShowNotices] = useState(false);
+
+  useEffect(() => {
+    getLicenses()
+      .then(setLicenses)
+      .catch((error) => showMessage("error", errorMessage(error, "利用規約を読み込めませんでした")));
+  }, [showMessage]);
+
   return (
     <SettingPanel
       title="クレジット"
@@ -34,9 +60,12 @@ export function CreditSetting() {
       <SettingCard title="スポンサー" description="開発を支援してくれた方・会社">
         <People people={SPONSORS} empty="まだいません" />
       </SettingCard>
+      <SettingCard title="利用規約">
+        {licenses ? <LicenseText text={licenses.terms} /> : <Spinner />}
+      </SettingCard>
       <SettingCard
         title="使っているソフトウェア"
-        description="主なものです。すべての著作権とライセンスの全文は、アプリと同じフォルダの THIRD_PARTY_NOTICES.txt にあります"
+        description="主なものです。すべての部品の著作権とライセンスの全文は「全文を見る」で見られます（アプリと同じフォルダの THIRD_PARTY_NOTICES.txt と同じ内容）"
       >
         <dl className="divide-y divide-border text-sm">
           {THIRD_PARTY.map((item) => (
@@ -46,6 +75,16 @@ export function CreditSetting() {
             </div>
           ))}
         </dl>
+        <div className="mt-4">
+          {showNotices && licenses ? (
+            <LicenseText text={licenses.notices} />
+          ) : (
+            <Button variant="secondary" size="sm" disabled={!licenses} onClick={() => setShowNotices(true)}>
+              <FileText size={16} />
+              全文を見る
+            </Button>
+          )}
+        </div>
       </SettingCard>
       <p className="text-xs text-muted-foreground">© 2026 {AUTHOR.name}</p>
     </SettingPanel>

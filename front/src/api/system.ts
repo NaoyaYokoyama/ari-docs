@@ -15,3 +15,8 @@ export function updateServerSettings(settings: ServerSettings) {
 export function getSystemInfo() {
   return get<SystemInfo>("/api/system/info");
 }
+
+// 利用規約と第三者のソフトウェアのライセンス（設定の「クレジット」。FN0903-BR05）
+export function getLicenses() {
+  return get<{ terms: string; notices: string }>("/api/system/licenses");
+}

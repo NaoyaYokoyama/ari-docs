@@ -157,3 +157,25 @@ pub async fn get_info(
         paths,
     }))
 }
+
+// 利用規約と第三者のソフトウェアのライセンス（設定の「クレジット」。FN0903-BR05）。実行ファイルに埋め込む
+const TERMS: &str = include_str!("../../../../LICENSE");
+const NOTICES: &str = include_str!("../../../licenses/THIRD_PARTY_NOTICES.txt");
+
+#[derive(Serialize)]
+pub struct Licenses {
+    terms: &'static str,
+    notices: &'static str,
+}
+
+pub async fn get_licenses(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<Licenses>, ApiError> {
+    let conn = connection::connect();
+    auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    Ok(Json(Licenses {
+        terms: TERMS,
+        notices: NOTICES,
+    }))
+}
