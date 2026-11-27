@@ -21,7 +21,87 @@ export type MarkdownCommandId =
   | "orderedList"
   | "taskList"
   | "table"
-  | "formatTable";
+  | "formatTable"
+  | `diagram:${DiagramKind}`;
+
+// 図（mermaid）のひな形（FN0404-BR09）。select はひな形の中で選んでおく文字（書き換えてもらう所）
+export type DiagramKind = "flowchart" | "sequence" | "mindmap" | "er" | "gantt" | "state";
+
+function today() {
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+export const DIAGRAMS: Record<DiagramKind, { label: string; hint: string; template: () => string; select: string }> = {
+  flowchart: {
+    label: "流れ図",
+    hint: "処理の流れ・分かれ道",
+    template: () => ["flowchart TD", "  A[始め] --> B{条件}", "  B -->|はい| C[処理]", "  B -->|いいえ| D[終わり]"].join("\n"),
+    select: "始め",
+  },
+  sequence: {
+    label: "シーケンス図",
+    hint: "画面・サーバーなどのやりとりの順番",
+    template: () =>
+      ["sequenceDiagram", "  participant 画面", "  participant サーバー", "  画面->>サーバー: 要求", "  サーバー-->>画面: 応答"].join("\n"),
+    select: "画面",
+  },
+  mindmap: {
+    label: "マインドマップ",
+    hint: "考えを広げる・整理する。字下げで枝を作ります",
+    template: () => ["mindmap", "  root((テーマ))", "    案1", "      詳しく", "    案2", "    案3"].join("\n"),
+    select: "テーマ",
+  },
+  er: {
+    label: "ER 図",
+    hint: "表とその関係",
+    template: () =>
+      [
+        "erDiagram",
+        "  USER ||--o{ NOTE : writes",
+        "  USER {",
+        "    string user_id PK",
+        "    string name",
+        "  }",
+        "  NOTE {",
+        "    string note_id PK",
+        "    string user_id FK",
+        "    string title",
+        "  }",
+      ].join("\n"),
+    select: "USER",
+  },
+  gantt: {
+    label: "ガントチャート",
+    hint: "予定の線表",
+    template: () =>
+      [
+        "gantt",
+        "  dateFormat YYYY-MM-DD",
+        "  title 予定",
+        "  section 準備",
+        `    設計 :a1, ${today()}, 5d`,
+        "    実装 :a2, after a1, 10d",
+        "  section 確かめ",
+        "    試験 :after a2, 5d",
+      ].join("\n"),
+    select: "予定",
+  },
+  state: {
+    label: "状態遷移図",
+    hint: "状態と、その移り変わり",
+    template: () => ["stateDiagram-v2", "  [*] --> 未着手", "  未着手 --> 作業中", "  作業中 --> 完了", "  完了 --> [*]"].join("\n"),
+    select: "未着手",
+  },
+};
+
+function insertDiagram(selection: Selection, kind: DiagramKind): Change {
+  const diagram = DIAGRAMS[kind];
+  const block = "```mermaid\n" + diagram.template() + "\n```";
+  const start = block.indexOf(diagram.select);
+  return insertBlock(selection, block, [start, start + diagram.select.length]);
+}
 
 // 文字を記号で囲む（太字など）。囲んであれば外す。選んでいなければ見本の文字を入れて選ぶ
 function toggleWrap({ text, from, to }: Selection, marker: string, placeholder: string): Change {
@@ -167,6 +247,9 @@ function formatTable(selection: Selection): Change | null {
 
 // 書式を当てる。当てられないとき（表の外で「表を整える」など）は null
 export function runMarkdownCommand(id: MarkdownCommandId, selection: Selection): Change | null {
+  if (id.startsWith("diagram:")) {
+    return insertDiagram(selection, id.slice("diagram:".length) as DiagramKind);
+  }
   switch (id) {
     case "heading":
       return cycleHeading(selection);
@@ -197,6 +280,7 @@ export function runMarkdownCommand(id: MarkdownCommandId, selection: Selection):
     case "formatTable":
       return formatTable(selection);
   }
+  return null;
 }
 
 // 画像（![説明](URL)）を入れる。行の途中なら前で改行する

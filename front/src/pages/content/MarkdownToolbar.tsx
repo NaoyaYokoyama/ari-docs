@@ -1,6 +1,7 @@
 import {
   Bold,
   Code,
+  GitBranch,
   Heading,
   ImagePlus,
   Italic,
@@ -15,11 +16,13 @@ import {
   Table,
   TableProperties,
   TextQuote,
+  Workflow,
 } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
+import ContextMenu from "@/components/common/ContextMenu";
 import Hint, { useHintsEnabled } from "@/components/common/Hint";
-import type { MarkdownCommandId } from "@/pages/content/markdown/commands";
+import { type DiagramKind, DIAGRAMS, type MarkdownCommandId } from "@/pages/content/markdown/commands";
 import { SHORTCUT, type Shortcut, shortcutLabel } from "@/shortcut/shortcut";
 
 // Note・Wiki の本文の書式のボタン（FN0404-BR01）。普通の本文と Vim のエディタで同じものを出す
@@ -63,6 +66,8 @@ type Props = {
 export default function MarkdownToolbar({ onCommand, onImages }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const hints = useHintsEnabled();
+  // 図のひな形のメニューを開く位置（FN0404-BR09）
+  const [diagramMenu, setDiagramMenu] = useState<{ x: number; y: number } | null>(null);
   return (
     <div
       role="toolbar"
@@ -90,6 +95,23 @@ export default function MarkdownToolbar({ onCommand, onImages }: Props) {
               </Hint>
             );
           })}
+          {index === GROUPS.length - 1 && (
+            <Hint title="図" text="図（mermaid）のひな形を入れます。流れ図・シーケンス図・マインドマップなどから選び、文字を書き換えて使います">
+              <button
+                type="button"
+                title={hints ? undefined : "図（mermaid）のひな形"}
+                aria-label="図"
+                aria-haspopup="menu"
+                onClick={(event) => {
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  setDiagramMenu({ x: rect.left, y: rect.bottom + 4 });
+                }}
+                className={BUTTON}
+              >
+                <Workflow size={16} />
+              </button>
+            </Hint>
+          )}
           {index === 1 && (
             <Hint title="画像" text="画像を選んで入れます。貼り付け（Ctrl+V）・ドロップでも入れられます。小さくしてから保存します">
               <button
@@ -105,6 +127,15 @@ export default function MarkdownToolbar({ onCommand, onImages }: Props) {
           )}
         </div>
       ))}
+      <ContextMenu
+        position={diagramMenu}
+        onClose={() => setDiagramMenu(null)}
+        items={(Object.keys(DIAGRAMS) as DiagramKind[]).map((kind) => ({
+          label: `${DIAGRAMS[kind].label}（${DIAGRAMS[kind].hint}）`,
+          icon: GitBranch,
+          onSelect: () => onCommand(`diagram:${kind}`),
+        }))}
+      />
       <input
         ref={fileRef}
         type="file"
