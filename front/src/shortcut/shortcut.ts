@@ -405,6 +405,11 @@ export function useShortcutVersion() {
   return useSyncExternalStore(subscribe, () => version);
 }
 
+// 変えたキーの数（設定の「すべて元に戻す」）。React Compiler が覚えてしまわないよう、変わったら描き直す形で返す
+export function useChangedShortcutCount() {
+  return useSyncExternalStore(subscribe, () => Object.keys(overrides).length);
+}
+
 // 別のタブ・ウィンドウで変えたときも合わせる
 window.addEventListener("storage", (event) => {
   if (event.key === KEYS_STORAGE || event.key === null) {
