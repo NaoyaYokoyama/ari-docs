@@ -354,6 +354,15 @@ pub fn apply(
         for name in ["THIRD_PARTY_NOTICES.txt", "LICENSE.txt"] {
             let _ = fs::copy(staging.join(name), dir.join(name));
         }
+        // 説明書の PDF（manual/。無い版でも更新は止めない）
+        if let Ok(entries) = fs::read_dir(staging.join("manual")) {
+            let manual = dir.join("manual");
+            if fs::create_dir_all(&manual).is_ok() {
+                for entry in entries.flatten() {
+                    let _ = fs::copy(entry.path(), manual.join(entry.file_name()));
+                }
+            }
+        }
         println!(
             "サーバーを {current} から {version} に入れ替えました（前の版: {}、DB の写し: {}）",
             sibling(&exe, ".old").display(),

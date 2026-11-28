@@ -29,6 +29,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libssl-dev libxdo-dev
+          # 説明書の PDF（manual/build.mjs）に使う pandoc と日本語の字体。Chrome は Actions の Ubuntu に入っている
+          sudo apt-get install -y pandoc fonts-noto-cjk
 
       - uses: actions/setup-node@v5
         with:
@@ -56,6 +58,15 @@ jobs:
         run: |
           npm ci
           npm run build
+
+      # 使い方の説明書（manual/ の Markdown）を PDF にする。表紙の版はこの版（back/Cargo.toml）。
+      # 共有サーバー一式に入れ、Releases にも載せる（ダウンロードする前に読めるように。docs の OP0002）
+      - name: 説明書の PDF（Linux）
+        if: runner.os == 'Linux'
+        run: |
+          export CHROME="$(command -v google-chrome || command -v chromium)"
+          node manual/build.mjs
+          ls -l manual/pdf
 
       # 文字認識のモデル（back/models/）はビルドのときに公式の配布元から取ってくる（back/build_models.rs）
       - name: バックエンドのテスト
@@ -122,6 +133,8 @@ jobs:
           cp -r models ../dist-server/pkg/
           cp licenses/THIRD_PARTY_NOTICES.txt ../dist-server/pkg/
           cp ../LICENSE ../dist-server/pkg/LICENSE.txt
+          mkdir -p ../dist-server/pkg/manual
+          cp ../manual/pdf/*.pdf ../dist-server/pkg/manual/
           archive="../dist-server/ari-docs-server_${version}_linux-x86_64.tar.gz"
           tar -czf "$archive" -C ../dist-server/pkg .
           if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
@@ -139,6 +152,7 @@ jobs:
             desktop/src-tauri/target/release/bundle/appimage/*.AppImage.sig
             dist-server/*.tar.gz
             dist-server/*.tar.gz.sig
+            manual/pdf/*.pdf
           if-no-files-found: error
           # 次の release の仕事に渡すだけなので 1 日で消す（1 回で約 250 MB。非公開のリポジトリは置き場所が 500 MB までのため）
           retention-days: 1
@@ -220,6 +234,15 @@ jobs:
               exit 1
             fi
           done
+          # 説明書は Releases で名前の日本語が消えるため、英数字の名前にする（中身の説明は Releases の本文に書く）
+          for pair in "利用の手引き:user-guide" "導入と運用の手引き:admin-guide"; do
+            pdf="ari-docs_${pair%%:*}.pdf"
+            if [ ! -f "$pdf" ]; then
+              echo "::error::説明書の $pdf がありません"
+              exit 1
+            fi
+            mv "$pdf" "ari-docs_${pair##*:}_${version}.pdf"
+          done
 
       # 下書きで作り、latest.json を載せてから公開する（latest.json の無い間に、アプリが更新を調べて失敗しないように）。
       # latest.json の中の取り先は、どちらのリポジトリに載せたものも公開の RELEASE_REPO にする
@@ -247,11 +270,28 @@ jobs:
             }}' > ../latest.json
           cat ../latest.json
 
+      # Releases の本文は、はじめに配布物と説明書の案内、続けて変更点（latest.json の notes は変更点だけ）
       - name: 配布用のリポジトリの Releases に載せる
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
           TAG: ${{ github.ref_name }}
         run: |
-          gh release create "$TAG" dist/* --repo "$RELEASE_REPO" --title "$TAG" --notes-file notes.md --draft
+          version="${TAG#v}"
+          {
+            echo "## はじめに"
+            echo
+            echo "入れる前に、説明書（PDF）で ari-docs でできること・入れ方をご覧ください。"
+            echo
+            echo "| ファイル | 内容 |"
+            echo "|---|---|"
+            echo "| ari-docs_user-guide_${version}.pdf | 利用の手引き（使うすべての人に。画面の見方・探す・Folder・Note と Wiki・タスク・設定） |"
+            echo "| ari-docs_admin-guide_${version}.pdf | 導入と運用の手引き（導入の担当・管理者に。入れ方・ユーザー・バックアップ・更新・セキュリティ） |"
+            echo "| ari-docs_${version}_x64-setup.exe | Windows のアプリ（インストーラー） |"
+            echo "| ari-docs_${version}_amd64.AppImage | Linux のアプリ |"
+            echo "| ari-docs-server_${version}_linux-x86_64.tar.gz | Linux の共有サーバー一式（説明書も manual/ に入っています） |"
+            echo
+            cat notes.md
+          } > release-body.md
+          gh release create "$TAG" dist/* --repo "$RELEASE_REPO" --title "$TAG" --notes-file release-body.md --draft
           gh release upload "$TAG" latest.json --repo "$RELEASE_REPO"
           gh release edit "$TAG" --repo "$RELEASE_REPO" --draft=false
