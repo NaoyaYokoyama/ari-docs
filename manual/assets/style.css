@@ -1,0 +1,129 @@
+/* 説明書の見た目（A4・印刷用）。色はアプリの差し色（青）に合わせる */
+:root {
+  --brand: #1f5fbf;
+  --brand-soft: #eaf1fb;
+  --text: #1d2330;
+  --muted: #5d6573;
+  --border: #d5dae3;
+  --note: #eaf1fb;
+  --warn: #fff4e0;
+  --warn-border: #e2a03f;
+}
+@page { size: A4; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  font-family: "Noto Sans CJK JP", "Noto Sans JP", "Yu Gothic", "YuGothic", "Meiryo", sans-serif;
+  color: var(--text);
+  font-size: 10.5pt;
+  line-height: 1.75;
+  margin: 0;
+}
+
+/* 表紙 */
+.cover {
+  height: 245mm;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-left: 8px solid var(--brand);
+  padding-left: 18mm;
+  page-break-after: always;
+}
+.cover-icon { width: 22mm; height: 22mm; margin-bottom: 6mm; }
+.cover-product { font-size: 14pt; font-weight: 700; color: var(--brand); margin: 0; letter-spacing: 0.05em; }
+.cover-title { font-size: 30pt; margin: 2mm 0 4mm; border: 0; padding: 0; page-break-before: avoid; }
+.cover-subtitle { font-size: 12pt; color: var(--muted); margin: 0 0 14mm; }
+.cover-meta { border-collapse: collapse; font-size: 10.5pt; width: auto; margin: 0; }
+.cover-meta th, .cover-meta td { border: 0; padding: 1mm 6mm 1mm 0; background: none; text-align: left; }
+.cover-meta th { color: var(--muted); font-weight: 400; }
+
+/* 目次 */
+.toc { page-break-after: always; }
+.toc h2 { border: 0; margin-top: 0; }
+.toc ul { list-style: none; padding-left: 0; margin: 0; }
+.toc > ul > li { margin: 2.5mm 0 1mm; font-weight: 700; }
+.toc ul ul { padding-left: 6mm; font-weight: 400; }
+.toc ul ul li { margin: 0.6mm 0; }
+.toc a { color: var(--text); text-decoration: none; }
+
+/* 見出し。章（#）は新しいページから */
+h1, h2, h3, h4 { line-height: 1.4; page-break-after: avoid; break-after: avoid; }
+main h1 {
+  font-size: 19pt;
+  color: var(--brand);
+  border-bottom: 2px solid var(--brand);
+  padding-bottom: 2mm;
+  margin: 0 0 6mm;
+  page-break-before: always;
+}
+main h1:first-child { page-break-before: auto; }
+h2 { font-size: 14pt; margin: 9mm 0 3mm; padding-left: 3mm; border-left: 4px solid var(--brand); }
+h3 { font-size: 11.5pt; margin: 6mm 0 2mm; }
+h4 { font-size: 10.5pt; margin: 4mm 0 1mm; color: var(--muted); }
+p { margin: 0 0 3mm; }
+a { color: var(--brand); }
+strong { color: #0f172a; }
+
+/* 表 */
+table { border-collapse: collapse; width: 100%; margin: 2mm 0 5mm; font-size: 9.5pt; page-break-inside: auto; }
+tr { page-break-inside: avoid; }
+th, td { border: 1px solid var(--border); padding: 1.6mm 2.4mm; vertical-align: top; text-align: left; }
+thead th { background: var(--brand-soft); font-weight: 700; }
+
+/* 箇条書き・手順 */
+ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
+li { margin: 0.8mm 0; }
+ol > li::marker { color: var(--brand); font-weight: 700; }
+
+/* 画面の写し */
+img { max-width: 100%; }
+p > img:only-child, .shot img {
+  display: block;
+  margin: 2mm auto 1mm;
+  border: 1px solid var(--border);
+  border-radius: 2mm;
+  box-shadow: 0 1mm 3mm rgba(15, 23, 42, 0.08);
+}
+.shot { page-break-inside: avoid; margin: 0 0 4mm; }
+.shot p { margin: 0; }
+.shot .caption, .caption { display: block; text-align: center; font-size: 8.5pt; color: var(--muted); margin-top: 1mm; }
+.small img { max-width: 70%; }
+
+/* キー */
+kbd {
+  font-family: "Noto Sans Mono CJK JP", "Consolas", monospace;
+  font-size: 8.5pt;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 1mm;
+  padding: 0 1.2mm;
+  background: #f7f8fa;
+  white-space: nowrap;
+}
+code {
+  font-family: "Noto Sans Mono CJK JP", "Consolas", monospace;
+  font-size: 9pt;
+  background: #f3f5f8;
+  border-radius: 1mm;
+  padding: 0 1mm;
+}
+pre { background: #f3f5f8; border: 1px solid var(--border); border-radius: 2mm; padding: 3mm 4mm; font-size: 8.8pt; line-height: 1.55; white-space: pre-wrap; page-break-inside: avoid; }
+pre code { background: none; padding: 0; }
+
+/* 補足・注意の枠（::: note / ::: warning） */
+.note, .warning, .point {
+  border-radius: 2mm;
+  padding: 3mm 4mm;
+  margin: 3mm 0 5mm;
+  page-break-inside: avoid;
+}
+.note { background: var(--note); border-left: 4px solid var(--brand); }
+.point { background: #eefaf2; border-left: 4px solid #2f9e5b; }
+.warning { background: var(--warn); border-left: 4px solid var(--warn-border); }
+.note > p:last-child, .warning > p:last-child, .point > p:last-child { margin-bottom: 0; }
+.note::before, .warning::before, .point::before { display: block; font-weight: 700; margin-bottom: 1mm; }
+.note::before { content: "メモ"; color: var(--brand); }
+.point::before { content: "ポイント"; color: #2f9e5b; }
+.warning::before { content: "ご注意"; color: #b26b00; }
+
+hr { border: 0; border-top: 1px solid var(--border); margin: 6mm 0; }

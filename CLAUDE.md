@@ -16,6 +16,7 @@
   - 配布は Windows が NSIS（ユーザー単位）、Linux が AppImage（`tauri.conf.json` の `bundle.targets`）。Linux では `NO_STRIP=true cargo tauri build`（docs の OP0002）
   - Windows の配布物には C++ のランタイムの DLL（ONNX Runtime が使う `msvcp140.dll` など 4 つ）を exe の横に同梱する（`desktop/src-tauri/vcruntime/` に置いて `--config tauri.vcruntime.conf.json`。GitHub Actions は自動で用意。docs の OP0002）
 - `folder/` : 開発時のノード（ファイル・フォルダ）の実体。バックエンドは `../folder` として参照
+- `manual/` : 導入する会社・使う人に渡す説明書（`01_利用の手引き.md`・`02_導入と運用の手引き.md`）。元は Markdown、`node manual/build.mjs` で PDF（`manual/pdf/`。pandoc と Chrome を使う）。画面の写しは個人の情報の無い見本のデータで撮る（`manual/README.md`）。機能を変えたら説明書も直す
 - `docs/` : 設計書（書き方は `docs/00_概要/0090_ドキュメントルール.md`。全文書レビュー中）。git 管理を楽にするため当面はリポジトリ内に置き、固まったら別管理に移す
 
 ## 検証コマンド
