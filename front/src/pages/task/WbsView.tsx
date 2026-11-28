@@ -51,7 +51,8 @@ function shortDate(text: string) {
   if (!text) {
     return "";
   }
-  const [, m, d] = text.split("-").map(Number);
+  // MM/DD（1〜9 月・日でも幅が変わらないように 2 けた）
+  const [, m, d] = text.split("-");
   return `${m}/${d}`;
 }
 

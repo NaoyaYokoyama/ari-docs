@@ -70,7 +70,8 @@ export function dueInfo(task: Pick<Task, "dueDate" | "status">) {
   const [ty, tm, td] = today().split("-").map(Number);
   const days = Math.round((date.getTime() - new Date(ty, tm - 1, td).getTime()) / 86_400_000);
   const sameYear = y === ty;
-  const label = `${sameYear ? "" : `${y}/`}${m}/${d}（${WEEKDAYS[date.getDay()]}）`;
+  // 月・日は 2 けたにそろえる（1〜9 月・日でも幅が変わらないように）
+  const label = `${sameYear ? "" : `${y}/`}${pad(m)}/${pad(d)}（${WEEKDAYS[date.getDay()]}）`;
   const done = task.status === "done";
   const state = done ? "done" : days < 0 ? "overdue" : days === 0 ? "today" : days <= 3 ? "soon" : "later";
   const note = done ? "" : days < 0 ? `${-days} 日過ぎ` : days === 0 ? "今日" : days === 1 ? "明日" : "";
