@@ -25,4 +25,9 @@ pub struct EditingResponse {
     pub editors: Vec<String>,
     pub updated_at: String,
     pub updated_by: String,
+    // 書いている間はほかの人が書けない設定か（共有モードでサーバーの設定の wikiEditLock。FN0501-BR12）
+    pub lock: bool,
+    // ロックしている人（自分のほか）と、書き始めた時刻（HH:MM）
+    pub locked_by: Option<String>,
+    pub locked_since: Option<String>,
 }

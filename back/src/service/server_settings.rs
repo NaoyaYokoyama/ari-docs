@@ -22,6 +22,12 @@ pub struct ServerSettings {
     pub file_lock_max_days: i64,
     // ファイルの以前の版（FN0301-BR39）を 1 つのファイルにつき残す数。既定 10、0 なら残さない、100 まで
     pub file_version_keep: i64,
+    // 共有モードで、Wiki を書いている人のほかは保存できないようにする（FN0501-BR12）。既定はロックする
+    pub wiki_edit_lock: bool,
+    // Note・Wiki に貼る画像と Docs で送る画像を縮める（FN0902-BR09）。画質（%）と長い辺の上限（画素）
+    pub image_compress: bool,
+    pub image_quality: i64,
+    pub image_max_side: i64,
 }
 
 impl Default for ServerSettings {
@@ -35,6 +41,10 @@ impl Default for ServerSettings {
             upload_max_mb: DEFAULT_UPLOAD_MAX_MB,
             file_lock_max_days: 7,
             file_version_keep: 10,
+            wiki_edit_lock: true,
+            image_compress: true,
+            image_quality: 85,
+            image_max_side: 1920,
         }
     }
 }
@@ -90,6 +100,13 @@ pub fn save(conn: &Connection, settings: &ServerSettings) -> Result<(), String> 
             0,
             100,
             "ファイルの以前の版を残す数は 0〜100 件",
+        ),
+        (settings.image_quality, 10, 100, "画像の画質は 10〜100 %"),
+        (
+            settings.image_max_side,
+            800,
+            4096,
+            "画像の長い辺の上限は 800〜4096 画素",
         ),
     ];
     for (value, min, max, label) in ranges {

@@ -49,6 +49,10 @@ pub struct LoginResponse {
     pub admin_elsewhere: bool,
     // ファイルのロックの期限の上限（日。サーバーの設定。FN0301-BR38）
     pub file_lock_max_days: i64,
+    // Note・Wiki に貼る画像の縮め方（サーバーの設定。FN0902-BR09）
+    pub image_compress: bool,
+    pub image_quality: i64,
+    pub image_max_side: i64,
     // ログイン・管理者の登録のときだけ返す。デスクトップアプリは Authorization: Bearer で送る
     #[serde(skip_serializing_if = "Option::is_none")]
     pub token: Option<String>,
@@ -56,15 +60,19 @@ pub struct LoginResponse {
 
 impl LoginResponse {
     pub fn new(conn: &Connection, user: &User, mode: &AppMode) -> Self {
+        let settings = server_settings::get(conn);
         Self {
             user_id: user.user_id.clone(),
             display_name: user.display_name.clone(),
             mode: mode.as_str().to_string(),
             is_admin: !mode.is_local() && auth::is_admin(user),
-            docs_enabled: server_settings::get(conn).docs_enabled,
+            docs_enabled: settings.docs_enabled,
             permissions: auth::permissions(conn, mode, user),
             admin_elsewhere: user.admin_elsewhere,
-            file_lock_max_days: server_settings::get(conn).file_lock_max_days,
+            file_lock_max_days: settings.file_lock_max_days,
+            image_compress: settings.image_compress,
+            image_quality: settings.image_quality,
+            image_max_side: settings.image_max_side,
             token: None,
         }
     }

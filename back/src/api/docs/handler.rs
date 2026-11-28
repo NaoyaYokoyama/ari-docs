@@ -85,6 +85,23 @@ pub async fn get_doc_image(
         &query.path,
     )
     .map_err(|e| to_status(&e))?;
+    // 共有モードでは、サーバーの設定の画質・大きさに縮めて送る（通信を軽くする。元のファイルは変えない。FN0902-BR09）
+    let settings = server_settings::get(&conn);
+    let (bytes, mime) = if !state.config.mode.is_local() && settings.image_compress {
+        tokio::task::spawn_blocking(move || {
+            crate::service::image_compress::shrink(
+                &bytes,
+                mime,
+                settings.image_quality,
+                settings.image_max_side,
+            )
+            .unwrap_or((bytes, mime))
+        })
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    } else {
+        (bytes, mime)
+    };
 
     // SVG の中のスクリプトを動かさない（画面は img で出すが、直接開かれたときのため）
     Ok((

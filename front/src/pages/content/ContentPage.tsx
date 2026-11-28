@@ -1,5 +1,5 @@
 import MDEditor from "@uiw/react-md-editor";
-import { CircleCheck, FileCode, FileDown, History, LayoutTemplate, Link2, Plus, Printer, Save, Star, Trash2, Users } from "lucide-react";
+import { CircleCheck, FileCode, FileDown, History, LayoutTemplate, Link2, Lock, Plus, Printer, Save, Star, Trash2, Users } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { twMerge } from "tailwind-merge";
@@ -25,7 +25,7 @@ import { type AriLink, ariLinkLabel, parseAriLink, toAriLink } from "@/lib/ariLi
 import { openBlob, saveBlob } from "@/lib/download";
 import { formatSize } from "@/lib/fileType";
 import { errorMessage, formatDateTime } from "@/lib/format";
-import { compressImage } from "@/lib/imageCompress";
+import { compressImage, DEFAULT_COMPRESS } from "@/lib/imageCompress";
 import { buildHtml, exportFileName, htmlBlob, saveAsMarkdown } from "@/pages/content/contentExport";
 import type { ContentDetail, ContentItem, ContentKind } from "@/pages/content/contentKinds";
 import ContentMarkdown, { contentMarkdownOptions, ImageResizeContext } from "@/pages/content/ContentMarkdown";
@@ -97,7 +97,9 @@ export default function ContentPage({ kind }: Props) {
   const [items, setItems] = useState<ContentItem[] | null>(null);
   const [selected, setSelected] = useState<ContentDetail | null>(null);
   const [loadingId, setLoadingId] = useState("");
-  const [mode, setMode] = useState<Mode>(getEditorMode);
+  // 選んだ表示。ほかの人が Wiki を書いている間（ロック）は、読むだけ（プレビュー）にする（下の mode）
+  const [chosenMode, setChosenMode] = useState<Mode>(getEditorMode);
+  const lockedRef = useRef(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   // フォルダ（FN0403）。新しく作る場所は、クリックしたフォルダか開いているものの入っているフォルダ
@@ -143,7 +145,12 @@ export default function ContentPage({ kind }: Props) {
   }, [kind, showMessage]);
 
   const changeMode = (next: Mode) => {
-    setMode(next);
+    // ほかの人が書いている Wiki は読むだけ（FN0501-BR12）
+    if (lockedRef.current && next !== "preview") {
+      showMessage("info", "ほかの人が書いている間は、読むだけです");
+      return;
+    }
+    setChosenMode(next);
     setEditorMode(next);
   };
 
@@ -239,6 +246,10 @@ export default function ContentPage({ kind }: Props) {
     selected?.updatedAt,
     isDirty,
   );
+  // ほかの人が書いている（ロック。FN0501-BR12）。自分が書き始めたあとに分かったときは、保存のときにサーバーが断る
+  const locked = !!editingNotice.lockedBy && !isDirty;
+  lockedRef.current = locked;
+  const mode: Mode = locked ? "preview" : chosenMode;
 
   const edit = (changes: Partial<ContentDetail>) => {
     if (!selected) {
@@ -279,8 +290,8 @@ export default function ContentPage({ kind }: Props) {
       showMessage("info", `${kind.label}を作成しました`);
       await loadItems();
       // 作ったらすぐ書けるようにする
-      if (mode === "preview") {
-        setMode("live");
+      if (chosenMode === "preview") {
+        setChosenMode("live");
       }
       requestAnimationFrame(focusEditor);
       return null;
@@ -400,7 +411,11 @@ export default function ContentPage({ kind }: Props) {
       let after = 0;
       const uploaded = [];
       for (const file of images) {
-        const compressed = await compressImage(file);
+        const compressed = await compressImage(file, {
+          compress: user?.imageCompress ?? DEFAULT_COMPRESS.compress,
+          quality: user?.imageQuality ?? DEFAULT_COMPRESS.quality,
+          maxSide: user?.imageMaxSide ?? DEFAULT_COMPRESS.maxSide,
+        });
         const response = await uploadContentImage(kind.kind, compressed);
         before += file.size;
         after += compressed.size;
@@ -683,8 +698,9 @@ export default function ContentPage({ kind }: Props) {
                         type="button"
                         onClick={() => changeMode(item.value)}
                         aria-pressed={mode === item.value}
+                        disabled={locked && item.value !== "preview"}
                         className={twMerge(
-                          "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                          "rounded-md px-2.5 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40",
                           mode === item.value
                             ? "bg-background text-foreground shadow-sm"
                             : "text-muted-foreground hover:text-foreground",
@@ -775,17 +791,41 @@ export default function ContentPage({ kind }: Props) {
               </div>
             </div>
 
-            {(editingNotice.editors.length > 0 || editingNotice.savedBy) && (
-              <p role="status" className="flex items-center gap-2 border-b border-border bg-warning/10 px-5 py-1.5 text-xs">
-                <Users size={14} className="shrink-0 text-warning" />
-                {[
-                  editingNotice.editors.length > 0 && `${editingNotice.editors.join("・")} さんもこの Wiki を書いています`,
-                  editingNotice.savedBy && `${editingNotice.savedBy} さんが保存しました`,
-                ]
-                  .filter(Boolean)
-                  .join("。")}
-                。保存すると、上書きするか確かめます
+            {editingNotice.lockedBy ? (
+              <p role="status" className="flex flex-wrap items-center gap-2 border-b border-border bg-warning/10 px-5 py-1.5 text-xs">
+                <Lock size={14} className="shrink-0 text-warning" />
+                {editingNotice.lockedBy} さんが書いています
+                {editingNotice.lockedSince && `（${editingNotice.lockedSince} から）`}。
+                {isDirty ? "書き終わるまで保存できません" : "書き終わる（保存する）まで読むだけです"}
+                {user?.isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void editingNotice
+                        .release()
+                        .then(() => showMessage("info", "ロックを外しました"))
+                        .catch((error) => showMessage("error", errorMessage(error, "ロックを外せませんでした")))
+                    }
+                    className="ml-auto rounded border border-border bg-background px-2 py-0.5 hover:bg-accent"
+                  >
+                    ロックを外す
+                  </button>
+                )}
               </p>
+            ) : (
+              (editingNotice.editors.length > 0 || editingNotice.savedBy) && (
+                <p role="status" className="flex items-center gap-2 border-b border-border bg-warning/10 px-5 py-1.5 text-xs">
+                  <Users size={14} className="shrink-0 text-warning" />
+                  {[
+                    editingNotice.editors.length > 0 &&
+                      `${editingNotice.editors.join("・")} さん${isDirty ? "も" : "が"}この Wiki を書いています`,
+                    editingNotice.savedBy && `${editingNotice.savedBy} さんが保存しました`,
+                  ]
+                    .filter(Boolean)
+                    .join("。")}
+                  。保存すると、上書きするか確かめます
+                </p>
+              )
             )}
 
             {mode !== "preview" && <MarkdownToolbar onCommand={runCommand} onImages={(files) => void addImages(files)} />}

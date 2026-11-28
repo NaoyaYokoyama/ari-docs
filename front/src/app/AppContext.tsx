@@ -18,6 +18,10 @@ export type LoginUser = {
   adminElsewhere: boolean;
   // ファイルのロックの期限の上限（日。サーバーの設定。FN0301-BR38）
   fileLockMaxDays?: number;
+  // Note・Wiki に貼る画像の縮め方（サーバーの設定。FN0902-BR09）
+  imageCompress?: boolean;
+  imageQuality?: number;
+  imageMaxSide?: number;
 };
 
 export type Permission = "dictionary" | "exclusion" | "backup";

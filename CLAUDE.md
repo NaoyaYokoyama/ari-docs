@@ -79,10 +79,11 @@
 - 全ユーザーで共有する。`wiki.user_id` は**作成者**を表すだけで、絞り込みには使わない
 - ログインユーザーなら誰でも一覧・参照・編集・削除できる。検索も全 Wiki が対象（ホームの検索の Note・Wiki はタイトルに合うものが先、同じなら新しい順。FN0201-BR03）
 - Wiki 削除時は全ユーザーのお気に入りを削除する
-- 同時編集のお知らせ（docs の FN0501-BR11）: 共有モードで Wiki に未保存の変更がある間だけ、書き始めたときと 5 分ごとに `/api/wiki/editing` で知らせ、ほかに書いている人・保存した人を出す（つなぎっぱなしにしない。サーバーはメモリに 11 分覚える。`service/editing.rs`・`pages/content/useEditingNotice.ts`）
+- 同時編集のお知らせとロック（docs の FN0501-BR11・BR12）: 共有モードの Wiki は、開いたときと 1 分ごとに書いている人を確かめ（`check`）、未保存の変更がある間は 2 分ごとに `/api/wiki/editing` で知らせる（つなぎっぱなしにしない。サーバーはメモリに 10 分覚える。`service/editing.rs`・`pages/content/useEditingNotice.ts`）。サーバーの設定 `wikiEditLock`（既定オン）なら、先に書き始めた人のほかは読むだけ（プレビュー）にし、保存・削除は 423。管理者は「ロックを外す」（`release`）
 - 保存すると最後に更新した人（`wiki.updated_by`）を記録する。保存のときに開いたときの更新日時（`baseUpdatedAt`）と違えば 409 で確認し、`force` で上書き（Note も同じ）。Note・Wiki の版は `content_history` に残す（100 件まで。docs の FN0402）
 - Note・Wiki・お気に入りの一覧に件数の制限は無い
 - 本文の編集の手助け（docs の FN0404）: 書式のボタン（`pages/content/MarkdownToolbar.tsx`）・キー（Ctrl+B など。`shortcut.ts` の `MD_*`）・表の挿入と整形（`pages/content/markdown/`。書き換えはエディタに依存しない関数にし、`editorHandle.ts` で textarea と Vim のエディタに当てる）。Vim のエディタは書式のキーを挿入モードのときだけ受ける。本文の字体は等幅
+- 画像の縮め方（FN0902-BR09）: サーバーの設定の `imageCompress`・`imageQuality`（既定 85）・`imageMaxSide`（既定 1920）。Note・Wiki に貼る画像は画面が縮め（`lib/imageCompress.ts`。値は `/api/me`）、共有モードの Docs の画像はサーバーが縮めて送る（`service/image_compress.rs`。元のファイルは変えない）
 - Note・Wiki のボタンには一言の説明（`components/common/Hint.tsx`、`IconButton` の `hint`）。マウスを乗せたとき・キーで選んだときに出す。この PC の設定 `buttonHints`（既定オン）で消せる
 - 本文の画像は貼り付け・ドロップで入れ、画面で縮小（長い辺 1920 画素・WebP）してから `content_image`（DB）に保存する（サーバーの容量のため）。本文には `/api/content-image/{id}` と書き、表示は `ContentMarkdown.tsx` がトークンを付けて読み込む。Note の画像は本人（と使っている Wiki を読める人）だけ。使われなくなった画像は 1 日後に消す（毎時 15 分）。幅は `![名前|300](…)`、編集の画面では仕上がりの画像を右クリックして小・中・大・元の大きさを選べる（`markdown/imageSize.ts`。FN0404-BR07）
 - ひな形（docs の FN0401-BR16・BR17）: 作るダイアログで選ぶ。入っているものは `pages/content/contentTemplates.ts`、自分のものは一番上の「ひな形」フォルダの Note・Wiki（`{{日付}}` などを置き換える。Note は自分だけ、Wiki は全員）。開いた画面の「ひな形として登録」で写しをそこへ作る。印刷・書き出しは「印刷・書き出し」（FN0401-BR18。本文を 1 つで完結する HTML にして既定のブラウザで開いて印刷、HTML・Markdown で保存。アプリの中の印刷・PDF の直接の作成はしない）。書式のボタンの「図」は mermaid のひな形（FN0404-BR09）。今日の Note は「ひな形」の「今日の Note」で作る

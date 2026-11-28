@@ -12,6 +12,12 @@ export interface ServerSettings {
   fileLockMaxDays: number;
   // ファイルの以前の版を 1 つのファイルにつき残す数（既定 10、0 なら残さない、100 まで。FN0301-BR39）
   fileVersionKeep: number;
+  // 共有モードで、Wiki を書いている人のほかは保存できないようにする（既定はする。FN0501-BR12）
+  wikiEditLock: boolean;
+  // Note・Wiki に貼る画像と Docs で送る画像を縮める。画質（%。10〜100、既定 85）と長い辺の上限（画素。800〜4096、既定 1920。FN0902-BR09）
+  imageCompress: boolean;
+  imageQuality: number;
+  imageMaxSide: number;
 }
 
 // アプリの情報（FN0903）

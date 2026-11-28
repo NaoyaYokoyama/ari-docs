@@ -43,4 +43,10 @@ pub struct UpdateWikiRequest {
 pub struct EditingRequest {
     pub wiki_id: String,
     pub editing: bool,
+    // 書いている人を確かめるだけ（開いたとき・読んでいる間。FN0501-BR11）
+    #[serde(default)]
+    pub check: bool,
+    // 管理者がロックを外す（FN0501-BR12）
+    #[serde(default)]
+    pub release: bool,
 }

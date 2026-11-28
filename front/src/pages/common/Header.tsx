@@ -21,6 +21,7 @@ import { useLocation } from "react-router-dom";
 import { twMerge } from "tailwind-merge";
 
 import { useApp } from "@/app/AppContext";
+import { stepZoom, usePreferences } from "@/app/preferences";
 import { type ThemePreference, useTheme } from "@/app/theme";
 import { useGuardedNavigate } from "@/app/useGuardedNavigate";
 import IconButton from "@/components/common/IconButton";
@@ -62,6 +63,7 @@ export default function Header({
   const shortcut = useContext(ShortcutContext);
   const { preference, setPreference } = useTheme();
   const location = useLocation();
+  const { zoom } = usePreferences();
   const navigate = useGuardedNavigate();
   const menus = useNavigation();
 
@@ -129,6 +131,19 @@ export default function Header({
             <Kbd>{shortcutLabel(SHORTCUT.QUICK_OPEN)}</Kbd>
           </span>
         </button>
+
+        {/* 拡大・縮小の倍率（100% 以外のときだけ。押すと 100% に戻す。FN0701-BR17） */}
+        {zoom !== 100 && (
+          <button
+            type="button"
+            onClick={() => stepZoom(0)}
+            title="表示の大きさ。押すと 100% に戻します（Ctrl+0）"
+            aria-label={`表示の大きさ ${zoom}%。押すと 100% に戻します`}
+            className="mr-1 h-7 rounded-md border border-brand/40 bg-brand/10 px-2 text-xs font-medium text-brand tabular-nums hover:bg-brand/20"
+          >
+            {zoom}%
+          </button>
+        )}
 
         <IconButton
           label={`新しいウィンドウで開く（${shortcutLabel(SHORTCUT.NEW_WINDOW)}）`}

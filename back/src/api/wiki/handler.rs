@@ -5,14 +5,43 @@ use crate::{
     api::response::ApiResponse,
     config::app_state::AppState,
     database::connection,
-    service::{auth, wiki},
+    service::{
+        auth,
+        editing::{self, Action},
+        server_settings, wiki,
+    },
 };
 use axum::{
     Json,
     extract::{Path, State},
     http::{HeaderMap, StatusCode},
 };
+use rusqlite::Connection;
 use validator::Validate;
+
+// 書いている間はほかの人が書けない設定か（共有モードだけ。FN0501-BR12）
+fn edit_lock(conn: &Connection, state: &AppState) -> bool {
+    !state.config.mode.is_local() && server_settings::get(conn).wiki_edit_lock
+}
+
+// ほかの人が書いていれば、保存・削除をさせない（423）
+fn ensure_not_locked(
+    conn: &Connection,
+    state: &AppState,
+    wiki_id: &str,
+    user_id: &str,
+) -> Result<(), ApiError> {
+    if !edit_lock(conn, state) {
+        return Ok(());
+    }
+    match editing::locked_by(wiki_id, user_id, std::time::Instant::now()) {
+        Some((name, since)) => Err(ApiError::new(
+            StatusCode::LOCKED,
+            format!("{name}さんが書いています（{since} から）。終わるまで保存・削除できません"),
+        )),
+        None => Ok(()),
+    }
+}
 
 pub async fn get_wikis(
     State(state): State<AppState>,
@@ -74,11 +103,12 @@ pub async fn delete_wiki(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(request): Json<WikiQuery>,
-) -> Result<Json<ApiResponse<()>>, StatusCode> {
+) -> Result<Json<ApiResponse<()>>, ApiError> {
     let conn = connection::connect();
-    auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    ensure_not_locked(&conn, &state, &request.wiki_id, &user.user_id)?;
 
-    crate::service::editing::forget(&request.wiki_id);
+    editing::forget(&request.wiki_id);
     wiki::delete_wiki(&conn, &request.wiki_id).map_err(|e| {
         crate::elog!("delete_wiki error: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
@@ -100,6 +130,7 @@ pub async fn update_wiki(
     request.validate()?;
     let conn = connection::connect();
     let user = auth::get_login_user(&conn, &state, &headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    ensure_not_locked(&conn, &state, &request.wiki_id, &user.user_id)?;
 
     let updated_at = wiki::update_wiki(
         &conn,
@@ -135,16 +166,35 @@ pub async fn report_editing(
             StatusCode::INTERNAL_SERVER_ERROR
         }
     })?;
-    let editors = crate::service::editing::report(
+    let lock = edit_lock(&conn, &state);
+    let action = if request.release {
+        // ロックを外せるのは管理者だけ
+        if !auth::is_admin(&user) {
+            return Err(StatusCode::FORBIDDEN);
+        }
+        Action::Release
+    } else if request.check {
+        Action::Check
+    } else if request.editing {
+        Action::Edit
+    } else {
+        Action::Stop
+    };
+    let status = editing::report(
         &request.wiki_id,
         &user.user_id,
         &user.display_name,
-        request.editing,
+        action,
+        lock,
         std::time::Instant::now(),
     );
+    let (locked_by, locked_since) = status.locked_by.unzip();
     Ok(Json(EditingResponse {
-        editors,
+        editors: status.editors,
         updated_at: current.updated_at,
         updated_by: current.updated_by,
+        lock,
+        locked_by,
+        locked_since,
     }))
 }

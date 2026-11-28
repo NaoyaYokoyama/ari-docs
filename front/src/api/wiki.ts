@@ -47,9 +47,18 @@ export function deleteWiki(
 
 // 書いている（true）・やめた（false）を知らせる（同時編集のお知らせ。FN0501-BR11）。
 // ほかに書いている人の表示名と、今の Wiki の更新日時・最後に更新した人を返す
-export function reportEditing(wikiId: string, editing: boolean) {
-  return post<{ editors: string[]; updatedAt: string; updatedBy: string }>("/api/wiki/editing", {
-    wikiId,
-    editing,
-  });
+export type EditingStatus = {
+  editors: string[];
+  updatedAt: string;
+  updatedBy: string;
+  // 書いている間はほかの人が書けない設定か（FN0501-BR12）
+  lock: boolean;
+  // ロックしている人（自分のほか）と書き始めた時刻（HH:MM）
+  lockedBy: string | null;
+  lockedSince: string | null;
+};
+
+// 書いている・やめたを知らせる。check は確かめるだけ、release は管理者がロックを外す（API0507）
+export function reportEditing(wikiId: string, editing: boolean, options: { check?: boolean; release?: boolean } = {}) {
+  return post<EditingStatus>("/api/wiki/editing", { wikiId, editing, ...options });
 }

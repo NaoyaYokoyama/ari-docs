@@ -12,6 +12,7 @@ pub mod editing;
 pub mod favorite;
 pub mod home;
 pub mod host;
+pub mod image_compress;
 pub mod node;
 pub mod node_lock;
 pub mod node_version;
