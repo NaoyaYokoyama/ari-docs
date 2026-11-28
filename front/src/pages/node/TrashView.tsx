@@ -7,6 +7,7 @@ import { useApp } from "@/app/AppContext";
 import Button from "@/components/common/Button";
 import ContextMenu, { type ContextMenuItem } from "@/components/common/ContextMenu";
 import EmptyState from "@/components/common/EmptyState";
+import SelectBox from "@/components/common/SelectBox";
 import Spinner from "@/components/common/Spinner";
 import { fileKind, formatSize } from "@/lib/fileType";
 import { errorMessage, formatDateTime } from "@/lib/format";
@@ -101,7 +102,11 @@ export default function TrashView({ onRestored }: Props) {
 
   const order = (trash?.items ?? []).map((item) => item.trashId);
 
-  // クリックで選ぶ。Ctrl で 1 つずつ足し引き、Shift で起点からの範囲（Folder の一覧と同じ。FN0302-BR02）
+  const checkedCount = order.filter((trashId) => selected.has(trashId)).length;
+  const allChecked = order.length > 0 && checkedCount === order.length;
+
+  // クリックで選ぶ。Ctrl で 1 つずつ足し引き、Shift で起点からの範囲（Folder の一覧と同じ。FN0302-BR02）。
+  // チェックボックスは Ctrl を押したのと同じ（キーを押さずに足す・外す。Shift で起点からの範囲を足す）
   const select = (trashId: string, event: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }) => {
     const toggle = event.ctrlKey || event.metaKey;
     if (event.shiftKey && anchor && order.includes(anchor)) {
@@ -223,6 +228,17 @@ export default function TrashView({ onRestored }: Props) {
           <table className="w-full table-fixed border-collapse text-sm">
             <thead className="sticky top-0 z-10 bg-background">
               <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                <th className="h-9 w-9 pl-3 font-medium">
+                  <SelectBox
+                    label={allChecked ? "すべての選択を外す" : "すべて選ぶ"}
+                    checked={allChecked}
+                    indeterminate={checkedCount > 0 && !allChecked}
+                    onToggle={() => {
+                      listRef.current?.focus();
+                      setSelected(allChecked ? new Set() : new Set(order));
+                    }}
+                  />
+                </th>
                 <th className="h-9 px-3 font-medium">名前</th>
                 <th className="h-9 w-[30%] px-3 font-medium">元の場所</th>
                 <th className="h-9 w-40 px-3 font-medium">削除した日時</th>
@@ -262,6 +278,16 @@ export default function TrashView({ onRestored }: Props) {
                       setMenu({ x: event.clientX, y: event.clientY });
                     }}
                   >
+                    <td className="h-10 pl-3">
+                      <SelectBox
+                        label={`「${item.name}」を選ぶ`}
+                        checked={isSelected}
+                        onToggle={(event) => {
+                          listRef.current?.focus();
+                          select(item.trashId, { ctrlKey: true, metaKey: false, shiftKey: event.shiftKey });
+                        }}
+                      />
+                    </td>
                     <td className="h-10 px-3">
                       <span className="flex min-w-0 items-center gap-2.5">
                         <Icon size={17} className={twMerge("shrink-0", className)} />

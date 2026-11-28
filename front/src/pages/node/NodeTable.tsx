@@ -13,6 +13,7 @@ import { twMerge } from "tailwind-merge";
 import { useApp } from "@/app/AppContext";
 import EmptyState from "@/components/common/EmptyState";
 import IconButton from "@/components/common/IconButton";
+import SelectBox from "@/components/common/SelectBox";
 import Spinner from "@/components/common/Spinner";
 import { fileKind, formatSize } from "@/lib/fileType";
 import { timeOf } from "@/lib/format";
@@ -74,43 +75,6 @@ const LASSO_THRESHOLD = 4;
 const LASSO_EDGE = 32;
 
 type Lasso = { x0: number; y0: number; x1: number; y1: number };
-
-// 選ぶためのチェックボックス（FN0301-BR37）。見出しのものは、一部だけ選んでいるとき「－」
-function SelectBox({
-  checked,
-  indeterminate = false,
-  label,
-  onToggle,
-}: {
-  checked: boolean;
-  indeterminate?: boolean;
-  label: string;
-  onToggle: (event: React.MouseEvent<HTMLInputElement>) => void;
-}) {
-  const ref = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (ref.current) {
-      ref.current.indeterminate = indeterminate;
-    }
-  }, [indeterminate]);
-  return (
-    <input
-      ref={ref}
-      type="checkbox"
-      aria-label={label}
-      title={label}
-      checked={checked}
-      // 選ぶのはクリックで行う（Shift の範囲選択のため。行のクリック・ダブルクリックには渡さない）
-      onChange={() => {}}
-      onClick={(event) => {
-        event.stopPropagation();
-        onToggle(event);
-      }}
-      onDoubleClick={(event) => event.stopPropagation()}
-      className="size-4 cursor-pointer align-middle accent-brand"
-    />
-  );
-}
 
 // 一覧が狭いとき（右のプレビューを出したとき・ウィンドウが狭いとき）に出さない列。名前の幅を残すため。
 // 説明はプレビュー・詳細でも見られる。幅は一覧（@container）の幅で決める
