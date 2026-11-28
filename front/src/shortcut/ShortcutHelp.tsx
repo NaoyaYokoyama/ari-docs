@@ -52,6 +52,7 @@ const baseGroups = (navigation: NavigationItem[]): { title: string; rows: Row[] 
             { keys: ["Ctrl", "+"], description: "拡大（デスクトップアプリ）" },
             { keys: ["Ctrl", "-"], description: "縮小（デスクトップアプリ）" },
             { keys: ["Ctrl", "0"], description: "拡大・縮小を 100% に戻す（デスクトップアプリ）" },
+            { keys: ["Ctrl", "ホイール"], description: "拡大・縮小（デスクトップアプリ）" },
           ]
         : []),
     ],

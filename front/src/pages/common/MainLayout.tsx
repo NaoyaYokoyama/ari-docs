@@ -8,7 +8,7 @@ import { rememberLastPage, startPath, stepZoom } from "@/app/preferences";
 import { startTaskNotice } from "@/app/taskNotice";
 import { hasPendingAriLink, useAriLinkPlace } from "@/app/useAriLink";
 import { openCurrentInNewWindow } from "@/app/windows";
-import { zoomDirection } from "@/app/zoomKeys";
+import { WHEEL_INTERVAL_MS, wheelZoomDirection, zoomDirection } from "@/app/zoomKeys";
 import Header from "@/pages/common/Header";
 import UpdateNotice from "@/pages/common/UpdateNotice";
 import { isShortcut, SHORTCUT } from "@/shortcut/shortcut";
@@ -60,17 +60,42 @@ function MainLayout({
     if (!isTauri()) {
       return;
     }
+    const step = (direction: 1 | -1 | 0) => {
+      const zoom = stepZoom(direction);
+      showMessage("info", zoom === 100 ? "表示の大きさを 100% に戻しました" : `表示の大きさ: ${zoom}%（Ctrl+0 で 100% に戻す）`);
+    };
     const handleKey = (event: KeyboardEvent) => {
       const direction = zoomDirection(event);
       if (direction === null || event.isComposing) {
         return;
       }
       event.preventDefault();
-      const zoom = stepZoom(direction);
-      showMessage("info", zoom === 100 ? "表示の大きさを 100% に戻しました" : `表示の大きさ: ${zoom}%（Ctrl+0 で 100% に戻す）`);
+      step(direction);
+    };
+    // Ctrl+ホイール（タッチパッドの広げ・つまみも同じに届く）
+    let pending = 0;
+    let last = 0;
+    const handleWheel = (event: WheelEvent) => {
+      const result = wheelZoomDirection(event, pending);
+      if (!result) {
+        pending = 0;
+        return;
+      }
+      event.preventDefault();
+      pending = result.pending;
+      if (result.direction === 0 || event.timeStamp - last < WHEEL_INTERVAL_MS) {
+        return;
+      }
+      last = event.timeStamp;
+      step(result.direction);
     };
     window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
+    // preventDefault するため passive にしない
+    window.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      window.removeEventListener("keydown", handleKey);
+      window.removeEventListener("wheel", handleWheel);
+    };
   }, [showMessage]);
   // タスクの期限の通知（デスクトップアプリ。FN0602-BR13）
   useEffect(() => startTaskNotice(), []);
